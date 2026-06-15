@@ -1078,16 +1078,24 @@ var LUNA = (function() {
       else if (url.indexOf('fabrics') >= 0) _cache.fabrics = data;
       else if (url.indexOf('styles') >= 0) {
         _cache.styles = data;
-        // 合并图片：服务端数据可能没有图片（data URL 未上传），保留本地已有图片
+        // 合并本地已有数据：服务端可能缺少某些字段（图片、辅料、加工备注等）
         if (_cache.styles) {
           var oldStyles = {};
           try {
             var oldRaw = localStorage.getItem('luna_styles_data');
-            if (oldRaw) { var oldArr = JSON.parse(oldRaw); oldArr.forEach(function(s){ oldStyles[s.code] = s.images; }); }
+            if (oldRaw) { var oldArr = JSON.parse(oldRaw); oldArr.forEach(function(s){ oldStyles[s.code] = s; }); }
           } catch(e) {}
           _cache.styles.forEach(function(s) {
-            if ((!s.images || s.images.length === 0) && oldStyles[s.code] && oldStyles[s.code].length > 0) {
-              s.images = oldStyles[s.code];
+            var old = oldStyles[s.code];
+            if (old) {
+              // 保留图片
+              if ((!s.images || s.images.length === 0) && old.images && old.images.length > 0) {
+                s.images = old.images;
+              }
+              // 保留辅料/包边备注
+              if (!s.edgeNote && old.edgeNote) s.edgeNote = old.edgeNote;
+              // 保留加工备注
+              if (!s.processingNote && old.processingNote) s.processingNote = old.processingNote;
             }
             delete s.name;
           });

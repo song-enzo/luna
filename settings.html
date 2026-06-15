@@ -142,19 +142,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </div>
 <div class="setting-wrap">
   <div class="tabs">
-    <button class="tab active" data-tab="warehouse">🧶 面料仓库</button>
-    <button class="tab" data-tab="factories">🏭 加工工厂</button>
+    <button class="tab active" data-tab="factories">🏭 加工工厂</button>
     <button class="tab" data-tab="procacc">🔧 工艺&辅料</button>
     <button class="tab" data-tab="category">📂 分类</button>
-    <button class="tab" data-tab="styles">👗 款式管理</button>
     <button class="tab" data-tab="export">📊 月结</button>
   </div>
 
-  <div class="panel active" id="panel-warehouse"></div>
-  <div class="panel" id="panel-factories"></div>
+  <div class="panel active" id="panel-factories"></div>
   <div class="panel" id="panel-procacc"></div>
   <div class="panel" id="panel-category"></div>
-  <div class="panel" id="panel-styles"></div>
   <div class="panel" id="panel-export"></div>
 </div>
 
@@ -346,11 +342,9 @@ function initSettings() {
 
 // ===== RENDER ALL =====
 function renderAll() {
-  renderWarehouse();
   renderFactories();
   renderProcacc();
   renderCategories();
-  renderStyles();
 }
 
 // ===== COUNTER FOR IDS =====
@@ -1045,18 +1039,8 @@ function logout() {
   window.location.href = 'index.html';
 }
 
-// ===== URL 参数处理（支持从工作台直接跳转到面料仓库）=====
-(function() {
-  var params = new URLSearchParams(location.search);
-  if (params.get('tab') === 'warehouse') {
-    document.querySelectorAll('.tab').forEach(function(t) {
-      t.classList.remove('active');
-      if (t.dataset.tab === 'warehouse') t.classList.add('active');
-    });
-    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
-    document.getElementById('panel-warehouse').classList.add('active');
-  }
-})();
+// ===== 默认激活第一个面板 =====
+
 
 // ===== INIT =====
 initSettings();

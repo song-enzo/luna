@@ -32,7 +32,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit
 .color-dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0}
 .color-chip .qty{color:var(--gold);font-weight:700}
 .section-label{font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:0.03em;text-transform:uppercase;margin-bottom:8px}
-.pickup-form{display:flex;flex-direction:column;gap:10px}
+.pickup-form{display:flex;flex-direction:column;gap:6px}
 .form-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .form-row label{font-size:12px;color:var(--text-muted);min-width:50px}
 .form-row select,.form-row input{padding:7px 10px;border:1px solid #ddd;border-radius:5px;font-size:13px;font-family:inherit;background:#fff}
@@ -55,6 +55,14 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit
 .empty-state{text-align:center;padding:60px 20px;color:#ccc;font-size:13px}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
+.fabric-matrix-wrap{overflow-x:auto;margin:0 0 12px;border:1px solid var(--border);border-radius:6px}
+.fabric-matrix{width:100%;border-collapse:collapse;font-size:13px;min-width:300px}
+.fabric-matrix thead th{background:var(--cream);padding:6px 8px;text-align:center;font-weight:600;color:var(--text);font-size:11px;border-bottom:1px solid var(--border);letter-spacing:0.03em}
+.fabric-matrix tbody td{padding:5px 8px;text-align:center;border-bottom:1px solid var(--border);font-size:13px}
+.fabric-matrix tbody tr:last-child td{border-bottom:none}
+.matrix-color{font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.matrix-dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0}
+.matrix-qty{font-weight:700;font-size:14px;color:var(--text)}
 @media(max-width:640px){.form-row{flex-direction:column;align-items:stretch}.form-row label{min-width:auto}}
 </style>
 </head>
@@ -130,6 +138,16 @@ function getColorStyle(fabricName, colorName) {
       }
     }
   }
+  // Color not found in specified fabric → search all fabrics as fallback
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+        return 'background:' + (cols[ci].hex || '#ccc');
+      }
+    }
+  }
   var hash = 0;
   for (var hi = 0; hi < colorName.length; hi++) { hash = colorName.charCodeAt(hi) + ((hash << 5) - hash); }
   return 'background:hsl(' + (Math.abs(hash) % 360) + ',50%,70%)';
@@ -166,7 +184,19 @@ function renderCard(order, factories) {
   var style = (firstCode && LUNA.findStyle) ? LUNA.findStyle(firstCode) : null;
   var totalCut = 0;
   var colorTotals = getColorCuttingTotals(order, true);
-  // 撞色订单：将所有颜色件数聚合到面料1的颜色上显示
+
+  // Per-color size breakdown from items
+  var colorSizes = {};
+  items.forEach(function(item) {
+    var c = item.color || '';
+    if (!colorSizes[c]) colorSizes[c] = {};
+    var qty = item.qty || {};
+    Object.keys(qty).forEach(function(s) {
+      if (qty[s] > 0) colorSizes[c][s] = (colorSizes[c][s] || 0) + qty[s];
+    });
+  });
+
+  // 撞色订单：将所有颜色聚合到面料1的颜色上显示
   var isContrast = items.some(function(it) { return it.item_type === 'contrast'; });
   if (isContrast) {
     var mainColor = '';
@@ -176,6 +206,12 @@ function renderCard(order, factories) {
       for (var ct in colorTotals) aggTotal += colorTotals[ct];
       colorTotals = {};
       colorTotals[mainColor] = aggTotal || totalCut;
+      var aggSizes = {};
+      for (var sc in colorSizes) {
+        for (var ssk in colorSizes[sc]) aggSizes[ssk] = (aggSizes[ssk] || 0) + colorSizes[sc][ssk];
+      }
+      colorSizes = {};
+      colorSizes[mainColor] = aggSizes;
     }
   }
   for (var ct in colorTotals) totalCut += colorTotals[ct];
@@ -195,7 +231,6 @@ function renderCard(order, factories) {
     if (!colorFabrics[item.color]) {
       var fab = item.fabric || '';
       if (item.item_type === 'contrast') {
-        // 撞色只取面料1的名字，用于色卡查找
         colorFabrics[item.color] = fab.split(/\s*,\s*/)[0] || fab;
       } else {
         colorFabrics[item.color] = fab;
@@ -206,105 +241,110 @@ function renderCard(order, factories) {
   var card = '<div class="order-card" id="card_' + escJs(order.id) + '">' +
     '<div class="oc-header">' +
     '<div style="display:flex;align-items:center;gap:10px">' +
-    '<span class="oc-id">' + esc(order.id) + '</span>' +
-    '<span style="font-size:13px;font-weight:700;color:var(--gold)">裁 ' + totalCut + '件</span>' +
+    '<span style="font-size:13px;font-weight:600;color:var(--gold)">ART-' + esc(firstCode) + '</span>' +
+    '<span class="oc-customer">' + esc(order.customer) + (order.sub_customer?' <span style="color:#999;font-size:11px">('+esc(order.sub_customer)+')</span>':'') + '</span>' +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:12px">' +
-    '<span class="oc-customer">' + esc(order.customer) + (order.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(order.sub_customer)+')</span>':'') + '</span>' +
-    '<span class="oc-date">📅 ' + (order.date || '') + '</span>' +
+    '<span style="font-size:13px;font-weight:600">裁 ' + totalCut + '件</span>' +
     '</div>' +
     '</div>' +
     '<div class="oc-body">' +
-    '<div class="color-summary">';
+        '<div class="fabric-matrix-wrap"><table class="fabric-matrix">' +
+    '<thead><tr><th>颜色</th>';
 
-  // Show style code + name
-  card += '<div style="width:100%;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--gold)">ART-' + esc(firstCode) + ' ' + esc(firstName) + '</div>';
+  // Collect unique sizes for matrix columns
+  var allSizes = [];
+  items.forEach(function(item) {
+    var qty = item.qty || {};
+    Object.keys(qty).forEach(function(s) {
+      if (qty[s] > 0 && allSizes.indexOf(s) < 0) allSizes.push(s);
+    });
+  });
+  var sizeOrder = { 'XS':0,'S':1,'M':2,'L':3,'XL':4,'XXL':5,'2XL':6,'3XL':7,'4XL':8 };
+  allSizes.sort(function(a,b) { return (sizeOrder[a]||99) - (sizeOrder[b]||99); });
+  allSizes.forEach(function(s) { card += '<th>' + esc(s) + '</th>'; });
+  card += '<th>合计</th></tr></thead><tbody>';
 
-  // Color chips with cutting totals
   var colorKeys = Object.keys(colorTotals);
   if (colorKeys.length > 0) {
     colorKeys.forEach(function(color) {
       var fabric = colorFabrics[color] || '';
-      card += '<span class="color-chip">' +
-        '<span class="color-dot" style="' + getColorStyle(fabric, color) + '"></span>' +
-        esc(color) + ' <span class="qty">' + colorTotals[color] + '</span>件' +
-        '</span>';
+      var sizes = colorSizes[color] || {};
+      card += '<tr>' +
+        '<td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fabric, color) + '"></span>' + esc(color) + '</div></td>';
+      allSizes.forEach(function(s) {
+        var v = sizes[s] || 0;
+        card += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
+      });
+      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + colorTotals[color] + '</span></td></tr>';
     });
   } else {
-    // Show from items
     items.forEach(function(item) {
       var c = item.color || '';
       var fabric = item.fabric || '';
-      var qty = 0;
-      if (item.qty) Object.keys(item.qty).forEach(function(s) { qty += item.qty[s] || 0; });
-      card += '<span class="color-chip">' +
-        '<span class="color-dot" style="' + getColorStyle(fabric, c) + '"></span>' +
-        esc(c) + ' <span class="qty">' + qty + '</span>件' +
-        '</span>';
+      var qty = item.qty || {};
+      card += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fabric, c) + '"></span>' + esc(c) + '</div></td>';
+      allSizes.forEach(function(s) {
+        var v = qty[s] || 0;
+        card += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
+      });
+      var totalQty = 0;
+      Object.keys(qty).forEach(function(s) { totalQty += qty[s] || 0; });
+      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + totalQty + '</span></td></tr>';
     });
   }
-  // 号码组成（取原始订单 items 的尺码明细）
-  var sizeStr = '';
-  items.forEach(function(item) {
-    var qty = item.qty || {};
-    var parts = [];
-    Object.keys(qty).forEach(function(s) {
-      if (qty[s] > 0) parts.push(s + '×' + qty[s]);
-    });
-    if (parts.length) sizeStr = parts.join(' ');
-  });
-  if (sizeStr) {
-    card += '<div style="width:100%;font-size:12px;color:#888;margin-top:4px">📏 ' + esc(sizeStr) + '</div>';
-  }
 
-  card += '</div>' + // close color-summary
-    '<div class="pickup-form">' +
-    '<div class="section-label">🧵 车缝外发</div>';
+  card += '</tbody></table></div>' +
+    '<div class="pickup-form">';
 
-  // Factory select
-  card += '<div class="form-row">' +
-    '<label>工厂</label>' +
-    '<select id="pf_fact_' + escJs(order.id) + '">' +
+  // Factory select + 工价 inline (no labels)
+  card += '<div class="form-row" style="display:flex;align-items:center;justify-content:space-between;flex-direction:row;flex-wrap:nowrap">' +
+    '<select id="pf_fact_' + escJs(order.id) + '" style="max-width:160px;flex:1">' +
     '<option value="">— 选择工厂 —</option>';
   factories.forEach(function(f) {
     var fName = (typeof f === 'string') ? f : (f.name || f.factory || '');
     card += '<option value="' + esc(fName) + '">' + esc(fName) + '</option>';
   });
-  card += '</select></div>';
-
-  // Price row
-  card += '<div class="form-row">' +
-    '<label>工价</label>' +
-    '<div class="price-ctrl">' +
+  card += '</select>' +
+    '<div class="price-ctrl" style="flex-shrink:0">' +
     '<button class="price-btn" onclick="adjPrice(\'' + escJs(order.id) + '\',-0.1)">−</button>' +
     '<span class="price-val" id="pv_' + escJs(order.id) + '">€' + priceState[order.id].toFixed(2) + '</span>' +
     '<button class="price-btn" onclick="adjPrice(\'' + escJs(order.id) + '\',0.1)">+</button>' +
-    '<span class="price-unit">/件</span>' +
     '</div>' +
     '</div>';
 
-  // Factory history
+  // 辅料 + 包边（同行）+ 加工备注
+  if (style) {
+    var accNames = [];
+    if (style.accessories && style.accessories.length) {
+      style.accessories.forEach(function(a) { if (a.name) accNames.push(a.name); });
+    }
+    var hasAcc = accNames.length > 0;
+    var hasEdge = !!style.edgeNote;
+    if (hasAcc || hasEdge) {
+      var parts = [];
+      if (hasAcc) parts.push('<span style="color:var(--text-muted)">辅料:</span> ' + esc(accNames.join(', ')));
+      if (hasEdge) parts.push('<span style="color:var(--text-muted)">包边:</span> ' + esc(style.edgeNote));
+      card += '<div style="font-size:12px;color:var(--text);padding:2px 0">' + parts.join('&nbsp;&nbsp;') + '</div>';
+    }
+    if (style.processingNote) {
+      card += '<div style="font-size:12px;color:var(--text);padding:2px 0"><span style="color:var(--text-muted)">加工备注:</span> ' + esc(style.processingNote) + '</div>';
+    }
+  }
+
+  // Factory history (replaces operator)
   if (history.length > 0) {
     card += '<div class="history-box">' +
-      '<div class="h-title">📋 历史记录</div>';
+      '<div class="h-title">📋 曾加工工厂</div>';
     history.forEach(function(h) {
       card += '<div class="h-item">' + esc(h.factory) + ' <span class="h-price">€' + (h.price || 0).toFixed(2) + '</span> <span style="color:#999;font-size:11px">' + esc(h.orderId) + '</span></div>';
     });
     card += '</div>';
   }
 
-  // Operator
-  var user = LUNA.getUser ? LUNA.getUser() : null;
-  var opName = (user && (user.name || user.username)) || 'admin';
-
-  card += '<div class="form-row">' +
-    '<label>经手人</label>' +
-    '<input id="pf_op_' + escJs(order.id) + '" value="' + esc(opName) + '" style="flex:1">' +
-    '</div>';
-
   card += '</div></div>' + // close pickup-form, oc-body
     '<div class="oc-footer">' +
-    '<button class="btn btn-gold" onclick="confirmPickup(\'' + escJs(order.id) + '\')">🧵 车缝中 — 确认发料拿货</button>' +
+    '<button class="btn btn-gold" onclick="confirmPickup(\'' + escJs(order.id) + '\')">确认拿货-车缝中</button>' +
     '</div>' +
     '</div>';
 
@@ -321,7 +361,8 @@ function adjPrice(orderId, delta) {
 
 function confirmPickup(orderId) {
   var factory = document.getElementById('pf_fact_' + orderId).value.trim();
-  var operator = document.getElementById('pf_op_' + orderId).value.trim() || '管理员';
+  var user = LUNA.getUser ? LUNA.getUser() : null;
+  var operator = (user && (user.name || user.username)) || '管理员';
   var price = priceState[orderId] || 2.0;
   if (!factory) { toast('请选择工厂'); return; }
   LUNA.showConfirm('确认将订单 ' + orderId + ' 发料给 ' + factory + '？\n工价: €' + price.toFixed(2) + '/件', function() {

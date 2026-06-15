@@ -37,7 +37,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .export-row .field select{padding:6px 10px;border:1px solid #e8e5e0;border-radius:4px;font-size:12px;font-family:inherit;background:#fff}
 .export-btn{padding:8px 16px;background:#c9a96e;color:#1a1a1a;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
 /* ===== FABRIC WAREHOUSE ===== */
-.fabric-card{background:#fff;border:1px solid #ebe8e3;border-radius:6px;padding:12px;margin-bottom:8px}
+.fabric-card{background:#fff;border:1px solid #C8A56D;border-radius:6px;padding:12px;margin-bottom:10px}
 .fabric-row{display:flex;gap:8px;align-items:end;margin-bottom:6px;flex-wrap:wrap}
 .fabric-row.end{align-items:center;margin-bottom:0}
 .fabric-row .fi{display:flex;flex-direction:column;gap:2px}
@@ -50,8 +50,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .fabric-row .fi input.comp{width:100%}
 .fabric-row .fi span.stock{font-size:20px;font-weight:700;font-family:'Playfair Display',serif;color:var(--text);min-width:130px;display:inline-block;text-align:right}
 .fabric-row .fi input.add{width:85px;text-align:right}
-.btn-stock{padding:6px 14px;border:none;border-radius:4px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
-.btn-stock:hover{background:#333}
+.btn-stock{padding:6px 14px;border:none;border-radius:4px;background:#C8A56D;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-stock:hover{background:#b8963e}
 .color-section-title{font-size:12px;font-weight:600;color:#8a7a6a;margin:12px 0 8px}
 .color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:6px}
 .color-entry{position:relative;border:1.5px solid #e8e5e0;border-radius:5px;padding:4px;background:#fff;text-align:center;transition:all .15s}
@@ -529,21 +529,25 @@ function renderWarehouse() {
   var html = '';
   fabrics.forEach(function(f, fi) {
     html += '<div class="fabric-card">';
-    html += '<div class="fabric-row">';
-    html += '<div class="fi fi-grow"><label>面料名称</label><input class="name" value="' + esc(f.name) + '" onchange="updateFabric(' + fi + ',\'name\',this.value)"></div>';
-    html += '<div class="fi"><label>€/m</label><input class="num" type="number" value="' + f.pricePerM.toFixed(2) + '" onchange="updateFabric(' + fi + ',\'pricePerM\',parseFloat(this.value)||0)"></div>';
+    // Row 1: Name (plain text) | €/m | Stock
+    html += '<div class="fabric-row" style="align-items:center;gap:10px">';
+    html += '<span style="font-size:16px;font-weight:700;font-family:\'Playfair Display\',serif;color:#1a1a1a;margin-right:4px">' + esc(f.name) + '</span>';
+    html += '<button class="btn-sm danger" onclick="deleteFabric(' + fi + ')" title="删除此面料" style="padding:2px 6px;font-size:10px">🗑</button>';
+    html += '<div class="fi" style="margin-left:auto"><label>€/m</label><input class="num" type="number" value="' + f.pricePerM.toFixed(2) + '" onchange="updateFabric(' + fi + ',\'pricePerM\',parseFloat(this.value)||0)"></div>';
+    html += '<div class="fi"><label>库存</label><span class="stock" id="stockVal-' + fi + '">' + (parseFloat(f.stock)||0).toFixed(2) + '</span></div>';
     html += '</div>';
+    // Row 2: Composition
     html += '<div class="fabric-row">';
     html += '<div class="fi fi-grow"><label>成份</label><input class="comp" value="' + esc(f.composition||'') + '" onchange="updateFabric(' + fi + ',\'composition\',this.value)"></div>';
     html += '</div>';
-    html += '<div class="fabric-row end">';
+    // Row 3: Loss | Stock-in | Add color on right
+    html += '<div class="fabric-row end" style="gap:10px">';
     html += '<div class="fi"><label>损耗 cm/层</label><input class="num" type="number" value="' + (f.lossPerLayer||6) + '" onchange="updateFabric(' + fi + ',\'lossPerLayer\',parseInt(this.value)||6)"></div>';
-    html += '<div class="fi"><label>库存</label><span class="stock" id="stockVal-' + fi + '">' + (parseFloat(f.stock)||0).toFixed(2) + '</span></div>';
-    html += '<div class="fi"><label>入库</label><input class="add" type="number" value="0" id="stockAdd-' + fi + '"></div>';
-    html += '<button class="btn-stock" onclick="addStock(' + fi + ')">入库</button>';
-    html += '<button class="btn-sm danger" onclick="deleteFabric(' + fi + ')" style="margin-left:4px">删除面料</button>';
+    html += '<div class="fi" style="margin-right:0"><label>入库</label><div style="display:flex;gap:4px;align-items:center"><input class="add" type="number" value="0" id="stockAdd-' + fi + '"><button class="btn-stock" onclick="addStock(' + fi + ')" style="padding:6px 10px;font-size:12px;line-height:1.2">入库</button></div></div>';
+    html += '<button class="color-add-btn" style="margin-left:auto;width:auto;padding:6px 14px" onclick="openAddColor(' + fi + ')">＋ 添加颜色</button>';
     html += '</div>';
-	    html += '<div class="color-section-title">🎨 色卡颜色</div>';
+    // Color grid
+    html += '<div class="color-section-title">🎨 色卡颜色</div>';
     html += '<div class="color-grid" id="cg-' + fi + '">';
     (f.colors||[]).forEach(function(c, ci) {
       var hex = c.hex || '#eee';
@@ -553,19 +557,16 @@ function renderWarehouse() {
       html += '<div class="color-entry" data-fabric="' + fi + '" data-color="' + ci + '">';
       html += '<div class="color-box" style="background:' + bgStyle + borderStyle + '" ondblclick="openLightbox(\'' + lbSrc + '\',\'' + escAttr(c.name) + '\')"></div>';
       html += '<div class="color-name">' + esc(c.name) + '</div>';
-      html += '<div class="pantone-hex">' + hex + '</div>';
-      html += '<input type="color" class="pantone-picker" value="' + hex + '" onchange="updateColorHex(' + fi + ',' + ci + ',this.value)" title="点击选色">';
-	      html += '<div class="color-actions">';
-	      html += '<button class="del-btn" onclick="deleteColor(' + fi + ',' + ci + ')">✕</button>';
-	      html += '</div>';
+      html += '<div class="color-actions">';
+      html += '<button class="del-btn" onclick="deleteColor(' + fi + ',' + ci + ')">✕</button>';
+      html += '</div>';
       html += '</div>';
     });
     html += '</div>';
-    html += '<button class="color-add-btn" onclick="openAddColor(' + fi + ')">＋ 添加颜色</button>';
     html += '</div>';
   });
   html += '<button class="fabric-add-btn" onclick="addNewFabric()">＋ 添加新面料</button>';
-  html += '<div style="margin-top:8px;font-size:10px;color:#888;background:#faf6ee;padding:6px 10px;border-radius:4px">💡 双击色块全屏放大 · 底部选色器可改色 · 纯色仓库无印花参数</div>';
+  html += '<div style="margin-top:8px;font-size:10px;color:#888;background:#faf6ee;padding:6px 10px;border-radius:4px">💡 双击色块全屏放大</div>';
   el.innerHTML = html;
 }
 

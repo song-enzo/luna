@@ -323,14 +323,14 @@ function renderFabricSection(order, fabricName, items) {
     var defLength = existingFab ? existingFab.length : '';
     var defHands = existingFab ? existingFab.hands : '';
     html += '<div class="fs-params">' +
-      '<label>纸样长度</label><input type="number" step="0.1" min="0" class="fs-length" value="' + (defLength||'') + '" placeholder="0" oninput="updateEstimate(\'' + escJs(order.id) + '\',\'' + escJs(fabricName) + '\')"><span class="unit">米</span>' +
-      '<label>几手</label><input type="number" min="1" class="fs-hands" value="' + (defHands||'1') + '" placeholder="1"><span class="unit">手</span>' +
+      '<label>几手</label><input type="number" min="0" class="fs-hands" value="0" onfocus="this.value=\'\'" placeholder="0"><span class="unit">手</span>' +
+      '<label>纸样长度</label><input type="number" step="0.1" min="0" class="fs-length" value="0" onfocus="this.value=\'\'" placeholder="0" oninput="updateEstimate(\'' + escJs(order.id) + '\',\'' + escJs(fabricName) + '\')"><span class="unit">米</span>' +
       '</div>';
     html += '<button class="btn btn-gold btn-sm" onclick="doMarkerFabric(\'' + escJs(order.id) + '\',\'' + escJs(fabricName) + '\',this)">📐 出纸样</button>';
   } else {
     html += '<div class="fs-params" style="color:var(--success)">' +
+      '<label>几手</label><span style="font-weight:600">' + (existingFab.hands || 0) + '</span><span class="unit">手</span>' +
       '<label>纸样长度</label><span style="font-weight:600">' + (existingFab.length || 0) + '</span><span class="unit">米</span>' +
-      '<label>几手</label><span style="font-weight:600">' + (existingFab.hands || 1) + '</span><span class="unit">手</span>' +
       '</div>';
   }
 
@@ -351,6 +351,16 @@ function getColorStyle(fabricName, colorName) {
       }
     }
   }
+  // Color not found in specified fabric → search all fabrics as fallback
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+        return 'background:' + (cols[ci].hex || '#ccc');
+      }
+    }
+  }
   // Fallback: generate from name hash
   var hash = 0;
   for (var hi = 0; hi < colorName.length; hi++) { hash = colorName.charCodeAt(hi) + ((hash << 5) - hash); }
@@ -368,6 +378,16 @@ function getColorVisual(fabricName, colorName) {
           if (cols[ci].img) return cols[ci].img;
           return cols[ci].hex || '#ccc';
         }
+      }
+    }
+  }
+  // Color not found in specified fabric → search all fabrics as fallback
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return cols[ci].img;
+        return cols[ci].hex || '#ccc';
       }
     }
   }
@@ -438,7 +458,7 @@ function updateEstimate(orderId, fabricName) {
   var handsInput = section.querySelector('.fs-hands');
   if (!lenInput) return;
   var length = parseFloat(lenInput.value) || 0;
-  var hands = parseInt(handsInput ? handsInput.value : 1) || 1;
+  var hands = parseInt(handsInput ? handsInput.value : 0) || 0;
   // Sum all color totals from the matrix table
   var totalQty = 0;
   var matrix = section.querySelector('.fabric-matrix');
@@ -457,7 +477,7 @@ function updateEstimate(orderId, fabricName) {
   if (estEl) {
     var strong = estEl.querySelector('strong');
     if (strong) {
-      if (length > 0 && totalQty > 0) {
+      if (length > 0 && hands > 0 && totalQty > 0) {
         strong.textContent = ((length / hands) * totalQty).toFixed(2) + ' 米';
       } else {
         strong.textContent = '—';
@@ -471,10 +491,9 @@ function doMarkerFabric(orderId, fabricName, btn) {
   var lenInput = section.querySelector('.fs-length');
   var handsInput = section.querySelector('.fs-hands');
   var length = parseFloat(lenInput.value) || 0;
-  var hands = parseInt(handsInput.value) || 1;
+  var hands = parseInt(handsInput.value) || 0;
 
   if (length <= 0) { showAlert('请输入纸样长度'); lenInput.focus(); return; }
-  if (hands < 1) { showAlert('请输入几手（至少1手）'); handsInput.focus(); return; }
 
   showConfirm('确认出纸样「' + fabricName + '」?\n长度: ' + length + '米  几手: ' + hands + '手', function() {
     btn.disabled = true;

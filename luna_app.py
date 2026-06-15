@@ -12,6 +12,14 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'luna.db')
 PHOTO_DIR = os.path.join(os.path.dirname(__file__), 'photos')
 os.makedirs(PHOTO_DIR, exist_ok=True)
 
+# ── White-label config ──
+
+SYSTEM_CONFIG = {
+    'brand_name': 'Diana Moda',
+    'brand_prefix': 'dm',
+    'port': 8767
+}
+
 # ── Database helpers ──
 
 def get_db():
@@ -828,6 +836,14 @@ def read_all_styles():
     return [read_style(r['code']) for r in codes if read_style(r['code'])]
 
 # ── API Routes ──
+
+@app.route('/api/config', methods=['GET'])
+def api_config():
+    return jsonify({
+        'brandName': SYSTEM_CONFIG['brand_name'],
+        'brandPrefix': SYSTEM_CONFIG['brand_prefix'],
+        'port': SYSTEM_CONFIG['port']
+    })
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -1691,5 +1707,6 @@ def no_cache(response):
 if __name__ == '__main__':
     with app.app_context():
         init_db()
-    print(f'LUNA Flask Server on http://0.0.0.0:8767')
-    app.run(host='0.0.0.0', port=8767, debug=False)
+    port = SYSTEM_CONFIG['port']
+    print(f'LUNA Flask Server on http://0.0.0.0:{port}')
+    app.run(host='0.0.0.0', port=port, debug=False)

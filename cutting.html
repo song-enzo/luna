@@ -538,6 +538,16 @@ function getColorStyle(fabricName, colorName) {
       }
     }
   }
+  // Color not found in specified fabric → search all fabrics as fallback
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+        return 'background:' + (cols[ci].hex || '#ccc');
+      }
+    }
+  }
   var hash = 0;
   var hashStr = fabricName + '\x00' + colorName;
   for (var hi = 0; hi < hashStr.length; hi++) { hash = hashStr.charCodeAt(hi) + ((hash << 5) - hash); }

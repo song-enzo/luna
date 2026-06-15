@@ -48,7 +48,7 @@ a{text-decoration:none;color:inherit}
 .section-title{font-size:13px;font-weight:600;color:#7a756d;letter-spacing:1px;text-transform:uppercase}
 .section-title::after{display:none}
 /* Quick Actions Grid */
-.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:28px}
+.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px}
 .quick-action{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .25s;display:block}
 .quick-action:hover{box-shadow:0 4px 16px rgba(0,0,0,0.06);transform:translateY(-2px);border-color:#d4b87a}
 .qa-icon{width:48px;height:48px;border-radius:12px;background:#f5f1eb;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px;transition:all .25s}
@@ -68,6 +68,7 @@ a{text-decoration:none;color:inherit}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
 .badge-confirmed{background:#f0eee9;color:#7a756d}
 .badge-cutting{background:#faf6ee;color:#b8962e}
+.badge-pickup{background:#eef5ee;color:#6b9e6b}
 .badge-sewing{background:#eef2f8;color:#6b8eb8}
 .badge-shipped{background:#eef5ee;color:#6b9e6b}
 .badge-completed{background:#f5f1eb;color:#b0a99e}
@@ -140,20 +141,15 @@ a{text-decoration:none;color:inherit}
   <div class="animate-in delay-2" style="margin-bottom:28px">
     <div class="section-header"><div class="section-title">⚡ 快捷入口</div></div>
     <div class="quick-actions">
-      <a class="quick-action" href="fabric-warehouse.html">
-        <div class="qa-icon">🧶</div>
-        <div class="qa-label">面料仓库</div>
-        <div class="qa-desc">管理面料·色卡·库存</div>
+      <a class="quick-action" href="guest-styles.html">
+        <div class="qa-icon">👗</div>
+        <div class="qa-label">款式浏览</div>
+        <div class="qa-desc">客人端查看款式</div>
       </a>
       <a class="quick-action" href="style-manage.html">
         <div class="qa-icon">📁</div>
         <div class="qa-label">款式管理</div>
         <div class="qa-desc">管理所有款式</div>
-      </a>
-      <a class="quick-action" href="guest-styles.html">
-        <div class="qa-icon">👗</div>
-        <div class="qa-label">款式浏览</div>
-        <div class="qa-desc">客人端查看</div>
       </a>
       <a class="quick-action" href="orders.html">
         <div class="qa-icon">📋</div>
@@ -162,38 +158,48 @@ a{text-decoration:none;color:inherit}
       </a>
       <a class="quick-action" href="marker.html">
         <div class="qa-icon">📐</div>
-        <div class="qa-label">打唛架</div>
+        <div class="qa-label">打纸样</div>
         <div class="qa-desc">确认出图</div>
       </a>
       <a class="quick-action" href="cutting.html">
         <div class="qa-icon">✂️</div>
-        <div class="qa-label">裁剪发料</div>
+        <div class="qa-label">裁剪</div>
         <div class="qa-desc">发料移交</div>
-      </a>
-      <a class="quick-action" href="shipping.html">
-        <div class="qa-icon">📦</div>
-        <div class="qa-label">发货管理</div>
-        <div class="qa-desc">发货与账单</div>
       </a>
       <a class="quick-action" href="ready-pickup.html">
         <div class="qa-icon">🏭</div>
         <div class="qa-label">待拿货</div>
         <div class="qa-desc">车缝跟踪</div>
       </a>
+      <a class="quick-action" href="javascript:void(0)" onclick="LUNA.showAlert('打成份纸功能即将开放')">
+        <div class="qa-icon">🖨️</div>
+        <div class="qa-label">打成份</div>
+        <div class="qa-desc">成分纸样打印</div>
+      </a>
+      <a class="quick-action" href="shipping.html">
+        <div class="qa-icon">📦</div>
+        <div class="qa-label">发货管理</div>
+        <div class="qa-desc">发货与账单</div>
+      </a>
       <a class="quick-action" href="cutting_history.html">
         <div class="qa-icon">📁</div>
         <div class="qa-label">裁剪历史</div>
         <div class="qa-desc">历史记录</div>
+      </a>
+      <a class="quick-action" href="fabric-warehouse.html">
+        <div class="qa-icon">🧶</div>
+        <div class="qa-label">面料仓库</div>
+        <div class="qa-desc">管理面料·色卡·库存</div>
       </a>
       <a class="quick-action" href="people-manage.html">
         <div class="qa-icon">👤</div>
         <div class="qa-label">人员管理</div>
         <div class="qa-desc">客人·员工</div>
       </a>
-      <a class="quick-action" href="javascript:void(0)" onclick="doBackup()">
-        <div class="qa-icon">💾</div>
-        <div class="qa-label">数据库备份</div>
-        <div class="qa-desc">手动备份</div>
+      <a class="quick-action" href="settings.html">
+        <div class="qa-icon">⚙️</div>
+        <div class="qa-label">设置</div>
+        <div class="qa-desc">工厂·辅料·月结</div>
       </a>
     </div>
   </div>
@@ -273,29 +279,28 @@ document.getElementById('logoutBtn').addEventListener('click', logout);
 // Pipeline
 var orders = LUNA.getOrders();
 var flowSteps = [
-  {key:'cutting', label:'裁剪中', icon:'✂️', href:'marker.html'},
-  {key:'pickup', label:'待拿货', icon:'📦', href:'ready-pickup.html'},
-  {key:'sewing', label:'车缝中', icon:'🧵', href:'shipping.html'},
-  {key:'shipped', label:'已发货', icon:'✅', href:'orders.html'}
+  {key:'marker', label:'打唛架', icon:'📐', href:'marker.html'},
+  {key:'cutting', label:'裁剪中', icon:'✂️', href:'cutting.html'},
+  {key:'pickup', label:'待拿货', icon:'🏭', href:'ready-pickup.html'},
+  {key:'sewing', label:'车缝中', icon:'🧵', href:'shipping.html'}
 ];
 
 function getStepCount(step) {
-  var all = LUNA.getOrders();
-  if (step.key === 'cutting') return all.filter(function(o){var s=LUNA.getOrderStatus(o);return s==='cutting'||s==='pickup'||s==='sewing';}).length;
+  if (step.key === 'marker') return LUNA.getPendingMarkerOrders().length;
+  if (step.key === 'cutting') return LUNA.getPendingCuttingOrders().length;
   if (step.key === 'pickup') return LUNA.getPickupOrders().length;
   if (step.key === 'sewing') return LUNA.getPendingShipOrders().length;
-  if (step.key === 'shipped') return all.filter(function(o){return o.shipping_complete&&o.shipping_complete.completed;}).length;
   return 0;
 }
 
 // Find the furthest step an order has reached
-var statusLevel = {cutting:1,pickup:2,sewing:3,shipped:4};
+var statusLevel = {marker:1,cutting:2,pickup:3,sewing:4};
 var maxLevel = 0;
 orders.forEach(function(o) {
-  var level = 1; // cutting (marker complete)
-  if (o.cutting_complete && o.cutting_complete.completed) level = 2; // pickup
-  if (o.pickup_complete && o.pickup_complete.completed) level = 3; // sewing/shipping-ready
-  if (o.shipping_complete && o.shipping_complete.completed) level = 4; // shipped
+  var level = 1; // marker (order placed)
+  if (o.marker_complete && o.marker_complete.completed) level = 2; // cutting
+  if (o.cutting_complete && o.cutting_complete.completed) level = 3; // pickup
+  if (o.pickup_complete && o.pickup_complete.completed) level = 4; // sewing
   if (level > maxLevel) maxLevel = level;
 });
 var pipelineHtml = '';
@@ -309,7 +314,7 @@ flowSteps.forEach(function(step, i) {
 document.getElementById('pipeline').innerHTML = pipelineHtml;
 
 // 最近订单
-var statusName = {cutting:'裁剪中',sewing:'车缝中',shipped:'已发货',completed:'已完成'};
+var statusName = {confirmed:'已确认',cutting:'打唛架',pickup:'待拿货',sewing:'车缝中',shipped:'已发货',completed:'已完成'};
 var container = document.getElementById('recentOrders');
 if (!orders.length) {
   container.innerHTML = '<div class="empty-state">暂无订单</div>';
@@ -334,9 +339,9 @@ window.addEventListener('luna-data-changed', function() {
   var maxLevel = 0;
   orders.forEach(function(o) {
     var level = 1;
-    if (o.cutting_complete && o.cutting_complete.completed) level = 2;
-    if (o.pickup_complete && o.pickup_complete.completed) level = 3;
-    if (o.shipping_complete && o.shipping_complete.completed) level = 4;
+    if (o.marker_complete && o.marker_complete.completed) level = 2;
+    if (o.cutting_complete && o.cutting_complete.completed) level = 3;
+    if (o.pickup_complete && o.pickup_complete.completed) level = 4;
     if (level > maxLevel) maxLevel = level;
   });
   var pipelineHtml = '';

@@ -830,14 +830,16 @@ function saveStyle() {
     } else { showSaveError(e); return; }
   }
 
-  // 保存后推送到服务器（照片数据 URL 需要同步到服务器，否则页面跳转后 firstLoad 会覆盖）
+  // 保存后推送到服务器
+  var serverOk = true;
   try {
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/styles', false);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.withCredentials = true;
     xhr.send(JSON.stringify(styleData));
-  } catch(e) {}
+    if (xhr.status >= 400) { serverOk = false; console.error('服务端保存失败:', xhr.status); }
+  } catch(e) { serverOk = false; }
   // 同步设置数据
   try { if (typeof LUNA !== 'undefined' && LUNA.syncAllToServer) LUNA.syncAllToServer(); } catch(e) {}
 

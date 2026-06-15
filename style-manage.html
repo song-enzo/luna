@@ -58,24 +58,6 @@ a{text-decoration:none;color:inherit}
 .toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
 .toggle.on .knob{left:18px}
 .panel-msg{text-align:center;padding:60px 20px;color:#aaa;font-size:13px}
-/* Collapsible add-style form */
-.add-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #e0dcd5;border-radius:6px;background:#fff;color:#888;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
-.add-toggle:hover{border-color:#c9a96e;color:#c9a96e}
-.add-toggle.open{background:#c9a96e;color:#fff;border-color:#c9a96e}
-.add-form-wrap{overflow:hidden;max-height:0;transition:max-height .35s ease;margin-bottom:0}
-.add-form-wrap.open{max-height:500px;margin-bottom:16px}
-.add-form-inner{background:#faf8f5;border:1px solid #e8e2d9;border-radius:8px;padding:16px}
-.add-form-inner .af-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.add-form-inner .af-field{flex:1;min-width:120px}
-.add-form-inner .af-field label{display:block;font-size:10px;color:#b0a99e;margin-bottom:3px;font-weight:500;letter-spacing:.3px}
-.add-form-inner .af-field input,.add-form-inner .af-field select{width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;background:#fff}
-.add-form-inner .af-field input:focus,.add-form-inner .af-field select:focus{border-color:#c9a96e;outline:none}
-.add-form-inner .af-btns{display:flex;gap:8px;padding-top:4px}
-.add-form-inner .af-btns button{padding:8px 20px;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
-.add-form-inner .af-btns .af-save{background:#c9a96e;color:#fff}
-.add-form-inner .af-btns .af-save:hover{background:#b08a4f}
-.add-form-inner .af-btns .af-cancel{background:#f0ede8;color:#888}
-.add-form-inner .af-btns .af-cancel:hover{background:#e0dcd5;color:#555}
 /* Toast */
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1c1c1c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
@@ -132,22 +114,7 @@ a{text-decoration:none;color:inherit}
   <div class="controls">
     <div class="control-left">
       <h1>款式管理 <span class="count-badge" id="countBadge">(0)</span></h1>
-	      <button class="add-toggle" id="addStyleToggle" onclick="toggleAddForm()">➕ 添加新款式</button>
-    </div>
-  </div>
-  <div class="add-form-wrap" id="addFormWrap">
-    <div class="add-form-inner">
-      <div class="af-row">
-        <div class="af-field"><label>款式编号</label><input id="afCode" placeholder="如 ART-STYLE999" autocomplete="off"></div>
-        <div class="af-field"><label>款式名称</label><input id="afName" placeholder="如 双排扣西装" autocomplete="off"></div>
-        <div class="af-field" style="flex:0 0 110px"><label>分类</label><select id="afCategory"><option value="jacket">外套</option><option value="vest">马甲</option><option value="pants">裤子</option><option value="skirt">裙子</option><option value="shirt">衬衫</option><option value="coat">大衣</option><option value="other">其他</option></select></div>
-        <div class="af-field" style="flex:0 0 100px"><label>类型</label><select id="afType"><option value="solid">净色</option><option value="print">印花</option></select></div>
-        <div class="af-field" style="flex:0 0 110px"><label>建议售价</label><input id="afPrice" type="number" step="0.01" placeholder="0.00"></div>
-      </div>
-      <div class="af-btns">
-        <button class="af-save" onclick="quickAddStyle()">💾 保存款式</button>
-        <button class="af-cancel" onclick="toggleAddForm()">取消</button>
-      </div>
+      <a class="header-btn" href="add-style.html" style="font-size:12px;padding:6px 12px">+ 添加款式</a>
     </div>
   </div>
   <div class="table-wrap" id="stylePanel"></div>
@@ -221,51 +188,6 @@ function toggleStyle(code) {
   toggles[code] = toggles[code] === false ? true : false;
   SETTINGS.save('styleToggles', toggles);
   renderStyles();
-}
-
-function toggleAddForm() {
-  var wrap = document.getElementById('addFormWrap');
-  var btn = document.getElementById('addStyleToggle');
-  wrap.classList.toggle('open');
-  btn.classList.toggle('open');
-}
-
-function quickAddStyle() {
-  var code = document.getElementById('afCode').value.trim();
-  var name = document.getElementById('afName').value.trim();
-  var category = document.getElementById('afCategory').value;
-  var type = document.getElementById('afType').value;
-  var price = parseFloat(document.getElementById('afPrice').value) || 0;
-  if (!code) { showToast('请输入款式编号'); return; }
-  if (!name) { showToast('请输入款式名称'); return; }
-  var existing = [];
-  try { existing = LUNA.getStyles() || []; } catch(e) {}
-  for (var i = 0; i < existing.length; i++) {
-    if (existing[i].code === code) { showToast('编号 ' + code + ' 已存在'); return; }
-  }
-  var styleData = {
-    code: code, name: name, category: category, type: type,
-    suggestedPrice: price, fabrics: [], accessories: [],
-    laborCost: 0, ironCost: 0, edgeNote: '', processingNote: '',
-    images: [], mainPhoto: -1, totalCost: 0,
-    createdAt: new Date().toISOString()
-  };
-  existing.push(styleData);
-  try { localStorage.setItem('luna_styles_data', JSON.stringify(existing)); } catch(e) { showToast('保存失败'); return; }
-  try {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/styles', false);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.withCredentials = true;
-    xhr.send(JSON.stringify(styleData));
-  } catch(e) {}
-  try { if (LUNA.syncAllToServer) LUNA.syncAllToServer(); } catch(e) {}
-  document.getElementById('afCode').value = '';
-  document.getElementById('afName').value = '';
-  document.getElementById('afPrice').value = '';
-  toggleAddForm();
-  renderStyles();
-  showToast('✅ 款式 ' + code + ' 已添加');
 }
 
 function init() {
