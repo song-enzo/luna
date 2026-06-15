@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(.venv/bin/python run_port8766.py)",
+      "Bash(.venv/bin/python */luna_app.py)",
+      "Bash(*/luna_app.py)",
+      "Bash(curl -s http://localhost:8766*)",
+      "Bash(curl -s -o /dev/null -w *)",
+      "Bash(curl -so /dev/null -w *)",
+      "Bash(pkill -f luna_app*)",
+      "Bash(pkill -f run_port8766*)",
+      "Bash(awk *)",
+      "Bash(xargs *)",
+      "Bash(ps aux | grep *)",
+      "Bash(fuser *)",
+      "Bash(kill *)",
+      "Bash(sleep *)",
+      "Bash(nohup *)",
+      "Bash(netstat *)",
+      "Bash(lsof *)",
+      "Bash(ss *)",
+      "Bash(stat *)",
+      "Bash(date *)",
+      "Bash(grep -n *)",
+      "Bash(grep -r *)",
+      "Bash(sed *)",
+      "Bash(tail *)",
+      "Bash(head *)",
+      "Bash(curl *)",
+      "Bash(/opt/data/luna/.venv/bin/python -c ' *)",
+      "Bash(/opt/data/luna/.venv/bin/python *)",
+      "Bash(sqlite3 *)",
+      "Bash(apt list *)",
+      "Bash(/opt/data/luna/.venv/bin/python3 -c ' *)",
+      "Bash(pkill -f \"python.*luna_app.py\")",
+      "Bash(disown)",
+      "Bash(/opt/data/luna/.venv/bin/python3 *)"
+    ]
+  }
+}

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>添加款式 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
+.header{display:flex;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid #e8e5e0;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 12px 4px 0;text-decoration:none;color:#666}
+.header .logo{font-size:16px;font-weight:700;letter-spacing:1px;text-decoration:none;color:#1a1a1a;margin-right:auto}
+
+.page{max-width:650px;margin:0 auto;padding:20px 16px 40px}
+.section{background:#fff;border:1px solid #ebe8e3;border-radius:6px;padding:14px 16px;margin-bottom:8px}
+.section-title{font-size:12px;font-weight:600;color:#b5a58a;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-title .add-action{font-size:11px;color:#c9a96e;cursor:pointer;background:none;border:none;font-family:inherit}
+
+/* Photo Carousel — 手机相册式翻页 */
+.photo-carousel{position:relative;width:100%}
+.photo-carousel .track{width:100%;overflow:hidden;border-radius:6px;aspect-ratio:3/4;background:#f0ede8;position:relative;touch-action:none}
+.photo-carousel .track-inner{display:flex;height:100%;will-change:transform}
+.photo-carousel .slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.photo-carousel .slide img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.photo-carousel .slide .placeholder{display:flex;flex-direction:column;align-items:center;gap:8px;color:#d5d0c9;font-size:40px}
+.photo-carousel .arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;background:rgba(255,255,255,.85);border:none;border-radius:50%;cursor:pointer;font-size:16px;color:#333;z-index:5;display:flex;align-items:center;justify-content:center;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:all .15s}
+.photo-carousel .arrow:hover{background:#fff}
+.photo-carousel .arrow.prev{left:8px}
+.photo-carousel .arrow.next{right:8px}
+.photo-carousel .dots{display:flex;justify-content:center;gap:5px;padding:10px 0 6px}
+.photo-carousel .dot{width:6px;height:6px;border-radius:50%;background:#ddd;cursor:pointer;transition:all .2s}
+.photo-carousel .dot.active{background:#c9a96e;width:16px;border-radius:4px}
+.photo-carousel .del-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:11px;cursor:pointer;line-height:24px;text-align:center;z-index:10;transition:background .15s}
+.photo-carousel .del-btn:hover{background:rgba(200,0,0,.7)}
+.photo-carousel .main-star{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;line-height:24px;text-align:center;z-index:10;transition:all .15s;font-family:inherit}
+.photo-carousel .main-star:hover{background:rgba(200,170,60,.8)}
+.photo-carousel .main-star.active{background:#c9a96e;color:#fff;box-shadow:0 0 6px rgba(201,169,110,.6)}
+.photo-carousel .counter{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;z-index:10}
+.top-row{display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:center}
+.upload-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid #ebe8e3;border-radius:4px;background:#faf9f7;cursor:pointer;font-size:13px;color:#888;font-family:inherit;transition:all .15s}
+.upload-btn:hover{border-color:#c9a96e;background:#f7f4ee;color:#1c1c1c}
+
+/* Form */
+.form-row{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+.form-row .field{flex:1;min-width:80px}
+.form-row .field.sm{flex:0 0 70px}
+.form-row .field.xs{flex:0 0 50px}
+.field label{display:block;font-size:11px;font-weight:500;color:#b5a58a;margin-bottom:3px;letter-spacing:.3px}
+.field input,.field select{width:100%;padding:8px 10px;border:1px solid #ebe8e3;border-radius:3px;font-size:13px;font-family:inherit;background:#faf9f7;color:#1c1c1c}
+.field input:focus,.field select:focus{border-color:#c9a96d;outline:none;background:#fff}
+.field input.num{max-width:55px;text-align:right}
+.field textarea{width:100%;padding:8px 10px;border:1px solid #ebe8e3;border-radius:3px;font-size:13px;font-family:inherit;resize:vertical;background:#faf9f7}
+
+/* Type Switch */
+.type-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.type-switch .switch-label{font-size:12px;color:#b5a58a;font-weight:500;min-width:40px}
+.type-switch .switch-toggle{display:flex;background:#f0eee9;border-radius:4px;padding:2px;gap:2px}
+.type-switch .switch-toggle button{padding:4px 10px;font-size:11px;border:none;border-radius:3px;cursor:pointer;font-family:inherit;background:transparent;color:#999;transition:all .15s;font-weight:500}
+.type-switch .switch-toggle button.active{background:#fff;color:#1c1c1c;box-shadow:0 1px 3px rgba(0,0,0,.08);font-weight:600}
+
+/* Dynamic rows */
+.dynamic-row{display:flex;gap:4px;align-items:center;padding:4px 0;border-bottom:1px solid #f5f3f0;flex-wrap:wrap}
+.dynamic-row select{flex:1;min-width:80px;padding:7px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:13px;font-family:inherit;background:#faf9f7}
+.dynamic-row input.num{width:50px;padding:7px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:13px;text-align:right;font-family:inherit}
+.dynamic-row .tag{font-size:11px;padding:2px 6px;border-radius:2px;flex-shrink:0}
+.dynamic-row .tag.work{background:#f5edd8;color:#a08050;border-left:2px solid #c9a96d}
+.dynamic-row .tag.material{background:#e0e8f0;color:#507090;border-left:2px solid #708090}
+.dynamic-row .subtotal{font-size:13px;font-weight:600;color:#1c1c1c;min-width:40px;text-align:right}
+.dynamic-row .del-row{color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;flex-shrink:0}
+
+.cost-bar{display:flex;justify-content:space-between;padding:8px 0;font-size:12px;border-top:1px solid #ebe8e3;margin-top:6px}
+.cost-bar .total{font-weight:700;font-size:14px}
+.cost-bar .markup{display:flex;align-items:center;gap:4px;font-size:11px;color:#888}
+.cost-bar .markup input{width:40px;padding:2px 4px;border:1px solid #ddd;border-radius:2px;font-size:11px;text-align:right;font-family:inherit}
+
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.btn-save{flex:1;padding:14px;background:#c9a96e;color:#fff;border:none;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-cancel{flex:0.4;padding:14px;border:1px solid #ddd;background:#fff;color:#666;border-radius:4px;font-size:14px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none}
+
+.photo-viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column}
+.photo-viewer.active{display:flex}
+.photo-viewer .pv-img{max-width:95vw;max-height:85vh;object-fit:contain;border-radius:2px}
+.photo-viewer .pv-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:18px;cursor:pointer;z-index:10;font-family:inherit}
+.photo-viewer .pv-close:hover{background:rgba(255,255,255,.3)}
+.photo-viewer .pv-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:22px;cursor:pointer;z-index:10;font-family:inherit}
+.photo-viewer .pv-nav:hover{background:rgba(255,255,255,.25)}
+.photo-viewer .pv-prev{left:12px}
+.photo-viewer .pv-next{right:12px}
+.photo-viewer .pv-counter{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:13px}
+.success-message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #c9a96e;border-radius:8px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,.15);z-index:1000;display:none}
+.success-message.show{display:block}
+</style>
+<script src="luna-data.js?v=19"></script>
+</head>
+<body>
+<div class="header">
+  <a href="guest-styles.html" class="back">←</a>
+  <span class="logo" id="pageTitle">➕ 添加款式</span>
+</div>
+<div class="page">
+  <!-- Photos Section → 翻页轮播 -->
+  <div class="section">
+    <div class="section-title">📸 款式照片</div>
+    <div class="photo-carousel">
+      <div class="track" id="photoTrack">
+        <div class="track-inner" id="photoTrackInner"></div>
+        <button class="arrow prev" onclick="photoPrev()" style="display:none">‹</button>
+        <button class="arrow next" onclick="photoNext()" style="display:none">›</button>
+      </div>
+      <div class="dots" id="photoDots"></div>
+      <div class="counter" id="photoCounter" style="display:none">0/0</div>
+      <div class="top-row">
+        <label for="photoInput" class="upload-btn">📷 上传照片</label>
+        <label for="cameraInput" class="upload-btn" style="margin-left:6px">📸 拍照</label>
+      </div>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+  </div>
+
+  <!-- Style Info Section -->
+  <div class="section">
+    <div class="section-title">📋 款式信息</div>
+    <div class="form-row" style="margin-bottom:6px">
+      <div class="field sm">
+        <div class="type-switch">
+          <span class="switch-label">款式类型</span>
+          <div class="switch-toggle">
+            <button class="active" data-type="solid">🎨 单色</button>
+            <button data-type="print">🌸 印花</button>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>编号</label><input id="styleCode" value="" style="font-size:18px;font-weight:700"></div>
+      <div class="field"><label>分类</label>
+        <select id="styleCategory">
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field xs"><label>工价</label><input class="num" id="laborCost" value=""></div>
+      <div class="field xs"><label>烫扣</label><input class="num" id="ironCost" value=""></div>
+      <div class="field"><label>包边</label><input id="edgeNote" placeholder="如: 本布包扣、滚边、蕾丝花边…"></div>
+    </div>
+    
+  </div>
+
+  <!-- Fabrics Section -->
+  <div class="section">
+    <div class="section-title">面料 <button class="add-action" onclick="addFabricRow()">+ 添加面料行</button></div>
+    <div id="fabricsContainer">
+    </div>
+  </div>
+
+  <!-- Accessories Section -->
+  <div class="section">
+    <div class="section-title">工艺 &amp; 辅料 <button class="add-action" onclick="addAccessoryRow()">+ 添加</button></div>
+    <div id="accessoriesContainer">
+    </div>
+  </div>
+
+  <!-- Processing Notes Section -->
+  <div class="section">
+    <div class="section-title">📝 加工备注</div>
+    <div class="field">
+      <textarea rows="3" id="processingNote" placeholder="例如：锁边用同色线、拉链配色、刺绣工艺要求…"></textarea>
+    </div>
+  </div>
+
+  <!-- Cost Summary Section -->
+  <div class="section">
+    <div class="cost-bar"><span>综合成本</span><span class="total" id="totalCost">€0.00</span></div>
+    <div class="cost-bar" style="border-top:none;padding-top:0">
+      <span class="markup">建议批发价 = 成本 + <input id="markupRate" value="25" onchange="calculateCosts()">%</span>
+      <span style="font-weight:700;font-size:16px;color:#c9a96e" id="suggestedPrice">€0.00</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-save" onclick="saveStyle()">💾 保存款式</button>
+    <a href="dashboard.html" class="btn-cancel">取消</a>
+  </div>
+</div>
+
+<!-- Full-Screen Photo Viewer -->
+<div class="photo-viewer" id="photoViewer" onclick="closeViewer()">
+  <button class="pv-close" onclick="event.stopPropagation();closeViewer()">✕</button>
+  <button class="pv-nav pv-prev" onclick="event.stopPropagation();viewerPrev()">‹</button>
+  <img class="pv-img" id="pvImage" src="" alt="">
+  <button class="pv-nav pv-next" onclick="event.stopPropagation();viewerNext()">›</button>
+  <div class="pv-counter" id="pvCounter"></div>
+</div>
+
+<!-- Success Message -->
+<div class="success-message" id="successMessage">
+  <div style="text-align:center;color:#c9a96e;font-weight:600;">
+    ✅ 款式保存成功！<br>
+    <small style="color:#888;font-weight:normal;">正在跳转到控制台...</small>
+  </div>
+</div>
+
+<script>
+// ===== 手机相册式翻页 Carousel =====
+var _photoList = [];     // actual images
+var _photoIdx = 0;       // current index
+var _mainPhotoIdx = 0;   // 主图索引
+
+function renderCarousel() {
+  var inner = document.getElementById('photoTrackInner');
+  var dots = document.getElementById('photoDots');
+  var counter = document.getElementById('photoCounter');
+  var prevBtn = document.querySelector('.photo-carousel .arrow.prev');
+  var nextBtn = document.querySelector('.photo-carousel .arrow.next');
+  if (!inner) return;
+
+  var hasPhotos = _photoList.length > 0;
+  prevBtn.style.display = hasPhotos ? 'flex' : 'none';
+  nextBtn.style.display = hasPhotos ? 'flex' : 'none';
+  counter.style.display = hasPhotos ? 'block' : 'none';
+
+  if (!hasPhotos) {
+    inner.innerHTML = '<div class="slide"><div class="placeholder"><span>📷</span><span style="font-size:12px;color:#bbb">暂无照片</span></div></div>';
+    dots.innerHTML = '';
+    counter.textContent = '0/0';
+    _photoIdx = 0;
+    return;
+  }
+
+  // Build all slides
+  var html = '';
+  for (var i = 0; i < _photoList.length; i++) {
+    html += '<div class="slide" onclick="openViewer(' + i + ')">' +
+      '<img src="' + _photoList[i] + '" alt="">' +
+      '<button class="del-btn" onclick="event.stopPropagation();deletePhoto(' + i + ')">✕</button>' +
+      '<button class="main-star' + (i === _mainPhotoIdx ? ' active' : '') + '" onclick="event.stopPropagation();setMainPhoto(' + i + ')">' + (i === _mainPhotoIdx ? '★' : '☆') + '</button>' +
+      '</div>';
+  }
+  inner.innerHTML = html;
+  inner.style.transition = 'none';
+  inner.style.transform = 'translateX(-' + (_photoIdx * 100) + '%)';
+
+  // Dots
+  dots.innerHTML = '';
+  for (var di = 0; di < _photoList.length; di++) {
+    var d = document.createElement('span');
+    d.className = 'dot' + (di === _photoIdx ? ' active' : '');
+    d.onclick = (function(idx) { return function() { goTo(idx); }; })(di);
+    dots.appendChild(d);
+  }
+  counter.textContent = (_photoIdx + 1) + '/' + _photoList.length;
+}
+
+function goTo(idx) {
+  if (_photoList.length === 0) return;
+  // 无限循环
+  idx = ((idx % _photoList.length) + _photoList.length) % _photoList.length;
+  _photoIdx = idx;
+  var inner = document.getElementById('photoTrackInner');
+  inner.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
+  inner.style.transform = 'translateX(-' + (idx * 100) + '%)';
+  // Update dots + counter
+  var dots = document.querySelectorAll('#photoDots .dot');
+  dots.forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+  document.getElementById('photoCounter').textContent = (idx + 1) + '/' + _photoList.length;
+}
+
+function photoNext() { goTo(_photoIdx + 1); }
+function photoPrev() { goTo(_photoIdx - 1); }
+
+function setMainPhoto(idx) {
+  _mainPhotoIdx = idx;
+  renderCarousel();
+}
+
+function deletePhoto(index) {
+  _photoList.splice(index, 1);
+  if (_mainPhotoIdx >= _photoList.length) _mainPhotoIdx = Math.max(0, _photoList.length - 1);
+  else if (index < _mainPhotoIdx) _mainPhotoIdx--;
+  if (_photoIdx >= _photoList.length && _photoList.length > 0) _photoIdx = _photoList.length - 1;
+  renderCarousel();
+}
+
+// ===== Full-screen photo viewer =====
+var _viewerIdx = 0;
+function openViewer(idx) {
+  if (_photoList.length === 0) return;
+  _viewerIdx = idx;
+  document.getElementById("pvImage").src = _photoList[idx];
+  document.getElementById("photoViewer").classList.add("active");
+  document.getElementById("pvCounter").textContent = (idx+1) + "/" + _photoList.length;
+}
+function closeViewer() {
+  document.getElementById("photoViewer").classList.remove("active");
+}
+function viewerPrev() {
+  var n = _photoList.length;
+  if (n === 0) return;
+  _viewerIdx = Math.max(0, _viewerIdx - 1);
+  document.getElementById("pvImage").src = _photoList[_viewerIdx];
+  document.getElementById("pvCounter").textContent = (_viewerIdx+1) + "/" + n;
+}
+function viewerNext() {
+  var n = _photoList.length;
+  if (n === 0) return;
+  _viewerIdx = Math.min(n-1, _viewerIdx + 1);
+  document.getElementById("pvImage").src = _photoList[_viewerIdx];
+  document.getElementById("pvCounter").textContent = (_viewerIdx+1) + "/" + n;
+}
+
+// ===== Touch swipe =====
+(function() {
+  var track = document.getElementById('photoTrack');
+  if (!track) return;
+  var sx = 0, swiping = false, moving = false;
+
+  track.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1 || _photoList.length === 0) return;
+    sx = e.touches[0].clientX;
+    swiping = false;
+    moving = false;
+  }, {passive: true});
+
+  track.addEventListener('touchmove', function(e) {
+    if (e.touches.length !== 1 || _photoList.length === 0) return;
+    var dx = e.touches[0].clientX - sx;
+    if (!swiping && Math.abs(dx) > 8) swiping = true;
+    if (swiping) {
+      e.preventDefault();
+      moving = true;
+      var inner = document.getElementById('photoTrackInner');
+      inner.style.transition = 'none';
+      inner.style.transform = 'translateX(calc(-' + (_photoIdx * 100) + '% + ' + dx + 'px))';
+    }
+  }, {passive: false});
+
+  track.addEventListener('touchend', function(e) {
+    if (!swiping || _photoList.length === 0) { swiping = false; return; }
+    swiping = false;
+    if (!moving) return;
+    moving = false;
+    var dx = e.changedTouches[0].clientX - sx;
+    var ratio = dx / track.offsetWidth;
+    if (Math.abs(ratio) > 0.18) {
+      goTo(_photoIdx + (ratio < 0 ? 1 : -1));
+    } else {
+      // Snap back
+      var inner = document.getElementById('photoTrackInner');
+      inner.style.transition = 'transform .3s cubic-bezier(.25,.46,.45,.94)';
+      inner.style.transform = 'translateX(-' + (_photoIdx * 100) + '%)';
+    }
+  }, {passive: true});
+})();
+
+// ===== Photo Upload =====
+function compressImage(file, maxWidth, maxHeight, quality, callback) {
+  if (!file.type.startsWith('image/')) { callback(null); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxWidth || h > maxHeight) {
+        var ratio = Math.min(maxWidth / w, maxHeight / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = function() { callback(null); };
+    img.src = e.target.result;
+  };
+  reader.onerror = function() { callback(null); };
+  reader.readAsDataURL(file);
+}
+
+function handlePhotoUpload(input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+  for (var i = 0; i < files.length; i++) {
+    (function(file) {
+      compressToMaxSize(file, 800, function(compressed) {
+        if (compressed) {
+          // 先显示在轮播（data URL 预览）
+          _photoList.push(compressed);
+          renderCarousel();
+          goTo(_photoList.length - 1);
+          // 后台上传到服务器，完成后替换为路径（避免 localStorage 存 data URL 过大）
+          uploadPhoto(compressed, function(path) {
+            var idx = _photoList.indexOf(compressed);
+            if (idx >= 0) _photoList[idx] = path;
+          });
+        }
+      });
+    })(files[i]);
+  }
+  input.value = '';
+}
+
+function uploadPhoto(dataUrl, callback) {
+  // data URL → Blob → FormData → /api/upload
+  var parts = dataUrl.split(',');
+  var mimeMatch = parts[0].match(/:(.*?);/);
+  if (!mimeMatch) { if (callback) callback(dataUrl); return; }
+  var mime = mimeMatch[1];
+  var raw = atob(parts[1]);
+  var ab = new ArrayBuffer(raw.length);
+  var ia = new Uint8Array(ab);
+  for (var i = 0; i < raw.length; i++) ia[i] = raw.charCodeAt(i);
+  var blob = new Blob([ab], {type: mime});
+  var fd = new FormData();
+  fd.append('file', blob, 'photo.jpg');
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload', true);
+  xhr.withCredentials = true;
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try { var r = JSON.parse(xhr.responseText); if (r.ok && r.path) { callback(r.path); return; } } catch(e) {}
+    }
+    // 上传失败时保留 data URL
+    if (callback) callback(dataUrl);
+  };
+  xhr.onerror = function() { if (callback) callback(dataUrl); };
+  xhr.send(fd);
+}
+
+// 压缩到指定 KB 以内（自动调质量）
+function compressToMaxSize(file, maxKB, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      var maxDim = 1200;
+      if (w > maxDim || h > maxDim) {
+        var ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // 从高质量开始逐步降低直到满足大小
+      function tryQuality(q) {
+        var url = canvas.toDataURL('image/jpeg', q);
+        var sizeKB = Math.round(url.length * 3 / 4 / 1024);
+        if (sizeKB <= maxKB || q <= 0.3) {
+          callback(url);
+        } else {
+          tryQuality(Math.max(0.3, q - 0.1));
+        }
+      }
+      tryQuality(0.85);
+    };
+    img.onerror = function() { callback(null); };
+    img.src = e.target.result;
+  };
+  reader.onerror = function() { callback(null); };
+  reader.readAsDataURL(file);
+}
+
+// ===== Settings Data =====
+function loadSettingsData() {
+  var rawFabrics = localStorage.getItem('luna_settings_fabrics');
+  var fb = [];
+  if (rawFabrics) { try { fb = JSON.parse(rawFabrics); } catch(e) {} }
+  if (fb.length === 0) {
+    fb = [
+      {name: '素罗马', pricePerM: 12.00, composition: '涤纶95% 氨纶5%'},
+      {name: '精纺羊毛', pricePerM: 28.00, composition: '羊毛100%'},
+      {name: '乔其纱', pricePerM: 15.00, composition: '涤纶100%'},
+      {name: '里布', pricePerM: 12.00, composition: ''},
+      {name: '棉布', pricePerM: 18.00, composition: ''},
+      {name: '真丝', pricePerM: 35.00, composition: ''},
+      {name: '雪纺', pricePerM: 20.00, composition: ''}
+    ];
+  }
+  window._fabricOptions = fb.map(function(f) { return {name: f.name, pricePerM: f.pricePerM}; });
+
+  var rawAcc = localStorage.getItem('luna_settings_procacc');
+  var acc = [];
+  if (rawAcc) { try { acc = JSON.parse(rawAcc); } catch(e) {} }
+  if (acc.length === 0) {
+    acc = [
+      {name: '裁剪', price: 8}, {name: '车缝', price: 25}, {name: '锁边', price: 6},
+      {name: '纽扣', price: 3.5}, {name: '拉链', price: 2}, {name: '烫钻', price: 12},
+      {name: '刺绣', price: 15}
+    ];
+  }
+  window._accessoryOptions = acc.map(function(a) { return {name: a.name, pricePerUnit: a.price}; });
+
+  var rawCat = localStorage.getItem('luna_settings_categories');
+  var cats = [];
+  if (rawCat) { try { cats = JSON.parse(rawCat); } catch(e) {} }
+  if (cats.length === 0) {
+    cats = [{name:'裙装'},{name:'连衣裙'},{name:'裤装'},{name:'西装外套'},{name:'衬衫'},{name:'大衣'},{name:'套装'}];
+  }
+  window._categoryOptions = cats.map(function(c) { return c.name; });
+}
+loadSettingsData();
+
+function getFabricOptions() { return window._fabricOptions || []; }
+function getAccessoryOptions() { return window._accessoryOptions || []; }
+function getCategoryOptions() { return window._categoryOptions || []; }
+
+// ===== Initialize =====
+document.addEventListener('DOMContentLoaded', function() {
+  var catOptions = getCategoryOptions();
+  var catSel = document.getElementById('styleCategory');
+  catSel.innerHTML = '';
+  catOptions.forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.textContent = c;
+    catSel.appendChild(opt);
+  });
+
+  function getUrlParam(name) {
+    var match = location.search.match(new RegExp('[?&]' + name + '=([^&]+)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+  var editCode = getUrlParam('code');
+
+  if (editCode) {
+    document.getElementById('pageTitle').textContent = '✏️ 编辑款式';
+    try {
+      var stored = localStorage.getItem('luna_styles_data');
+      if (stored) {
+        var allStyles = JSON.parse(stored);
+        var style = allStyles.find(function(s) { return s.code === editCode; });
+        if (style) {
+          document.getElementById('styleCode').value = style.code;
+          document.getElementById('styleCode').readOnly = true;
+          if (style.note) document.getElementById('styleNote').value = style.note;
+          if (style.category) document.getElementById('styleCategory').value = style.category;
+
+          document.querySelectorAll('.switch-toggle button').forEach(function(b) {
+            b.classList.toggle('active', b.dataset.type === (style.type || 'solid'));
+          });
+
+          if (style.laborCost) document.getElementById('laborCost').value = style.laborCost;
+          if (style.ironCost) document.getElementById('ironCost').value = style.ironCost;
+          if (style.edgeNote) document.getElementById('edgeNote').value = style.edgeNote;
+          if (style.processingNote) document.getElementById('processingNote').value = style.processingNote;
+          if (style.markupRate) document.getElementById('markupRate').value = style.markupRate;
+
+          // Fabrics
+          if (style.fabrics && style.fabrics.length > 0) {
+            fabrics = style.fabrics.map(function(f) { return {name: f.name, pricePerM: f.pricePerM, usage: f.usage}; });
+            refreshFabricRows();
+          } else { addFabricRow(); }
+
+          // Accessories
+          if (style.accessories && style.accessories.length > 0) {
+            accessories = style.accessories.map(function(a) { return {name: a.name, pricePerUnit: a.pricePerUnit, qty: a.qty}; });
+            refreshAccessoryRows();
+          } else { addAccessoryRow(); }
+
+          // Images
+          if (style.images && style.images.length > 0) {
+            _photoList = style.images.slice();
+            _mainPhotoIdx = (style.mainPhoto !== undefined && style.mainPhoto < _photoList.length) ? style.mainPhoto : 0;
+            renderCarousel();
+            if (_photoList.length > 0) goTo(0);
+          }
+        }
+      }
+    } catch(e) {
+      console.error('加载款式数据失败:', e);
+      document.getElementById('styleCode').value = '';
+      addFabricRow();
+      addAccessoryRow();
+    }
+  } else {
+    document.getElementById('styleCode').value = '';
+    addFabricRow();
+    addAccessoryRow();
+  }
+
+  // Type switch
+  document.querySelectorAll('.switch-toggle button').forEach(function(b) {
+    b.addEventListener('click', function() {
+      this.parentElement.querySelectorAll('button').forEach(function(x) { x.classList.remove('active'); });
+      this.classList.add('active');
+    });
+  });
+
+  // Photo upload
+  var photoInput = document.getElementById('photoInput');
+  var cameraInput = document.getElementById('cameraInput');
+  if (photoInput) photoInput.addEventListener('change', function() { handlePhotoUpload(this); });
+  if (cameraInput) cameraInput.addEventListener('change', function() { handlePhotoUpload(this); });
+
+  calculateCosts();
+});
+
+// ===== Fabric rows =====
+var fabrics = [];
+var accessories = [];
+
+function addFabricRow() {
+  var container = document.getElementById('fabricsContainer');
+  var rowIndex = fabrics.length;
+  fabrics.push({name: '', pricePerM: 0, usage: 0});
+  var row = document.createElement('div');
+  row.className = 'dynamic-row';
+  row.innerHTML = '<select onchange="updateFabricPrice(' + rowIndex + ')">' +
+    '<option value="">选择面料...</option>' +
+    getFabricOptions().map(function(f) {
+      return '<option value="' + f.name + '" data-price="' + f.pricePerM + '">' + f.name + ' (€' + f.pricePerM.toFixed(2) + '/m)</option>';
+    }).join('') +
+    '</select>' +
+    '<input class="num" type="number" step="0.1" value="0" onchange="updateFabricUsage(' + rowIndex + ')" min="0">' +
+    '<span style="font-size:10px;color:#888">m</span>' +
+    '<span class="subtotal" id="fabricSubtotal' + rowIndex + '">€0.00</span>' +
+    '<span class="del-row" onclick="removeFabricRow(' + rowIndex + ')">✕</span>';
+  container.appendChild(row);
+  calculateCosts();
+}
+
+function updateFabricPrice(index) {
+  var row = document.querySelectorAll('#fabricsContainer .dynamic-row')[index];
+  var select = row.querySelector('select');
+  var selectedOption = select.options[select.selectedIndex];
+  if (selectedOption.value) {
+    fabrics[index].name = selectedOption.value;
+    fabrics[index].pricePerM = parseFloat(selectedOption.dataset.price);
+  }
+  updateFabricSubtotal(index);
+  calculateCosts();
+}
+
+function updateFabricUsage(index) {
+  var row = document.querySelectorAll('#fabricsContainer .dynamic-row')[index];
+  var usage = parseFloat(row.querySelector('input').value) || 0;
+  fabrics[index].usage = usage;
+  updateFabricSubtotal(index);
+  calculateCosts();
+}
+
+function updateFabricSubtotal(index) {
+  var fabric = fabrics[index];
+  var subtotal = fabric.pricePerM * fabric.usage;
+  var el = document.getElementById('fabricSubtotal' + index);
+  if (el) el.textContent = '€' + subtotal.toFixed(2);
+}
+
+function removeFabricRow(index) {
+  fabrics.splice(index, 1);
+  refreshFabricRows();
+  calculateCosts();
+}
+
+function refreshFabricRows() {
+  var container = document.getElementById('fabricsContainer');
+  container.innerHTML = '';
+  fabrics.forEach(function(fabric, index) {
+    var row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = '<select onchange="updateFabricPrice(' + index + ')">' +
+      '<option value="">选择面料...</option>' +
+      getFabricOptions().map(function(f) {
+        return '<option value="' + f.name + '" data-price="' + f.pricePerM + '" ' + (f.name === fabric.name ? 'selected' : '') + '>' + f.name + ' (€' + f.pricePerM.toFixed(2) + '/m)</option>';
+      }).join('') +
+      '</select>' +
+      '<input class="num" type="number" step="0.1" value="' + fabric.usage + '" onchange="updateFabricUsage(' + index + ')" min="0">' +
+      '<span style="font-size:10px;color:#888">m</span>' +
+      '<span class="subtotal" id="fabricSubtotal' + index + '">€' + (fabric.pricePerM * fabric.usage).toFixed(2) + '</span>' +
+      '<span class="del-row" onclick="removeFabricRow(' + index + ')">✕</span>';
+    container.appendChild(row);
+  });
+}
+
+// ===== Accessory rows =====
+function addAccessoryRow() {
+  var container = document.getElementById('accessoriesContainer');
+  var rowIndex = accessories.length;
+  accessories.push({name: '', pricePerUnit: 0, qty: 1});
+  var row = document.createElement('div');
+  row.className = 'dynamic-row';
+  row.innerHTML = '<select onchange="updateAccessoryPrice(' + rowIndex + ')">' +
+    '<option value="">选择工艺/辅料...</option>' +
+    getAccessoryOptions().map(function(a) {
+      return '<option value="' + a.name + '" data-price="' + a.pricePerUnit + '">' + a.name + ' (€' + a.pricePerUnit.toFixed(2) + ')</option>';
+    }).join('') +
+    '</select>' +
+    '<input class="num" type="number" step="0.1" value="1" onchange="updateAccessoryQty(' + rowIndex + ')" min="0">' +
+    '<span class="subtotal" id="accessorySubtotal' + rowIndex + '">€0.00</span>' +
+    '<span class="del-row" onclick="removeAccessoryRow(' + rowIndex + ')">✕</span>';
+  container.appendChild(row);
+  calculateCosts();
+}
+
+function updateAccessoryPrice(index) {
+  var row = document.querySelectorAll('#accessoriesContainer .dynamic-row')[index];
+  var select = row.querySelector('select');
+  var selectedOption = select.options[select.selectedIndex];
+  if (selectedOption.value) {
+    accessories[index].name = selectedOption.value;
+    accessories[index].pricePerUnit = parseFloat(selectedOption.dataset.price);
+  }
+  updateAccessorySubtotal(index);
+  calculateCosts();
+}
+
+function updateAccessoryQty(index) {
+  var row = document.querySelectorAll('#accessoriesContainer .dynamic-row')[index];
+  var qty = parseFloat(row.querySelector('input').value) || 0;
+  accessories[index].qty = qty;
+  updateAccessorySubtotal(index);
+  calculateCosts();
+}
+
+function updateAccessorySubtotal(index) {
+  var accessory = accessories[index];
+  var subtotal = accessory.pricePerUnit * accessory.qty;
+  var el = document.getElementById('accessorySubtotal' + index);
+  if (el) el.textContent = '€' + subtotal.toFixed(2);
+}
+
+function removeAccessoryRow(index) {
+  accessories.splice(index, 1);
+  refreshAccessoryRows();
+  calculateCosts();
+}
+
+function refreshAccessoryRows() {
+  var container = document.getElementById('accessoriesContainer');
+  container.innerHTML = '';
+  accessories.forEach(function(accessory, index) {
+    var row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = '<select onchange="updateAccessoryPrice(' + index + ')">' +
+      '<option value="">选择工艺/辅料...</option>' +
+      getAccessoryOptions().map(function(a) {
+        return '<option value="' + a.name + '" data-price="' + a.pricePerUnit + '" ' + (a.name === accessory.name ? 'selected' : '') + '>' + a.name + ' (€' + a.pricePerUnit.toFixed(2) + ')</option>';
+      }).join('') +
+      '</select>' +
+      '<input class="num" type="number" step="0.1" value="' + accessory.qty + '" onchange="updateAccessoryQty(' + index + ')" min="0">' +
+      '<span class="subtotal" id="accessorySubtotal' + index + '">€' + (accessory.pricePerUnit * accessory.qty).toFixed(2) + '</span>' +
+      '<span class="del-row" onclick="removeAccessoryRow(' + index + ')">✕</span>';
+    container.appendChild(row);
+  });
+}
+
+// ===== Cost calculation =====
+function calculateCosts() {
+  var laborCost = parseFloat(document.getElementById('laborCost').value) || 0;
+  var ironCost = parseFloat(document.getElementById('ironCost').value) || 0;
+  var fabricCost = fabrics.reduce(function(sum, f) { return sum + (f.pricePerM * f.usage); }, 0);
+  var accessoryCost = accessories.reduce(function(sum, a) { return sum + (a.pricePerUnit * a.qty); }, 0);
+  var totalCost = fabricCost + accessoryCost + laborCost + ironCost;
+  var markupRate = parseFloat(document.getElementById('markupRate').value) || 25;
+  var suggestedPrice = totalCost * (1 + markupRate / 100);
+  document.getElementById('totalCost').textContent = '€' + totalCost.toFixed(2);
+  document.getElementById('suggestedPrice').textContent = '€' + suggestedPrice.toFixed(2);
+}
+
+// ===== Save =====
+function saveStyle() {
+  function $id(id) { return document.getElementById(id); }
+  function val(id, def) { var el = $id(id); return el ? el.value : (def || ''); }
+  function numVal(id, def) { var el = $id(id); return el ? (parseFloat(el.value) || 0) : (def || 0); }
+  function textVal(id, def) { var el = $id(id); return el ? (el.textContent || '€0') : ('€' + (def || 0)); }
+
+  var styleData = {
+    code: val('styleCode'),
+    category: val('styleCategory'),
+    type: (function(){var b=document.querySelector('.switch-toggle button.active');return b?b.dataset.type:'solid';})(),
+    fabrics: fabrics.filter(function(f){return f.name;}),
+    accessories: accessories.filter(function(a){return a.name;}),
+    laborCost: numVal('laborCost'),
+    ironCost: numVal('ironCost'),
+    edgeNote: val('edgeNote'),
+    processingNote: val('processingNote'),
+    images: _photoList,
+    mainPhoto: _mainPhotoIdx,
+    totalCost: parseFloat(textVal('totalCost').replace('€','')) || 0,
+    suggestedPrice: parseFloat(textVal('suggestedPrice').replace('€','')) || 0,
+    createdAt: new Date().toISOString()
+  };
+
+  if (!styleData.code) { alert('⚠️ 请输入款式编号'); return; }
+  
+  // 检查编号唯一性（添加模式）
+  var existingStyles = [];
+  try {
+    var stored = localStorage.getItem('luna_styles_data');
+    if (stored) existingStyles = JSON.parse(stored);
+  } catch(e) { existingStyles = []; }
+
+  var isEditMode = location.search.indexOf('code=') >= 0;
+  if (!isEditMode) {
+    var dup = existingStyles.find(function(s){return s.code===styleData.code;});
+    if (dup) { alert('⚠️ 款式编号 ' + styleData.code + ' 已存在，请使用其他编号'); return; }
+  }
+
+  // 检查至少选择一种面料并有米数
+  var validFabrics = fabrics.filter(function(f){return f.name && f.usage > 0;});
+  if (validFabrics.length === 0) { alert('⚠️ 请至少选择一种面料并填写米数'); return; }
+  styleData.fabrics = validFabrics;
+
+  if (isEditMode) {
+    var found = false;
+    for (var i = 0; i < existingStyles.length; i++) {
+      if (existingStyles[i].code === styleData.code) {
+        styleData.createdAt = existingStyles[i].createdAt || styleData.createdAt;
+        existingStyles[i] = styleData;
+        found = true;
+        break;
+      }
+    }
+    if (!found) existingStyles.push(styleData);
+  } else {
+    existingStyles.push(styleData);
+  }
+
+  try {
+    localStorage.setItem('luna_styles_data', JSON.stringify(existingStyles));
+  } catch (e) {
+    if (styleData.images && styleData.images.length > 0) {
+      styleData.images = [];
+      existingStyles[existingStyles.length-1].images = [];
+      try {
+        localStorage.setItem('luna_styles_data', JSON.stringify(existingStyles));
+      } catch (e2) { showSaveError(e2); return; }
+    } else { showSaveError(e); return; }
+  }
+
+  // 保存后推送到服务器（照片数据 URL 需要同步到服务器，否则页面跳转后 firstLoad 会覆盖）
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/styles', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.withCredentials = true;
+    xhr.send(JSON.stringify(styleData));
+  } catch(e) {}
+  // 同步设置数据
+  try { if (typeof LUNA !== 'undefined' && LUNA.syncAllToServer) LUNA.syncAllToServer(); } catch(e) {}
+
+  var successEl = $id('successMessage');
+  if (successEl) successEl.classList.add('show');
+  setTimeout(function(){
+    var hasLogin = localStorage.getItem('luna_user');
+    window.location.href = hasLogin ? 'dashboard.html' : 'guest-styles.html';
+  }, 2000);
+}
+
+function showSaveError(e) {
+  var msg = '保存失败，请重试';
+  if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+    msg = '存储空间已满，请清理浏览器数据后重试';
+  } else if (e.name === 'SecurityError') {
+    msg = '浏览器存储不可用，请检查隐私设置';
+  } else if (e.message) {
+    msg = '保存失败: ' + e.message.substring(0, 80);
+  }
+  alert(msg);
+}
+
+document.getElementById('laborCost').addEventListener('input', calculateCosts);
+document.getElementById('ironCost').addEventListener('input', calculateCosts);
+document.getElementById('markupRate').addEventListener('input', calculateCosts);
+</script>
+<script>LUNA.renderNav();</script>
+</body>
+</html>

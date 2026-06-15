@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<title>人员管理 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a;min-height:100vh}
+/* ===== Header ===== */
+.header{display:flex;align-items:center;padding:0 20px;height:54px;background:#fff;border-bottom:1px solid #e8e5e0;position:sticky;top:0;z-index:100}
+.hamburger{font-size:22px;cursor:pointer;padding:4px 10px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
+.hamburger:hover{color:#1a1a1a}
+.logo{font-size:16px;font-weight:700;letter-spacing:1px;text-decoration:none;color:#1a1a1a;margin-right:auto}
+/* ===== Side Menu ===== */
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-size:15px;font-weight:700;letter-spacing:1px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s;border-radius:0}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+/* ===== Page ===== */
+.page{max-width:1100px;margin:0 auto;padding:20px}
+/* ===== Tabs ===== */
+.tabs{display:flex;gap:2px;background:#f0ede8;border-radius:8px;padding:3px;margin-bottom:20px}
+.tab{flex:1;padding:12px;font-size:13px;font-weight:500;border:none;border-radius:6px;cursor:pointer;background:transparent;color:#888;font-family:inherit;transition:all .15s;text-align:center}
+.tab.active{background:#fff;color:#1a1a1a;box-shadow:0 1px 3px rgba(0,0,0,.06);font-weight:600}
+.panel{display:none}
+.panel.active{display:block}
+/* ===== Stat Bar ===== */
+.stat-bar{display:flex;gap:16px;padding:12px 18px;background:#fff;border:1px solid #e8e5e0;border-radius:8px;flex-wrap:wrap;font-size:13px;margin-bottom:16px}
+.stat-bar span{color:#888}
+.stat-bar strong{color:#1a1a1a}
+/* ===== Table ===== */
+.tbl-wrap{overflow-x:auto;background:#fff;border:1px solid #e8e5e0;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+th{padding:10px 10px;text-align:left;font-weight:600;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e8e5e0;background:#faf9f7;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #f0ede8;vertical-align:middle}
+td input{width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;background:#faf9f7;transition:all .15s;min-height:30px}
+td input:focus{border-color:#c9a96e;outline:none;background:#fff}
+td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;background:#faf9f7}
+.sub-row{background:#faf8f5}
+.sub-row td:first-child{padding-left:28px!important}
+/* ===== Level Badge ===== */
+.badge-lv1{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:#c9a96e20;color:#c9a96e;white-space:nowrap}
+.badge-lv2{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:#e8e5e0;color:#999;white-space:nowrap}
+/* ===== Toggle ===== */
+.toggle{width:36px;height:20px;border-radius:10px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:all .15s;vertical-align:middle;flex-shrink:0}
+.toggle.on{background:#5a8f5a}
+.toggle .knob{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.toggle.on .knob{left:18px}
+/* ===== Buttons ===== */
+.btn{padding:6px 12px;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .1s;white-space:nowrap}
+.btn-primary{background:#c9a96e;color:#fff}
+.btn-danger{background:#fff;color:#c44;border:1px solid #f0e0e0}
+.btn-danger:hover{background:#fef0f0;border-color:#c44}
+.btn-success{background:#1a1a1a;color:#fff}
+.btn-success:hover{background:#333}
+.btn-add{background:none;border:1px dashed #ddd;border-radius:4px;padding:8px 16px;font-size:12px;color:#999;cursor:pointer;font-family:inherit;transition:all .1s;width:100%}
+.btn-add:hover{border-color:#c9a96e;color:#c9a96e}
+.add-sub-btn{font-size:11px;background:none;border:1px dashed #ddd;border-radius:4px;padding:4px 12px;cursor:pointer;color:#999;font-family:inherit}
+.add-sub-btn:hover{border-color:#c9a96e;color:#c9a96e}
+/* ===== Hint ===== */
+.hint{font-size:11px;color:#888;background:#faf6ee;padding:8px 12px;border-radius:6px;margin-top:12px;line-height:1.6}
+/* ===== Responsive ===== */
+@media(max-width:600px){
+  .page{padding:12px}
+  th,td{padding:6px 6px;font-size:12px}
+  td input{font-size:12px;padding:5px}
+  .stat-bar{gap:10px;font-size:12px}
+}
+@media(max-width:480px){
+  table{min-width:800px}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <span class="logo">👤 人员管理</span>
+</div>
+
+<!-- Side Menu -->
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
+    <a class="sm-link" href="add-style.html">➕ 添加款式</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="my-orders.html">📋 我的订单</a>
+    <a class="sm-link" href="orders.html">📋 订单管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
+    <a class="sm-link" href="login-logs.html">🔍 登录记录</a>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+
+<div class="page">
+  <div class="tabs">
+    <button class="tab active" data-tab="guests">👤 客人管理</button>
+    <button class="tab" data-tab="employees">👥 员工管理</button>
+  </div>
+  <div class="panel active" id="panel-guests"></div>
+  <div class="panel" id="panel-employees"></div>
+</div>
+
+<script src="luna-data.js?v=19"></script>
+<script>LUNA.renderNav();</script>
+<script>
+// ===== 侧边菜单 =====
+function toggleMenu() {
+  document.getElementById('sideMenu').classList.toggle('open');
+  document.getElementById('sideOverlay').classList.toggle('active');
+}
+function logout() {
+  LUNA.clearUser();
+  window.location.href = 'index.html';
+}
+
+// ===== 数据层 =====
+var PEOPLE = {
+  KEYS: {
+    guests: 'luna_settings_guests',
+    employees: 'luna_settings_employees'
+  },
+  get: function(key) {
+    var raw = localStorage.getItem(this.KEYS[key]);
+    if (raw) {
+      try { var d = JSON.parse(raw); return Array.isArray(d) && d.length === 0 ? null : d; } catch(e) { return []; }
+    }
+    return null;
+  },
+  save: function(key, data) {
+    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+    if (typeof LUNA !== 'undefined' && LUNA.syncAllToServer) LUNA.syncAllToServer();
+  }
+};
+
+function esc(s) { if (typeof s !== 'string') return s; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escJs(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function genId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).substr(2,4); }
+
+var DEFAULTS = {
+  guests: [
+    {id:'g0',name:'Enzo Song',username:'enzo',password:'enzo123',phone:'+39 333 123 4567',enabled:true,parent_id:'',address:'Via Roma 15, Prato',tax_id:'IT01234567890',shop_name:'Sartoria Rossi'},
+    {id:'g1',name:'Laura Bianchi',username:'laura',password:'laura123',phone:'+39 333 987 6543',enabled:true,parent_id:'',address:'Via Firenze 28, Firenze',tax_id:'IT09876543210',shop_name:'Boutique Laura'},
+    {id:'g2',name:'王伟',username:'wei',password:'wei123',phone:'+39 333 456 7890',enabled:true,parent_id:'',address:'Via Pistoiese 120, Prato',tax_id:'IT05678901234',shop_name:'东方时装'},
+    {id:'g3',name:'李婷',username:'li',password:'li123',phone:'+39 333 654 3210',enabled:true,parent_id:'g0',address:'Via Cavour 5, Prato',tax_id:'',shop_name:'Tina Moda'},
+    {id:'g4',name:'Giuseppe Verdi',username:'giuseppe',password:'giuseppe123',phone:'+39 333 111 2222',enabled:true,parent_id:'g2',address:'Piazza Duomo 8, Milano',tax_id:'IT07890123456',shop_name:'Alta Moda Milano'}
+  ],
+  employees: [
+    {id:'e0',name:'Maria Chen',username:'maria',password:'maria123',phone:'+39 333 777 8888',enabled:true,role:'裁剪'},
+    {id:'e1',name:'Antonio Rossi',username:'antonio',password:'antonio123',phone:'+39 333 444 5555',enabled:true,role:'车缝'}
+  ]
+};
+
+function initPeople() {
+  ['guests','employees'].forEach(function(k) {
+    var d = PEOPLE.get(k);
+    if (!d || (Array.isArray(d) && d.length === 0)) PEOPLE.save(k, DEFAULTS[k]);
+  });
+  renderGuests();
+  renderEmployees();
+  // Try loading server data
+  var map = {'luna_settings_guests':'guests','luna_settings_employees':'employees'};
+  var reload = false;
+  Object.keys(map).forEach(function(k) {
+    var v = LUNA.get(k);
+    if (v && Array.isArray(v) && v.length > 0) { PEOPLE.save(map[k], v); reload = true; }
+  });
+  if (reload) { renderGuests(); renderEmployees(); }
+  window.addEventListener('luna-data-changed', function() {
+    var changed = false;
+    Object.keys(map).forEach(function(k) {
+      var v = LUNA.get(k);
+      if (v && Array.isArray(v) && v.length > 0) { PEOPLE.save(map[k], v); changed = true; }
+    });
+    if (changed) { renderGuests(); renderEmployees(); }
+  });
+}
+
+// ======================== 客人管理 ========================
+function renderGuests() {
+  var data = PEOPLE.get('guests') || [];
+  var primaries = data.filter(function(g){ return !g.parent_id; });
+  var secondaries = data.filter(function(g){ return g.parent_id; });
+  var enabled = data.filter(function(g){ return g.enabled !== false; }).length;
+
+  var html = '<div class="stat-bar">';
+  html += '<span>👤 总人数 <strong>' + data.length + '</strong></span>';
+  html += '<span>✅ 启用 <strong>' + enabled + '</strong></span>';
+  html += '<span>📋 一级 <strong>' + primaries.length + '</strong></span>';
+  html += '<span>📋 二级 <strong>' + secondaries.length + '</strong></span>';
+  html += '</div>';
+
+  html += '<div class="tbl-wrap"><table>';
+  html += '<tr><th style="width:55px">级别</th><th style="min-width:90px">姓名</th><th style="min-width:90px">店名</th><th style="min-width:150px">地址</th><th style="min-width:100px">税号</th><th style="min-width:80px">账号</th><th style="width:70px">密码</th><th style="width:50px">启用</th><th style="width:70px">操作</th></tr>';
+
+  if (data.length === 0) {
+    html += '<tr><td colspan="9" style="text-align:center;padding:40px;color:#aaa">暂无客人，点击下方按钮添加</td></tr>';
+  }
+
+  primaries.forEach(function(g) {
+    var ri = data.indexOf(g);
+    var en = g.enabled !== false;
+    html += '<tr>';
+    html += '<td><span class="badge-lv1">一级</span></td>';
+    html += '<td><input value="' + esc(g.name) + '" placeholder="姓名" onchange="updG(' + ri + ',\'name\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.shop_name||'') + '" placeholder="店名" onchange="updG(' + ri + ',\'shop_name\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.address||'') + '" placeholder="地址" onchange="updG(' + ri + ',\'address\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.tax_id||'') + '" placeholder="税号" onchange="updG(' + ri + ',\'tax_id\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.username) + '" placeholder="账号" onchange="updG(' + ri + ',\'username\',this.value)"></td>';
+    html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updG(' + ri + ',\'password\',this.value)" style="font-size:11px"></td>';
+    html += '<td><span class="toggle' + (en ? ' on' : '') + '" onclick="togG(' + ri + ')"><span class="knob"></span></span></td>';
+    html += '<td><button class="btn btn-danger" onclick="delGP(' + ri + ')">删除</button></td>';
+    html += '</tr>';
+
+    // 二级客人
+    var subs = secondaries.filter(function(s){ return s.parent_id === g.id || s.parent_id === g.username; });
+    subs.forEach(function(s) {
+      var si = data.indexOf(s);
+      var en2 = s.enabled !== false;
+      html += '<tr class="sub-row">';
+      html += '<td><span class="badge-lv2">二级</span></td>';
+      html += '<td style="padding-left:28px!important"><span style="color:#999;margin-right:4px">↳</span><input value="' + esc(s.name) + '" placeholder="姓名" onchange="updG(' + si + ',\'name\',this.value)" style="width:calc(100% - 20px);display:inline-block"></td>';
+      html += '<td><input value="' + esc(s.shop_name||'') + '" placeholder="店名" onchange="updG(' + si + ',\'shop_name\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.address||'') + '" placeholder="地址" onchange="updG(' + si + ',\'address\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.tax_id||'') + '" placeholder="税号" onchange="updG(' + si + ',\'tax_id\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.username) + '" placeholder="账号" onchange="updG(' + si + ',\'username\',this.value)"></td>';
+      html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updG(' + si + ',\'password\',this.value)" style="font-size:11px"></td>';
+      html += '<td><span class="toggle' + (en2 ? ' on' : '') + '" onclick="togG(' + si + ')"><span class="knob"></span></span></td>';
+      html += '<td><button class="btn btn-danger" onclick="delGS(' + si + ')">删除</button></td>';
+      html += '</tr>';
+    });
+
+    // 添加二级按钮
+    var pid = escJs(g.id);
+    html += '<tr class="sub-row"><td colspan="9" style="padding:6px 0 6px 28px!important">';
+    html += '<button class="add-sub-btn" onclick="addSub(\'' + pid + '\')">＋ 添加二级客人</button></td></tr>';
+  });
+
+  html += '</table></div>';
+  html += '<div class="add-row" style="margin-top:10px"><button class="btn-add" onclick="addG()">＋ 添加一级客人</button></div>';
+  html += '<div class="hint">💡 <b>一级客人</b>可登录账号选款下单。<b>二级客人</b>附属在一级客人下，不能独立登录。关闭「启用」后该账号无法使用。</div>';
+  document.getElementById('panel-guests').innerHTML = html;
+}
+
+function updG(idx, field, val) {
+  var data = PEOPLE.get('guests');
+  if (!data || idx >= data.length) return;
+  if (field === 'password' && (!val || val === '******')) return;
+  data[idx][field] = val;
+  PEOPLE.save('guests', data);
+}
+function togG(idx) {
+  var d = PEOPLE.get('guests'); if (!d || idx >= d.length) return;
+  d[idx].enabled = !(d[idx].enabled !== false); PEOPLE.save('guests', d); renderGuests();
+}
+function addG() {
+  var d = PEOPLE.get('guests');
+  d.push({id:genId(),name:'新客人',username:'guest'+Date.now(),password:'123456',phone:'',enabled:true,parent_id:'',address:'',tax_id:'',shop_name:''});
+  PEOPLE.save('guests', d); renderGuests();
+}
+function addSub(pid) {
+  var d = PEOPLE.get('guests');
+  d.push({id:genId(),name:'新二级',username:'sub'+Date.now(),password:'',phone:'',enabled:true,parent_id:pid,address:'',tax_id:'',shop_name:''});
+  PEOPLE.save('guests', d); renderGuests();
+}
+function delGP(idx) {
+  LUNA.showConfirm('确认删除此一级客人及其所有二级客人？', function() {
+    var d = PEOPLE.get('guests'); if (!d || idx >= d.length) return;
+    var g = d[idx];
+    for (var i = d.length - 1; i >= 0; i--) {
+      if (d[i].parent_id === g.id || d[i].parent_id === g.username) { d.splice(i, 1); if (i < idx) idx--; }
+    }
+    d.splice(idx, 1); PEOPLE.save('guests', d); renderGuests();
+  });
+}
+function delGS(idx) {
+  LUNA.showConfirm('确认删除此二级客人？', function() {
+    var d = PEOPLE.get('guests'); if (!d || idx >= d.length) return;
+    d.splice(idx, 1); PEOPLE.save('guests', d); renderGuests();
+  });
+}
+
+// ======================== 员工管理 ========================
+function renderEmployees() {
+  var data = PEOPLE.get('employees') || [];
+  var enb = data.filter(function(e){ return e.enabled !== false; }).length;
+  var roles = ['裁剪','车缝','熨烫','质检','包装','管理','其他'];
+
+  var html = '<div class="stat-bar">';
+  html += '<span>👥 总人数 <strong>' + data.length + '</strong></span>';
+  html += '<span>✅ 在职 <strong>' + enb + '</strong></span>';
+  html += '</div>';
+
+  html += '<div class="tbl-wrap"><table>';
+  html += '<tr><th style="min-width:90px">姓名</th><th style="min-width:100px">手机</th><th style="min-width:80px">账号</th><th style="width:70px">密码</th><th style="min-width:80px">岗位</th><th style="width:50px">在职</th><th style="width:70px">操作</th></tr>';
+
+  if (data.length === 0) {
+    html += '<tr><td colspan="7" style="text-align:center;padding:40px;color:#aaa">暂无员工，点击下方按钮添加</td></tr>';
+  }
+
+  data.forEach(function(e, i) {
+    var en = e.enabled !== false;
+    html += '<tr>';
+    html += '<td><input value="' + esc(e.name) + '" placeholder="姓名" onchange="updE(' + i + ',\'name\',this.value)"></td>';
+    html += '<td><input value="' + esc(e.phone||'') + '" placeholder="手机" onchange="updE(' + i + ',\'phone\',this.value)"></td>';
+    html += '<td><input value="' + esc(e.username) + '" placeholder="账号" onchange="updE(' + i + ',\'username\',this.value)"></td>';
+    html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updE(' + i + ',\'password\',this.value)" style="font-size:11px"></td>';
+    html += '<td><select onchange="updE(' + i + ',\'role\',this.value)">';
+    roles.forEach(function(r){ html += '<option value="' + r + '"' + (e.role === r ? ' selected' : '') + '>' + r + '</option>'; });
+    html += '</select></td>';
+    html += '<td><span class="toggle' + (en ? ' on' : '') + '" onclick="togE(' + i + ')"><span class="knob"></span></span></td>';
+    html += '<td><button class="btn btn-danger" onclick="delE(' + i + ')">删除</button></td>';
+    html += '</tr>';
+  });
+
+  html += '</table></div>';
+  html += '<div class="add-row" style="margin-top:10px"><button class="btn-add" onclick="addE()">＋ 添加员工</button></div>';
+  html += '<div class="hint">💡 员工账号可用于登录系统。关闭「在职」后该账号无法登录。</div>';
+  document.getElementById('panel-employees').innerHTML = html;
+}
+
+function updE(idx, field, val) {
+  var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
+  if (field === 'password' && (!val || val === '******')) return;
+  d[idx][field] = val; PEOPLE.save('employees', d);
+}
+function togE(idx) {
+  var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
+  d[idx].enabled = !(d[idx].enabled !== false); PEOPLE.save('employees', d); renderEmployees();
+}
+function addE() {
+  var d = PEOPLE.get('employees');
+  d.push({id:genId(),name:'新员工',username:'emp'+Date.now(),password:'123456',phone:'',enabled:true,role:'车缝'});
+  PEOPLE.save('employees', d); renderEmployees();
+}
+function delE(idx) {
+  LUNA.showConfirm('确认删除此员工？', function() {
+    var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
+    d.splice(idx, 1); PEOPLE.save('employees', d); renderEmployees();
+  });
+}
+
+// ===== 标签切换 =====
+document.querySelectorAll('.tab').forEach(function(t) {
+  t.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+    this.classList.add('active');
+    document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+  });
+});
+
+// ===== 启动 =====
+initPeople();
+</script>
+</body>
+</html>

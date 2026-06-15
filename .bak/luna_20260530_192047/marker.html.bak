@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNA ATELIER — 打唛架出图</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #C8A56D; --gold-light: #d4b98a; --cream: #f8f6f0; --white: #fff;
+  --border: #EBE8E3; --text: #1C1C1C; --text-muted: #999; --radius: 8px;
+  --success: #28a745; --success-bg: #e8f5e9; --warning: #e8a040; --warning-bg: #fff8e1;
+}
+body {
+  font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text);
+  -webkit-font-smoothing: antialiased; line-height: 1.6;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.header {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-inner {
+  max-width: 1200px; margin: 0 auto; display: flex; align-items: center;
+  padding: 0 16px; height: 52px; gap: 12px;
+}
+.logo { font-family: 'Playfair Display', serif; font-size: 14px; letter-spacing: 3px; color: var(--text); }
+.logo span { color: var(--gold); }
+.back-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; color: var(--text); }
+.page-title { font-size: 13px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.5px; }
+
+/* Stats bar */
+.stats-bar {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; text-align: center;
+}
+.stat-num {
+  font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--gold);
+}
+.stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.5px; }
+
+/* Section title */
+.section-title {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); margin: 20px 0 10px;
+}
+
+/* Table */
+.table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); }
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px;
+}
+.data-table thead th {
+  background: var(--cream); padding: 10px 12px; text-align: left;
+  font-weight: 500; color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em;
+  text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.data-table tbody td {
+  padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--cream); }
+
+/* Cell content styles */
+.cell-order-id {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 12px;
+  color: var(--gold); font-weight: 700; letter-spacing: 0.02em;
+}
+.cell-style-code { color: var(--gold); font-weight: 600; font-size: 13px; }
+.cell-style-name { font-weight: 500; font-size: 13px; }
+.cell-note { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.cell-fabric { font-size: 12px; color: var(--text-muted); }
+.cell-fabric .usage { font-size: 11px; color: #bbb; margin-top: 2px; }
+.cell-total { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 600; }
+
+/* Color chips */
+.color-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.color-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; background: #f5f3f0; padding: 3px 8px; border-radius: 12px;
+}
+.color-dot {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.08); flex-shrink: 0;
+}
+
+/* Size tags */
+.size-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.size-tag {
+  display: inline-block; padding: 2px 7px; background: var(--cream);
+  border-radius: 4px; font-size: 11px; color: var(--text); border: 1px solid var(--border);
+}
+.size-tag b { color: var(--gold); font-weight: 600; }
+
+/* Status badge */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.badge-pending { background: var(--warning-bg); color: var(--warning); }
+.badge-ready { background: var(--success-bg); color: var(--success); }
+
+/* Action button */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px;
+  font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all .15s;
+}
+.btn-gold { background: var(--gold); color: #fff; }
+.btn-gold:hover { background: #b8963e; }
+.btn-ghost { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: #ccc; background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 200; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+  background: var(--white); border-radius: 12px; width: 100%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; animation: fadeInUp .25s both;
+}
+.modal-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.modal-title { font-size: 15px; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; }
+.modal-body { padding: 20px; }
+.modal-footer { padding: 12px 20px 20px; display: flex; gap: 10px; }
+.modal-footer .btn { flex: 1; }
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+.form-input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 15px; font-family: 'Inter', sans-serif; transition: border-color .15s;
+}
+.form-input:focus { outline: none; border-color: var(--gold); }
+.form-hint { font-size: 11px; color: #bbb; margin-top: 4px; }
+
+.order-preview {
+  background: var(--cream); border: 1px dashed var(--gold-light); border-radius: 8px;
+  padding: 12px; margin-bottom: 16px;
+}
+.order-preview .preview-id { font-size: 12px; color: var(--gold); font-weight: 600; }
+.order-preview .preview-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* Mobile card fallback when screen is very narrow */
+@media (max-width: 640px) {
+  .data-table { min-width: 0; }
+  .data-table thead { display: none; }
+  .data-table tbody td { display: block; padding: 8px 12px; border-bottom: none; }
+  .data-table tbody tr { display: block; border-bottom: 1px solid var(--border); padding: 10px 0; }
+  .data-table tbody tr:last-child { border-bottom: none; }
+  .data-table tbody td::before {
+    content: attr(data-label); display: block; font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;
+  }
+  .cell-total { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="logo">LUNA <span>A</span></span>
+    <span class="page-title">打唛架出图</span>
+  </div>
+</div>
+<div class="container">
+  <!-- 摘要栏 -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card">
+      <div class="stat-num" id="pendingCount">0</div>
+      <div class="stat-label">待处理订单</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="todayCount">0</div>
+      <div class="stat-label">今日已处理</div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:4px">📐 待打唛架订单</div>
+  <div class="table-wrap" id="tableWrap">
+    <table class="data-table" id="orderTable">
+      <thead>
+        <tr>
+          <th>订单号</th>
+          <th>款号</th>
+          <th>款式名称</th>
+          <th>面料 / 颜色</th>
+          <th>尺码分布</th>
+          <th style="text-align:center">总件数</th>
+          <th style="text-align:center">唛架状态</th>
+          <th style="text-align:center">操作</th>
+        </tr>
+      </thead>
+      <tbody id="orderTableBody"></tbody>
+    </table>
+  </div>
+  <div id="emptyState" class="empty-state" style="display:none">
+    <div class="icon">📐</div>
+    <div>暂无待打唛架订单</div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="markerModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">📐 确认出图</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="order-preview" id="modalPreview"></div>
+      <div class="form-group">
+        <label class="form-label">唛架长度 (m)</label>
+        <input class="form-input" type="number" id="markerLength" step="0.1" placeholder="例如: 5.5">
+        <div class="form-hint">请输入唛架排料图的总长度</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">几手</label>
+        <input class="form-input" type="number" id="markerHands" min="1" placeholder="例如: 2">
+        <div class="form-hint">铺布层数对应的倍数</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">操作人</label>
+        <input class="form-input" id="operator" value="">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-gold" onclick="confirmMarker()">✅ 确认出图</button>
+    </div>
+  </div>
+</div>
+
+<script src="luna-data.js?v=10"></script>
+<script>
+var selectedOrderId = null;
+var fabricsCache = [];
+
+LUNA.checkAuth();
+
+function init() {
+  fabricsCache = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  var orders = LUNA.getPendingMarkerOrders ? LUNA.getPendingMarkerOrders() : [];
+  renderStats();
+  renderTable(orders);
+}
+
+function renderStats() {
+  var orders = LUNA.getPendingMarkerOrders ? LUNA.getPendingMarkerOrders() : [];
+  document.getElementById('pendingCount').textContent = orders.length;
+
+  // 今日已处理：遍历全部订单，marker_complete.completed === 1 且 time 是今天
+  var all = LUNA.getOrders ? LUNA.getOrders() : [];
+  var todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  var todayDone = 0;
+  all.forEach(function(o) {
+    if (o.marker_complete && o.marker_complete.completed === 1 && o.marker_complete.time) {
+      var t = o.marker_complete.time;
+      // time format: YYYY/MM/DD HH:mm:ss
+      var datePart = t.split(' ')[0].replace(/\//g, '-');
+      if (datePart === todayStr) todayDone++;
+    }
+  });
+  document.getElementById('todayCount').textContent = todayDone;
+}
+
+function renderTable(orders) {
+  var tbody = document.getElementById('orderTableBody');
+  var wrap = document.getElementById('tableWrap');
+  var empty = document.getElementById('emptyState');
+
+  if (!orders || !orders.length) {
+    tbody.innerHTML = '';
+    wrap.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  empty.style.display = 'none';
+
+  var html = '';
+  orders.forEach(function(order) {
+    html += renderOrderRow(order);
+  });
+  tbody.innerHTML = html;
+}
+
+function renderOrderRow(order) {
+  var items = order.items || [];
+  var totalQty = order.total_qty || 0;
+
+  // 聚合款号（去重）
+  var codes = [];
+  var names = [];
+  items.forEach(function(it) {
+    if (it.code && codes.indexOf(it.code) === -1) codes.push(it.code);
+    if (it.name && names.indexOf(it.name) === -1) names.push(it.name);
+  });
+
+  // 面料信息（取第一款的面料）
+  var fabricInfo = '';
+  var usageInfo = '';
+  if (codes.length > 0) {
+    var style = LUNA.findStyle ? LUNA.findStyle(codes[0]) : null;
+    if (style && style.fabrics && style.fabrics.length) {
+      var f = style.fabrics[0];
+      fabricInfo = f.name || '';
+      if (f.quantity) usageInfo = '单件用量 ' + f.quantity + 'm';
+    }
+  }
+
+  // 颜色列表
+  var colorsHtml = '<div class="color-chips">';
+  items.forEach(function(it) {
+    colorsHtml += '<span class="color-chip"><span class="color-dot" style="background:' + colorHex(it.color) + '"></span>' + esc(it.color) + '</span>';
+  });
+  colorsHtml += '</div>';
+
+  // 尺码分布（聚合所有 items）
+  var sizeMap = {};
+  items.forEach(function(it) {
+    if (it.qty) {
+      Object.keys(it.qty).forEach(function(sz) {
+        var v = it.qty[sz] || 0;
+        if (v > 0) sizeMap[sz] = (sizeMap[sz] || 0) + v;
+      });
+    }
+  });
+  var sizesHtml = '<div class="size-tags">';
+  Object.keys(sizeMap).forEach(function(sz) {
+    sizesHtml += '<span class="size-tag">' + esc(sz) + '<b>×' + sizeMap[sz] + '</b></span>';
+  });
+  sizesHtml += '</div>';
+
+  // 状态
+  var statusHtml = '<span class="badge badge-pending">⏳ 待出排料图</span>';
+
+  // 备注
+  var note = order.note || '';
+
+  return '<tr>' +
+    '<td data-label="订单号"><div class="cell-order-id">' + esc(order.id) + '</div></td>' +
+    '<td data-label="款号"><div class="cell-style-code">#' + esc(codes.join(', ')) + '</div></td>' +
+    '<td data-label="款式名称"><div class="cell-style-name">' + esc(names.join(', ')) + '</div>' + (note ? '<div class="cell-note">📝 ' + esc(note) + '</div>' : '') + '</td>' +
+    '<td data-label="面料 / 颜色"><div class="cell-fabric">' + esc(fabricInfo) + (usageInfo ? '<div class="usage">' + esc(usageInfo) + '</div>' : '') + '</div><div style="margin-top:6px">' + colorsHtml + '</div></td>' +
+    '<td data-label="尺码分布">' + sizesHtml + '</td>' +
+    '<td data-label="总件数" style="text-align:center"><div class="cell-total">' + totalQty + '</div></td>' +
+    '<td data-label="唛架状态" style="text-align:center">' + statusHtml + '</td>' +
+    '<td data-label="操作" style="text-align:center"><button class="btn btn-gold" onclick="openModal(\'' + escJs(order.id) + '\')">📐 出图</button></td>' +
+    '</tr>';
+}
+
+function openModal(orderId) {
+  selectedOrderId = orderId;
+  var order = LUNA.findOrder ? LUNA.findOrder(orderId) : null;
+  if (!order) return;
+
+  var items = order.items || [];
+  var codes = [];
+  items.forEach(function(it) { if (it.code && codes.indexOf(it.code) === -1) codes.push(it.code); });
+
+  var previewHtml = '<div class="preview-id">' + esc(order.id) + '</div>' +
+    '<div class="preview-meta">款号 #' + esc(codes.join(', ')) + ' · 共 ' + (order.total_qty || 0) + ' 件</div>';
+  document.getElementById('modalPreview').innerHTML = previewHtml;
+
+  // 默认操作人
+  var user = LUNA.getUser ? LUNA.getUser() : null;
+  document.getElementById('operator').value = (user && (user.name || user.username)) || 'admin';
+  document.getElementById('markerLength').value = '';
+  document.getElementById('markerHands').value = '';
+
+  document.getElementById('markerModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('markerModal').classList.remove('active');
+  selectedOrderId = null;
+}
+
+function confirmMarker() {
+  if (!selectedOrderId) { alert('请先选择订单'); return; }
+  var len = parseFloat(document.getElementById('markerLength').value) || 0;
+  var hands = parseInt(document.getElementById('markerHands').value) || 1;
+  if (len <= 0) { alert('请输入唛架长度'); return; }
+  if (hands < 1) { alert('几手不能小于1'); return; }
+  var op = document.getElementById('operator').value.trim() || 'admin';
+  if (!confirm('确认出图？\n唛架长度: ' + len + 'm  几手: ' + hands)) return;
+  if (LUNA.completeMarker) {
+    LUNA.completeMarker(selectedOrderId, { length: len, hands: hands }, op);
+  }
+  alert('✅ 已确认出图');
+  location.href = 'orders.html';
+}
+
+function colorHex(name) {
+  var m = {'黑':'#1a1a1a','红':'#c0392b','蓝':'#2980b9','绿':'#27ae60','黄':'#f1c40f','灰':'#95a5a6','驼':'#c9a96e','米':'#f5e6d3','酒':'#722f37','白':'#f5f5f5','藏':'#1a237e','军':'#4b5320','卡':'#c3b091','棕':'#6d4c41','杏':'#e8c9a6','粉':'#f5a0b0','紫':'#8e44ad','橙':'#e67e22','金':'#c8a56d','咖':'#8b6914'};
+  for (var k in m) if (name && name.indexOf(k) !== -1) return m[k];
+  return '#c8a56d';
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function escJs(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+
+// 点击遮罩关闭
+ document.getElementById('markerModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// 支持 Enter 提交
+ document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+init();
+window.addEventListener('luna-data-changed', init);
+</script>
+</body>
+</html>

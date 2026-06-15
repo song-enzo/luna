@@ -1,0 +1,12 @@
+luna.db
+luna.db-shm
+luna.db-wal
+luna.db.prod-backup
+backups/
+*.pyc
+__pycache__/
+.photos/
+venv/
+.venv/
+.env
+*.log

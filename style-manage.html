@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>款式管理 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf8f5;color:#1a1a1a;padding-bottom:60px}
+a{text-decoration:none;color:inherit}
+/* Header */
+.header{background:#fff;border-bottom:1px solid #e8e2d9;padding:0 24px;height:56px;display:flex;align-items:center;position:sticky;top:0;z-index:100}
+.logo{font-family:'Playfair Display',Georgia,serif;font-size:18px;letter-spacing:4px;font-weight:600;color:#1a1a1a;text-transform:uppercase}
+.logo span{color:#b8965a}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.page-title{font-size:14px;font-weight:600;color:#1a1a1a;letter-spacing:.5px}
+.header-btn{padding:8px 16px;background:#b8965a;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;text-decoration:none}
+.header-btn:hover{background:#a07d45}
+/* Side Menu */
+.hamburger{font-size:22px;cursor:pointer;padding:4px 10px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
+.hamburger:hover{color:#1a1a1a}
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;letter-spacing:2px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.active{background:#f7f4ee;color:#1c1c1c;font-weight:500}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+/* Container */
+.container{max-width:960px;margin:0 auto;padding:0 24px}
+/* Controls */
+.controls{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px;flex-wrap:wrap;gap:10px}
+.control-left{display:flex;align-items:center;gap:12px}
+.control-left h1{font-size:16px;font-weight:700;color:#1a1a1a}
+.count-badge{font-size:12px;color:#b0a99e;font-weight:400}
+/* Table */
+.table-wrap{background:#fff;border:1px solid #e8e2d9;border-radius:10px;overflow-x:auto}
+.proc-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px}
+.proc-table th{padding:10px 8px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #e8e5e0;background:#faf8f5;white-space:nowrap}
+.proc-table td{padding:10px 8px;border-bottom:1px solid #f0ede8}
+.proc-table th:first-child,.proc-table td:first-child{padding-left:12px}
+.proc-table th:last-child,.proc-table td:last-child{padding-right:12px}
+.proc-table tr:last-child td{border-bottom:none}
+.proc-table tr:hover td{background:#faf8f5}
+.tag{font-size:10px;padding:2px 8px;border-radius:3px;display:inline-block}
+.tag.work{background:#f5edd8;color:#a08050}
+.tag.material{background:#e0e8f0;color:#507090}
+/* Toggle */
+.toggle{width:34px;height:18px;border-radius:9px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:all .15s}
+.toggle.on{background:#5a8f5a}
+.toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.toggle.on .knob{left:18px}
+.panel-msg{text-align:center;padding:60px 20px;color:#aaa;font-size:13px}
+/* Collapsible add-style form */
+.add-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #e0dcd5;border-radius:6px;background:#fff;color:#888;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.add-toggle:hover{border-color:#c9a96e;color:#c9a96e}
+.add-toggle.open{background:#c9a96e;color:#fff;border-color:#c9a96e}
+.add-form-wrap{overflow:hidden;max-height:0;transition:max-height .35s ease;margin-bottom:0}
+.add-form-wrap.open{max-height:500px;margin-bottom:16px}
+.add-form-inner{background:#faf8f5;border:1px solid #e8e2d9;border-radius:8px;padding:16px}
+.add-form-inner .af-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.add-form-inner .af-field{flex:1;min-width:120px}
+.add-form-inner .af-field label{display:block;font-size:10px;color:#b0a99e;margin-bottom:3px;font-weight:500;letter-spacing:.3px}
+.add-form-inner .af-field input,.add-form-inner .af-field select{width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;background:#fff}
+.add-form-inner .af-field input:focus,.add-form-inner .af-field select:focus{border-color:#c9a96e;outline:none}
+.add-form-inner .af-btns{display:flex;gap:8px;padding-top:4px}
+.add-form-inner .af-btns button{padding:8px 20px;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.add-form-inner .af-btns .af-save{background:#c9a96e;color:#fff}
+.add-form-inner .af-btns .af-save:hover{background:#b08a4f}
+.add-form-inner .af-btns .af-cancel{background:#f0ede8;color:#888}
+.add-form-inner .af-btns .af-cancel:hover{background:#e0dcd5;color:#555}
+/* Toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1c1c1c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:600px){
+  .proc-table{font-size:12px}
+  .proc-table th,.proc-table td{padding:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <a href="dashboard.html" class="logo">LUNA <span>A</span></a>
+  <div class="header-right">
+    <span class="page-title">款式管理</span>
+    <a class="header-btn" href="add-style.html">+ 添加款式</a>
+  </div>
+</div>
+
+<!-- Side Menu -->
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link active" href="style-manage.html">📋 款式管理</a>
+    <a class="sm-link" href="add-style.html">➕ 添加款式</a>
+    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="orders.html">📋 订单管理</a>
+    <a class="sm-link" href="marker.html">📐 打唛架</a>
+    <a class="sm-link" href="cutting.html">✂️ 裁剪发料</a>
+    <a class="sm-link" href="ready-pickup.html">🏭 待拿货</a>
+    <a class="sm-link" href="shipping.html">📦 发货管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link" href="people-manage.html">👤 人员管理</a>
+    <a class="sm-link" href="settings.html?tab=warehouse">🧶 面料仓库</a>
+    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
+    <a class="sm-link" href="login-logs.html">🔍 登录记录</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="controls">
+    <div class="control-left">
+      <h1>款式管理 <span class="count-badge" id="countBadge">(0)</span></h1>
+	      <button class="add-toggle" id="addStyleToggle" onclick="toggleAddForm()">➕ 添加新款式</button>
+    </div>
+  </div>
+  <div class="add-form-wrap" id="addFormWrap">
+    <div class="add-form-inner">
+      <div class="af-row">
+        <div class="af-field"><label>款式编号</label><input id="afCode" placeholder="如 ART-STYLE999" autocomplete="off"></div>
+        <div class="af-field"><label>款式名称</label><input id="afName" placeholder="如 双排扣西装" autocomplete="off"></div>
+        <div class="af-field" style="flex:0 0 110px"><label>分类</label><select id="afCategory"><option value="jacket">外套</option><option value="vest">马甲</option><option value="pants">裤子</option><option value="skirt">裙子</option><option value="shirt">衬衫</option><option value="coat">大衣</option><option value="other">其他</option></select></div>
+        <div class="af-field" style="flex:0 0 100px"><label>类型</label><select id="afType"><option value="solid">净色</option><option value="print">印花</option></select></div>
+        <div class="af-field" style="flex:0 0 110px"><label>建议售价</label><input id="afPrice" type="number" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="af-btns">
+        <button class="af-save" onclick="quickAddStyle()">💾 保存款式</button>
+        <button class="af-cancel" onclick="toggleAddForm()">取消</button>
+      </div>
+    </div>
+  </div>
+  <div class="table-wrap" id="stylePanel"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="luna-data.js?v=19"></script>
+<script>LUNA.renderNav();</script>
+<script>
+var SETTINGS = {
+  KEYS: { styleToggles: 'luna_settings_style_toggles' },
+  get: function(key) {
+    var raw = localStorage.getItem(this.KEYS[key]);
+    if (raw) { try { var d = JSON.parse(raw); return (Array.isArray(d) && d.length === 0) ? null : d; } catch(e) { return null; } }
+    return null;
+  },
+  save: function(key, data) {
+    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+  }
+};
+
+function toggleMenu() {
+  document.getElementById('sideOverlay').classList.toggle('active');
+  document.getElementById('sideMenu').classList.toggle('open');
+}
+
+function logout() {
+  LUNA.clearUser();
+  window.location.href = 'index.html';
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+function renderStyles() {
+  var styles = [];
+  try { styles = LUNA.getStyles(); } catch(e) {}
+  var toggles = SETTINGS.get('styleToggles') || {};
+  document.getElementById('countBadge').textContent = '(' + styles.length + ')';
+  var html = '';
+  if (styles.length === 0) {
+    html = '<div class="panel-msg">暂无款式，请先添加款式</div>';
+    document.getElementById('stylePanel').innerHTML = html;
+    return;
+  }
+  html += '<table class="proc-table">';
+  html += '<tr><th>编号</th><th style="width:70px;text-align:right">价格</th><th style="text-align:center;width:44px">启用</th><th style="width:44px">操作</th></tr>';
+  styles.forEach(function(s) {
+    var code = s.code;
+    var isOn = toggles[code] !== false;
+    html += '<tr>';
+    html += '<td><strong style="color:#c9a96e;font-size:13px">' + esc(code) + '</strong></td>';
+    html += '<td style="text-align:right">€' + ((s.suggestedPrice||0).toFixed(2)) + '</td>';
+    html += '<td style="text-align:center"><span class="toggle' + (isOn ? ' on' : '') + '" onclick="toggleStyle(\'' + code + '\')"><span class="knob"></span></span></td>';
+    html += '<td><a href="add-style.html?code=' + code + '" style="color:#c9a96e;font-size:11px;text-decoration:none">编辑</a></td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('stylePanel').innerHTML = html;
+}
+
+function toggleStyle(code) {
+  var toggles = SETTINGS.get('styleToggles') || {};
+  toggles[code] = toggles[code] === false ? true : false;
+  SETTINGS.save('styleToggles', toggles);
+  renderStyles();
+}
+
+function toggleAddForm() {
+  var wrap = document.getElementById('addFormWrap');
+  var btn = document.getElementById('addStyleToggle');
+  wrap.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
+function quickAddStyle() {
+  var code = document.getElementById('afCode').value.trim();
+  var name = document.getElementById('afName').value.trim();
+  var category = document.getElementById('afCategory').value;
+  var type = document.getElementById('afType').value;
+  var price = parseFloat(document.getElementById('afPrice').value) || 0;
+  if (!code) { showToast('请输入款式编号'); return; }
+  if (!name) { showToast('请输入款式名称'); return; }
+  var existing = [];
+  try { existing = LUNA.getStyles() || []; } catch(e) {}
+  for (var i = 0; i < existing.length; i++) {
+    if (existing[i].code === code) { showToast('编号 ' + code + ' 已存在'); return; }
+  }
+  var styleData = {
+    code: code, name: name, category: category, type: type,
+    suggestedPrice: price, fabrics: [], accessories: [],
+    laborCost: 0, ironCost: 0, edgeNote: '', processingNote: '',
+    images: [], mainPhoto: -1, totalCost: 0,
+    createdAt: new Date().toISOString()
+  };
+  existing.push(styleData);
+  try { localStorage.setItem('luna_styles_data', JSON.stringify(existing)); } catch(e) { showToast('保存失败'); return; }
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/styles', false);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.withCredentials = true;
+    xhr.send(JSON.stringify(styleData));
+  } catch(e) {}
+  try { if (LUNA.syncAllToServer) LUNA.syncAllToServer(); } catch(e) {}
+  document.getElementById('afCode').value = '';
+  document.getElementById('afName').value = '';
+  document.getElementById('afPrice').value = '';
+  toggleAddForm();
+  renderStyles();
+  showToast('✅ 款式 ' + code + ' 已添加');
+}
+
+function init() {
+  renderStyles();
+}
+
+var _initDone = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('luna-data-initialized', function() {
+    if (!_initDone) { _initDone = true; init(); }
+  });
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(function() { if (!_initDone) { _initDone = true; init(); } }, 300);
+  }
+}
+
+window.addEventListener('luna-data-changed', function() {
+  renderStyles();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作台 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf8f5;color:#1a1a1a;padding-bottom:60px}
+a{text-decoration:none;color:inherit}
+/* Header */
+.header{background:#fff;border-bottom:1px solid #e8e2d9;padding:0 24px;height:56px;display:flex;align-items:center;position:sticky;top:0;z-index:100}
+.logo{font-family:'Playfair Display',Georgia,serif;font-size:18px;letter-spacing:4px;font-weight:600;color:#1a1a1a;text-transform:uppercase}
+.logo span{color:#b8965a}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.user-badge{font-size:13px;color:#b8965a;font-weight:500}
+.logout-btn{font-size:12px;color:#bbb;cursor:pointer;padding:4px 8px;border-radius:4px;transition:all .15s}
+.logout-btn:hover{color:#c45c5c;background:#f9eeee}
+/* Container */
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+/* Greeting */
+.greeting-section{padding:32px 0 16px}
+.greeting{font-family:'Playfair Display',Georgia,serif;font-size:28px;color:#2c2c2c}
+.greeting-date{font-size:13px;color:#b0a99e;margin-top:4px}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stat-card{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:20px;transition:all .3s;cursor:default}
+.stat-card:hover{box-shadow:0 4px 12px rgba(44,44,44,0.06);transform:translateY(-2px)}
+.stat-number{font-size:32px;font-weight:700;color:#1a1a1a;line-height:1.1}
+.stat-label{font-size:12px;color:#b0a99e;margin-top:4px}
+.stat-card.accent .stat-number{color:#b8965a}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+/* Pipeline */
+.pipeline-section{margin-bottom:28px}
+.pipeline-card{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:24px}
+.pipeline{display:flex;align-items:center;justify-content:center;gap:0;padding:8px 0}
+.pipeline-step{text-align:center;flex:1}
+.pipeline-dot{width:44px;height:44px;border-radius:50%;background:#f5f1eb;display:flex;align-items:center;justify-content:center;font-size:18px;margin:0 auto 6px;transition:all .3s;border:2px solid transparent}
+.pipeline-step.active .pipeline-dot{background:#b8965a;color:#fff;border-color:#b8965a;box-shadow:0 0 0 4px #f0e6d2}
+.pipeline-step.done .pipeline-dot{background:#6b9e6b;color:#fff;border-color:#6b9e6b}
+.pipeline-label{font-size:11px;color:#b0a99e}
+.pipeline-step.active .pipeline-label{color:#b8965a;font-weight:600}
+.pipeline-step.done .pipeline-label{color:#6b9e6b}
+.pipeline-line{height:2px;flex:0.5;background:#e8e2d9;margin-bottom:26px}
+.pipeline-line.done{background:#6b9e6b}
+/* Section Header */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:600;color:#7a756d;letter-spacing:1px;text-transform:uppercase}
+.section-title::after{display:none}
+/* Quick Actions Grid */
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:28px}
+.quick-action{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .25s;display:block}
+.quick-action:hover{box-shadow:0 4px 16px rgba(0,0,0,0.06);transform:translateY(-2px);border-color:#d4b87a}
+.qa-icon{width:48px;height:48px;border-radius:12px;background:#f5f1eb;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px;transition:all .25s}
+.quick-action:hover .qa-icon{background:#f0e6d2}
+.qa-label{font-size:13px;font-weight:500;color:#3a3a3a}
+.qa-desc{font-size:11px;color:#b0a99e;margin-top:2px}
+@media(max-width:600px){.quick-actions{grid-template-columns:repeat(3,1fr)}}
+/* Recent Orders */
+.order-list{background:#fff;border:1px solid #e8e2d9;border-radius:10px;overflow:hidden}
+.order-card{padding:16px 20px;border-bottom:1px solid #f5f1eb;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:space-between}
+.order-card:last-child{border:none}
+.order-card:hover{background:#faf8f5}
+.order-id{font-size:12px;color:#b8965a;font-weight:600;letter-spacing:0.05em}
+.order-customer{font-size:13px;color:#3a3a3a;margin-top:2px}
+.order-meta{display:flex;gap:16px;font-size:12px;color:#b0a99e;margin-top:2px}
+.order-amount{font-family:'Playfair Display',Georgia,serif;font-size:14px;font-weight:600;color:#b8965a;text-align:right}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-confirmed{background:#f0eee9;color:#7a756d}
+.badge-cutting{background:#faf6ee;color:#b8962e}
+.badge-sewing{background:#eef2f8;color:#6b8eb8}
+.badge-shipped{background:#eef5ee;color:#6b9e6b}
+.badge-completed{background:#f5f1eb;color:#b0a99e}
+/* Empty */
+.empty-state{text-align:center;padding:40px 20px;color:#ccc;font-size:13px}
+/* Animations */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.animate-in{animation:fadeInUp .5s both}
+.delay-1{animation-delay:.1s}
+.delay-2{animation-delay:.2s}
+.delay-3{animation-delay:.3s}
+.delay-4{animation-delay:.4s}
+/* Side Menu */
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;letter-spacing:2px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+.hamburger{font-size:22px;cursor:pointer;padding:4px 10px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
+.hamburger:hover{color:#1a1a1a}
+/* Styles Table */
+.toggle{width:34px;height:18px;border-radius:9px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:all .15s}
+.toggle.on{background:#5a8f5a}
+.toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.toggle.on .knob{left:18px}
+.toggle{width:34px;height:18px;border-radius:9px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:all .15s}
+.toggle.on{background:#5a8f5a}
+.toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.toggle.on .knob{left:18px}
+.style-msg{text-align:center;padding:30px;color:#aaa;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <a href="dashboard.html" class="logo">LUNA <span>A</span></a>
+  <div class="header-right">
+    <span class="user-badge" id="userBadge"></span>
+    <span class="logout-btn" id="logoutBtn">退出</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 问候 -->
+  <div class="greeting-section animate-in">
+    <div class="greeting" id="greeting">Bonjour</div>
+    <div class="greeting-date" id="dateLine"></div>
+  </div>
+
+  <!-- Pipeline 流程 -->
+  <div class="pipeline-section animate-in delay-1">
+    <div class="section-header"><div class="section-title">📋 订单流程</div></div>
+    <div class="pipeline-card">
+      <div class="pipeline" id="pipeline"></div>
+    </div>
+  </div>
+
+  <!-- 快捷入口 -->
+  <div class="animate-in delay-2" style="margin-bottom:28px">
+    <div class="section-header"><div class="section-title">⚡ 快捷入口</div></div>
+    <div class="quick-actions">
+      <a class="quick-action" href="settings.html?tab=warehouse">
+        <div class="qa-icon">🧶</div>
+        <div class="qa-label">面料仓库</div>
+        <div class="qa-desc">管理面料·色卡·库存</div>
+      </a>
+      <a class="quick-action" href="add-style.html">
+        <div class="qa-icon">🧵</div>
+        <div class="qa-label">添加款式</div>
+        <div class="qa-desc">新建或编辑</div>
+      </a>
+      <a class="quick-action" href="style-manage.html">
+        <div class="qa-icon">📁</div>
+        <div class="qa-label">款式管理</div>
+        <div class="qa-desc">管理所有款式</div>
+      </a>
+      <a class="quick-action" href="guest-styles.html">
+        <div class="qa-icon">👗</div>
+        <div class="qa-label">款式浏览</div>
+        <div class="qa-desc">客人端查看</div>
+      </a>
+      <a class="quick-action" href="orders.html">
+        <div class="qa-icon">📋</div>
+        <div class="qa-label">订单管理</div>
+        <div class="qa-desc">查看全部订单</div>
+      </a>
+      <a class="quick-action" href="marker.html">
+        <div class="qa-icon">📐</div>
+        <div class="qa-label">打唛架</div>
+        <div class="qa-desc">确认出图</div>
+      </a>
+      <a class="quick-action" href="cutting.html">
+        <div class="qa-icon">✂️</div>
+        <div class="qa-label">裁剪发料</div>
+        <div class="qa-desc">发料移交</div>
+      </a>
+      <a class="quick-action" href="shipping.html">
+        <div class="qa-icon">📦</div>
+        <div class="qa-label">发货管理</div>
+        <div class="qa-desc">发货与账单</div>
+      </a>
+      <a class="quick-action" href="ready-pickup.html">
+        <div class="qa-icon">🏭</div>
+        <div class="qa-label">待拿货</div>
+        <div class="qa-desc">车缝跟踪</div>
+      </a>
+      <a class="quick-action" href="cutting_history.html">
+        <div class="qa-icon">📁</div>
+        <div class="qa-label">裁剪历史</div>
+        <div class="qa-desc">历史记录</div>
+      </a>
+      <a class="quick-action" href="people-manage.html">
+        <div class="qa-icon">👤</div>
+        <div class="qa-label">人员管理</div>
+        <div class="qa-desc">客人·员工</div>
+      </a>
+      <a class="quick-action" href="javascript:void(0)" onclick="doBackup()">
+        <div class="qa-icon">💾</div>
+        <div class="qa-label">数据库备份</div>
+        <div class="qa-desc">手动备份</div>
+      </a>
+    </div>
+  </div>
+
+  
+<!-- 最近订单 -->
+  <div class="animate-in delay-4" style="margin-bottom:28px">
+    <div class="section-header">
+      <div class="section-title">📄 最近订单</div>
+      <a href="orders.html" style="font-size:12px;color:#b8965a;font-weight:500">查看全部 ›</a>
+    </div>
+    <div class="order-list" id="recentOrders"></div>
+  </div>
+
+</div>
+
+<!-- Side Menu -->
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link" href="settings.html?tab=warehouse">🧶 面料仓库</a>
+    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
+    <a class="sm-link" href="add-style.html">➕ 添加款式</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="my-orders.html">📋 我的订单</a>
+    <a class="sm-link" href="orders.html">📋 订单管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
+    <a class="sm-link" href="login-logs.html">🔍 登录记录</a>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+
+<script src="luna-data.js?v=15"></script>
+<script>
+var user;
+
+// 登录检查
+(function() {
+  user = LUNA.getUser();
+  if (!user || user.role !== 'admin') { window.location.href = 'index.html'; return; }
+  document.getElementById('userBadge').textContent = '[' + (user.name || user.username) + ']';
+})();
+
+// 侧边菜单
+function toggleMenu() {
+  document.getElementById('sideMenu').classList.toggle('open');
+  document.getElementById('sideOverlay').classList.toggle('active');
+}
+
+// 退出
+function logout() {
+  LUNA.clearUser();
+  window.location.href = 'index.html';
+}
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+// 问候语
+(function() {
+  var now = new Date();
+  var h = now.getHours();
+  document.getElementById('greeting').textContent = h < 12 ? 'Buongiorno ☕' : h < 18 ? 'Buon pomeriggio 🌤' : 'Buona sera 🌙';
+  document.getElementById('dateLine').textContent = now.toLocaleDateString('zh-CN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+})();
+
+// Pipeline
+var orders = LUNA.getOrders();
+var flowSteps = [
+  {key:'cutting', label:'裁剪中', icon:'✂️', href:'marker.html'},
+  {key:'pickup', label:'待拿货', icon:'📦', href:'ready-pickup.html'},
+  {key:'sewing', label:'车缝中', icon:'🧵', href:'shipping.html'},
+  {key:'shipped', label:'已发货', icon:'✅', href:'orders.html'}
+];
+
+function getStepCount(step) {
+  var all = LUNA.getOrders();
+  if (step.key === 'cutting') return all.filter(function(o){var s=LUNA.getOrderStatus(o);return s==='cutting'||s==='pickup'||s==='sewing';}).length;
+  if (step.key === 'pickup') return LUNA.getPickupOrders().length;
+  if (step.key === 'sewing') return LUNA.getPendingShipOrders().length;
+  if (step.key === 'shipped') return all.filter(function(o){return o.shipping_complete&&o.shipping_complete.completed;}).length;
+  return 0;
+}
+
+// Find the furthest step an order has reached
+var statusLevel = {cutting:1,pickup:2,sewing:3,shipped:4};
+var maxLevel = 0;
+orders.forEach(function(o) {
+  var level = 1; // cutting (marker complete)
+  if (o.cutting_complete && o.cutting_complete.completed) level = 2; // pickup
+  if (o.pickup_complete && o.pickup_complete.completed) level = 3; // sewing/shipping-ready
+  if (o.shipping_complete && o.shipping_complete.completed) level = 4; // shipped
+  if (level > maxLevel) maxLevel = level;
+});
+var pipelineHtml = '';
+flowSteps.forEach(function(step, i) {
+  var stepLevel = statusLevel[step.key];
+  var count = getStepCount(step);
+  var cls = stepLevel < maxLevel ? 'done' : stepLevel === maxLevel ? 'active' : '';
+  pipelineHtml += '<a href="'+step.href+'" class="pipeline-step '+cls+'"><div class="pipeline-dot">'+step.icon+'</div><div class="pipeline-label">'+step.label+(count?' <span style="font-weight:600">'+count+'</span>':'')+'</div></a>';
+  if (i < flowSteps.length - 1) pipelineHtml += '<div class="pipeline-line'+(stepLevel<maxLevel?' done':'')+'"></div>';
+});
+document.getElementById('pipeline').innerHTML = pipelineHtml;
+
+// 最近订单
+var statusName = {cutting:'裁剪中',sewing:'车缝中',shipped:'已发货',completed:'已完成'};
+var container = document.getElementById('recentOrders');
+if (!orders.length) {
+  container.innerHTML = '<div class="empty-state">暂无订单</div>';
+} else {
+  var recent = orders.slice(-5).reverse();
+  var html = '';
+  recent.forEach(function(o) {
+    var code = o.items && o.items.length ? o.items[0].code : '';
+    html += '<div class="order-card" onclick="window.location.href=\'order-detail.html?id='+o.id+'\'">' +
+      '<div><div class="order-id">'+o.id+'</div><div class="order-customer">'+esc(o.customer)+(o.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(o.sub_customer)+')</span>':'')+'</div><div class="order-meta"><span>📅 '+o.date+'</span><span>📦 '+o.total_qty+'件</span></div></div>' +
+      '<div style="text-align:right"><div class="order-amount">#'+code+'</div><span class="badge badge-'+(LUNA.getOrderStatus(o))+'">'+(statusName[LUNA.getOrderStatus(o)]||LUNA.getOrderStatus(o))+'</span></div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// 数据变化后重新渲染
+window.addEventListener('luna-data-changed', function() {
+  var orders = LUNA.getOrders();
+  // 重新渲染 Pipeline
+  var maxLevel = 0;
+  orders.forEach(function(o) {
+    var level = 1;
+    if (o.cutting_complete && o.cutting_complete.completed) level = 2;
+    if (o.pickup_complete && o.pickup_complete.completed) level = 3;
+    if (o.shipping_complete && o.shipping_complete.completed) level = 4;
+    if (level > maxLevel) maxLevel = level;
+  });
+  var pipelineHtml = '';
+  flowSteps.forEach(function(step, i) {
+    var count = getStepCount(step);
+    var stepLevel = statusLevel[step.key];
+    var cls = stepLevel < maxLevel ? 'done' : stepLevel === maxLevel ? 'active' : '';
+    pipelineHtml += '<a href="'+step.href+'" class="pipeline-step '+cls+'"><div class="pipeline-dot">'+step.icon+'</div><div class="pipeline-label">'+step.label+(count?' <span style="font-weight:600">'+count+'</span>':'')+'</div></a>';
+    if (i < flowSteps.length - 1) pipelineHtml += '<div class="pipeline-line'+(stepLevel<maxLevel?' done':'')+'"></div>';
+  });
+  document.getElementById('pipeline').innerHTML = pipelineHtml;
+  // 重新渲染最近订单
+  var container = document.getElementById('recentOrders');
+  if (!orders.length) {
+    container.innerHTML = '<div class="empty-state">暂无订单</div>';
+  } else {
+    var recent = orders.slice(-5).reverse();
+    var html = '';
+    recent.forEach(function(o) {
+      var code = o.items && o.items.length ? o.items[0].code : '';
+      html += '<div class="order-card" onclick="window.location.href=\'order-detail.html?id='+o.id+'\'">' +
+        '<div><div class="order-id">'+o.id+'</div><div class="order-customer">'+esc(o.customer)+(o.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(o.sub_customer)+')</span>':'')+'</div><div class="order-meta"><span>📅 '+o.date+'</span><span>📦 '+o.total_qty+'件</span></div></div>' +
+        '<div style="text-align:right"><div class="order-amount">#'+code+'</div><span class="badge badge-'+(LUNA.getOrderStatus(o))+'\">'+(statusName[LUNA.getOrderStatus(o)]||LUNA.getOrderStatus(o))+'</span></div></div>';
+    });
+    container.innerHTML = html;
+  }
+});
+function doBackup(){
+  var btn=event&&event.target;
+  if(btn){btn.innerHTML='⏳';btn.style.pointerEvents='none'}
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/backup',true);
+  xhr.withCredentials=true;
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.onload=function(){
+    if(btn){btn.innerHTML='💾<br>数据库备份';btn.style.pointerEvents=''}
+    try{
+      var r=JSON.parse(xhr.responseText);
+      if(r.ok){alert('✅ 备份成功\n'+r.filename+'\n('+(r.size/1024).toFixed(1)+' KB)')}
+      else alert('❌ 备份失败: '+(r.error||'未知错误'))
+    }catch(e){alert('❌ 请求失败')}
+  };
+  xhr.onerror=function(){if(btn){btn.innerHTML='💾<br>数据库备份';btn.style.pointerEvents=''};alert('❌ 网络错误')};
+  xhr.send('{}');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>试衣 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
+.header{display:flex;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid #e8e5e0}
+.header .back{font-size:20px;cursor:pointer;padding:4px 12px 4px 0;text-decoration:none;color:#666}
+.header .logo{font-size:16px;font-weight:700;letter-spacing:1px;text-decoration:none;color:#1a1a1a;margin-right:auto}
+.container{max-width:500px;margin:0 auto;padding:24px 16px 48px}
+/* Select style */
+.select-row{margin-bottom:20px}
+.select-label{font-size:11px;font-weight:600;color:#8a7a6a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.select-row select{width:100%;padding:10px 12px;border:1px solid #e8e5e0;border-radius:4px;font-size:13px;font-family:inherit;background:#fff;color:#333}
+/* Image picker */
+.pick-label{font-size:11px;font-weight:600;color:#8a7a6a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.image-picker{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px}
+.image-picker::-webkit-scrollbar{height:4px}
+.image-picker::-webkit-scrollbar-thumb{background:#e8e5e0;border-radius:2px}
+.pick-card{flex:0 0 auto;width:100px;border:2px solid #e8e5e0;border-radius:6px;padding:4px;cursor:pointer;text-align:center;background:#fcfbf9;transition:all .15s}
+.pick-card.active{border-color:#c9a96e;background:#faf6ee}
+.pick-card .thumb{width:100%;height:120px;border-radius:4px;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc}
+.pick-card .label{font-size:10px;color:#666;margin-top:4px}
+/* Upload print */
+.upload-zone{border:2px dashed #d5d0c9;border-radius:6px;padding:20px;text-align:center;cursor:pointer;transition:all .15s;background:#faf9f7;margin-bottom:20px}
+.upload-zone:hover{border-color:#c9a96e;background:#faf6ee}
+.upload-zone .icon{font-size:32px;color:#ccc;margin-bottom:6px}
+.upload-zone .text{font-size:13px;color:#999}
+/* Prompt */
+.prompt-area{margin-bottom:20px}
+.prompt-area textarea{width:100%;padding:12px;border:1px solid #e8e5e0;border-radius:4px;font-size:13px;font-family:inherit;min-height:60px;resize:none;background:#fff}
+.prompt-area textarea::placeholder{color:#bbb}
+/* Model preview */
+.preview-area{margin-bottom:16px}
+.preview-area .preview-label{font-size:11px;font-weight:600;color:#8a7a6a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.model-img{width:100%;aspect-ratio:3/4;background:#f0ede8;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#ccc;border:1px solid #e8e5e0}
+.model-img .icon{font-size:56px}
+.model-img .label{font-size:11px;margin-top:6px}
+/* Generate */
+.gen-btn{width:100%;padding:14px;background:#c9a96e;color:#1a1a1a;border:none;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px}
+.gen-btn:hover{background:#b8963e}
+.gen-btn:disabled{opacity:.5;cursor:default}
+/* Result */
+.result-section{display:none;margin-top:16px;border-top:1px solid #e8e5e0;padding-top:16px}
+.result-section.active{display:block}
+.result-img{width:100%;aspect-ratio:3/4;background:#f0ede8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:48px;color:#ccc;border:1px solid #e8e5e0;position:relative}
+.result-img .tag{position:absolute;top:8px;right:8px;background:#c9a96e;color:#fff;font-size:10px;padding:2px 8px;border-radius:3px}
+.result-actions{display:flex;gap:8px;margin-top:12px}
+.result-actions button{flex:1;padding:10px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+.result-actions .save{background:#1a1a1a;color:#fff;border:none}
+.result-actions .save:hover{background:#333}
+.result-actions .retry{background:#fff;border:1px solid #ddd;color:#666}
+.result-actions .retry:hover{border-color:#999}
+</style>
+<script src="luna-data.js?v=19"></script>
+</head>
+<body>
+<div class="header">
+  <a href="javascript:history.back()" class="back">←</a>
+  <span class="logo">LUNA ATELIER</span>
+  <a href="order-page.html?style=6701" style="font-size:12px;color:#c9a96e;text-decoration:none;font-weight:500">🛒 去下单</a>
+</div>
+<div class="container">
+
+  <!-- Select Style -->
+  <div class="select-row">
+    <div class="select-label">① 选择款式编号</div>
+    <select>
+      <option>6701 · A字迷你裙</option>
+      <option>5103 · 碎花套装</option>
+      <option>8003 · 修身连衣裙</option>
+      <option>6391 · 两件套西装</option>
+      <option>7263 · 印花阔腿裤</option>
+      <option>9026 · 三件套西装</option>
+    </select>
+  </div>
+
+  <!-- Pick Image -->
+  <div class="pick-label">② 选择要换装的款式图片</div>
+  <div class="image-picker">
+    <div class="pick-card active">
+      <div class="thumb">👗</div>
+      <div class="label">正面全身</div>
+    </div>
+    <div class="pick-card">
+      <div class="thumb">👗</div>
+      <div class="label">细节展示</div>
+    </div>
+    <div class="pick-card">
+      <div class="thumb">👗</div>
+      <div class="label">平铺展示</div>
+    </div>
+  </div>
+
+  <!-- Upload Print -->
+  <div class="pick-label">③ 上传花版/印花图案</div>
+  <div class="upload-zone">
+    <div class="icon">🖼️</div>
+    <div class="text">点击上传印花图案</div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="pick-label">④ 试衣提示</div>
+  <div class="prompt-area">
+    <textarea>把这花版换到模特上，不改变款式风格和细节</textarea>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-area">
+    <div class="preview-label">⑤ 试衣效果</div>
+    <div class="model-img">
+      <div class="icon">🧍‍♀️</div>
+      <div class="label">北欧模特 · 换装展示</div>
+    </div>
+  </div>
+
+  <button class="gen-btn">✨ 生成试衣效果</button>
+
+  <!-- Result -->
+  <div class="result-section active">
+    <div class="pick-label">试衣结果 — 将作为新图增加到款式</div>
+    <div class="result-img">
+      🧍‍♀️
+      <span class="tag">新图</span>
+    </div>
+    <div class="result-actions">
+      <button class="save">💾 增加为款式主图</button>
+      <button class="retry">🔄 换张图重试</button>
+    </div>
+    <div style="font-size:11px;color:#888;text-align:center;margin-top:8px">增加后可在款式编辑中设为默认主图</div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.pick-card').forEach(c => {
+  c.addEventListener('click', function(){
+    document.querySelectorAll('.pick-card').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

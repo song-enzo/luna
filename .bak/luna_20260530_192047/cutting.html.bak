@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNA ATELIER — 裁剪发料</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #C8A56D; --gold-light: #d4b98a; --cream: #f8f6f0; --white: #fff;
+  --border: #EBE8E3; --text: #1C1C1C; --text-muted: #999; --radius: 8px;
+  --success: #28a745; --success-bg: #e8f5e9; --warning: #e8a040; --warning-bg: #fff8e1;
+}
+body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.6; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.header { background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; padding: 0 16px; height: 52px; gap: 12px; }
+.logo { font-family: 'Playfair Display', serif; font-size: 14px; letter-spacing: 3px; color: var(--text); }
+.logo span { color: var(--gold); }
+.back-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; color: var(--text); }
+.page-title { font-size: 13px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.5px; }
+
+/* Stats bar */
+.stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; text-align: center; }
+.stat-num { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--gold); }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.5px; }
+
+/* Section title */
+.section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 10px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
+.data-table thead th { background: var(--cream); padding: 10px 12px; text-align: left; font-weight: 500; color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table tbody td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--cream); }
+
+.cell-order-id { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 12px; color: var(--gold); font-weight: 700; }
+.cell-style-code { color: var(--gold); font-weight: 600; font-size: 13px; }
+.cell-style-name { font-weight: 500; font-size: 13px; }
+.cell-fabric { font-size: 12px; color: var(--text-muted); }
+.cell-fabric .usage { font-size: 11px; color: #bbb; margin-top: 2px; }
+.cell-total { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 600; }
+.cell-cut-input { width: 72px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; font-family: 'Inter', sans-serif; }
+.cell-cut-input:focus { outline: none; border-color: var(--gold); }
+.cell-result { font-weight: 600; color: var(--gold); font-family: 'Playfair Display', serif; font-size: 15px; }
+.cell-result-desc { font-size: 10px; color: #bbb; display: block; margin-top: 1px; }
+
+/* Color chips */
+.color-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.color-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; background: #f5f3f0; padding: 3px 8px; border-radius: 12px; }
+.color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); flex-shrink: 0; }
+
+/* Size tags */
+.size-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.size-tag { display: inline-block; padding: 2px 7px; background: var(--cream); border-radius: 4px; font-size: 11px; color: var(--text); border: 1px solid var(--border); }
+.size-tag b { color: var(--gold); font-weight: 600; }
+
+/* Status badge */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.badge-pending { background: var(--warning-bg); color: var(--warning); }
+.badge-ready { background: var(--success-bg); color: var(--success); }
+.badge-done { background: #f0f0f0; color: #888; }
+
+/* Checkmark */
+.checkmark-box { display: inline-block; width: 26px; height: 26px; border: 2px solid #ccc; border-radius: 4px; cursor: pointer; text-align: center; line-height: 22px; font-size: 16px; color: #fff; background: var(--white); user-select: none; transition: all 0.15s; font-weight: bold; }
+.checkmark-box.checked { background: var(--success); border-color: var(--success); }
+
+/* Action btn */
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all .15s; }
+.btn-gold { background: var(--gold); color: #fff; }
+.btn-gold:hover { background: #b8963e; }
+.btn-ghost { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Layer controls */
+.layer-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--cream); }
+.layer-row:last-child { border-bottom: none; }
+.layer-label { font-size: 13px; font-weight: 500; }
+.layer-ctrl { display: flex; align-items: center; gap: 6px; }
+.layer-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.layer-btn:hover { border-color: var(--gold); }
+.layer-num { font-size: 18px; font-weight: 600; min-width: 28px; text-align: center; }
+.layer-summary { font-size: 12px; color: var(--gold); font-family: 'Playfair Display', serif; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.active { display: flex; }
+.modal-box { background: var(--white); border-radius: 12px; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-title { font-size: 15px; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; }
+.modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; }
+.modal-footer { padding: 12px 20px 20px; display: flex; gap: 10px; }
+.modal-footer .btn { flex: 1; }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+.form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; font-family: 'Inter', sans-serif; }
+.form-input:focus { outline: none; border-color: var(--gold); }
+.form-hint { font-size: 11px; color: #bbb; margin-top: 4px; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: #ccc; background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+@media (max-width: 768px) {
+  .data-table, .data-table thead, .data-table tbody, .data-table tr, .data-table th, .data-table td { display: block; }
+  .data-table thead { display: none; }
+  .data-table tbody td { padding: 8px 12px; border-bottom: none; position: relative; }
+  .data-table tbody td::before { content: attr(data-label); display: block; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+  .data-table tbody tr { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; padding: 8px 0; }
+  .data-table tbody tr:hover { background: var(--white); }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="logo">LUNA <span>A</span></span>
+    <span class="page-title">裁剪发料</span>
+  </div>
+</div>
+<div class="container">
+  <div class="stats-bar" id="statsBar"></div>
+  <div class="section-title">✂️ 待裁剪订单</div>
+  <div id="orderList"></div>
+  <div id="cuttingModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">✂️ 确认裁剪</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modalPreview" style="margin-bottom:16px;padding:12px;background:var(--cream);border-radius:8px"></div>
+        <div class="section-title" style="margin:14px 0 8px">🎯 各色层数</div>
+        <div id="modalLayers" style="margin-bottom:16px"></div>
+        <div class="section-title" style="margin:14px 0 8px">📝 纸样检查</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px" id="checklist">
+          <span class="checkmark-box" onclick="toggleCheck(this)">☐</span><span style="font-size:13px;line-height:26px">领</span>
+          <span class="checkmark-box" onclick="toggleCheck(this)">☐</span><span style="font-size:13px;line-height:26px">袖</span>
+          <span class="checkmark-box" onclick="toggleCheck(this)">☐</span><span style="font-size:13px;line-height:26px">身</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">操作人</label>
+          <input class="form-input" id="operator" value="admin" placeholder="操作人姓名">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+        <button class="btn btn-gold" onclick="confirmCutting()">✅ 确认裁剪完成</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="luna-data.js?v=10"></script>
+<script>
+var selectedOrderId = null;
+var orderCutData = {};
+var checkmarks = {};
+var colorLayers = {};
+
+function init() {
+  var orders = LUNA.getCuttingOrders();
+  var allOrders = LUNA.getOrders();
+  // Stats
+  var todayCnt = 0;
+  var today = new Date();
+  var todayStr = today.getFullYear() + '/' + ('0'+(today.getMonth()+1)).slice(-2) + '/' + ('0'+today.getDate()).slice(-2);
+  allOrders.forEach(function(o) {
+    if (o.cutting_complete && o.cutting_complete.completed && o.cutting_complete.time && o.cutting_complete.time.indexOf(todayStr) === 0) todayCnt++;
+  });
+  document.getElementById('statsBar').innerHTML =
+    '<div class="stat-card"><div class="stat-num">' + orders.length + '</div><div class="stat-label">待裁剪</div></div>' +
+    '<div class="stat-card"><div class="stat-num">' + todayCnt + '</div><div class="stat-label">今日已裁剪</div></div>';
+  // Table
+  var c = document.getElementById('orderList');
+  if (!orders.length) {
+    c.innerHTML = '<div class="empty-state"><div class="icon">✂</div><div>暂无待裁剪订单</div></div>';
+    return;
+  }
+  var html = '<div class="table-wrap"><table class="data-table"><thead><tr>' +
+    '<th>订单号</th><th>款号</th><th>款式 & 面料</th><th>颜色</th><th>尺码分布</th><th style="text-align:center">总数</th><th style="text-align:center">裁剪数</th><th style="text-align:center">面料用量</th><th style="text-align:center">状态</th><th style="text-align:center">记号</th><th style="text-align:center">操作</th>' +
+    '</tr></thead><tbody>';
+  orders.forEach(function(o) {
+    html += renderCuttingRow(o);
+  });
+  html += '</tbody></table></div>';
+  c.innerHTML = html;
+}
+
+function renderCuttingRow(order) {
+  var items = order.items || [];
+  var styleInfo = '';
+  var fabricInfo = '';
+  var usageInfo = '';
+  var totalQty = order.total_qty || 0;
+  var codes = [], names = [];
+  items.forEach(function(it) {
+    if (it.code && codes.indexOf(it.code) === -1) codes.push(it.code);
+    if (it.name && names.indexOf(it.name) === -1) names.push(it.name);
+  });
+  // Fabric info from first item's style
+  if (codes.length > 0) {
+    try {
+      var style = LUNA.findStyle ? LUNA.findStyle(codes[0]) : null;
+      if (style && style.fabrics && style.fabrics.length > 0) {
+        fabricInfo = style.fabrics[0].name || '';
+        var price = style.fabrics[0].price || 0;
+        usageInfo = fabricInfo + ' · 单件€' + price;
+      }
+    } catch(e) {}
+  }
+  // Colors
+  var colorsHtml = '<div class="color-chips">';
+  var seenColors = {};
+  items.forEach(function(it) {
+    if (it.color && !seenColors[it.color]) {
+      seenColors[it.color] = true;
+      colorsHtml += '<span class="color-chip"><span class="color-dot" style="background:' + colorHex(it.color) + '"></span>' + esc(it.color) + '</span>';
+    }
+  });
+  colorsHtml += '</div>';
+  // Sizes
+  var sizeMap = {};
+  items.forEach(function(it) {
+    if (it.qty) Object.keys(it.qty).forEach(function(sz) {
+      var v = it.qty[sz] || 0;
+      if (v > 0) sizeMap[sz] = (sizeMap[sz] || 0) + v;
+    });
+  });
+  var sizesHtml = '<div class="size-tags">';
+  var orderKeys = ['XS','S','M','L','XL','2XL','3XL','UNICA'];
+  orderKeys.forEach(function(sz) {
+    if (sizeMap[sz]) sizesHtml += '<span class="size-tag">' + sz + '<b>×' + sizeMap[sz] + '</b></span>';
+  });
+  sizesHtml += '</div>';
+  // Status
+  var isCut = order.cutting_complete && order.cutting_complete.completed === 1;
+  var markerDone = order.marker_complete && order.marker_complete.completed === 1;
+  var statusHtml = isCut ? '<span class="badge badge-done">✅ 裁剪已完成</span>' :
+    markerDone ? '<span class="badge badge-ready">📏 唛架已就绪</span>' :
+    '<span class="badge badge-pending">⏳ 等待排料图</span>';
+  // Checkmark
+  var checkHtml = isCut ? '<span style="display:inline-block;width:26px;height:26px;border:2px solid var(--success);border-radius:4px;text-align:center;line-height:22px;color:var(--success);background:var(--success-bg);font-weight:bold">✔</span>' :
+    '<span class="checkmark-box" onclick="event.stopPropagation();toggleCheck(this)">☐</span>';
+  // Action
+  var actionHtml;
+  if (isCut) {
+    actionHtml = '<button class="btn btn-ghost btn-sm" disabled style="opacity:0.5">✔ 已完成</button>';
+  } else if (markerDone) {
+    actionHtml = '<button class="btn btn-gold btn-sm" onclick="openModal(\'' + escJs(order.id) + '\')">✂ 裁剪</button>';
+  } else {
+    actionHtml = '<button class="btn btn-ghost btn-sm" disabled style="opacity:0.5;cursor:not-allowed">等待唛架</button>';
+  }
+  var orderId = esc(order.id);
+  return '<tr>' +
+    '<td data-label="订单号"><div class="cell-order-id">' + orderId + '</div></td>' +
+    '<td data-label="款号"><div class="cell-style-code">#' + esc(codes.join(', ')) + '</div></td>' +
+    '<td data-label="款式 & 面料"><div class="cell-style-name">' + esc(names.join(', ')) + '</div><div class="cell-fabric">' + esc(fabricInfo) + '</div></td>' +
+    '<td data-label="颜色">' + colorsHtml + '</td>' +
+    '<td data-label="尺码分布">' + sizesHtml + '</td>' +
+    '<td data-label="总数" style="text-align:center"><div class="cell-total">' + totalQty + '</div></td>' +
+    '<td data-label="裁剪数" style="text-align:center"><input type="number" class="cell-cut-input" id="cutQty_' + escJs(order.id) + '" value="' + totalQty + '" min="1"></td>' +
+    '<td data-label="面料用量" style="text-align:center"><span class="cell-result" id="result_' + escJs(order.id) + '">' + totalQty + '</span><span class="cell-result-desc">件（估算）</span></td>' +
+    '<td data-label="状态" style="text-align:center">' + statusHtml + '</td>' +
+    '<td data-label="记号" style="text-align:center">' + checkHtml + '</td>' +
+    '<td data-label="操作" style="text-align:center">' + actionHtml + '</td>' +
+    '</tr>';
+}
+
+function openModal(orderId) {
+  selectedOrderId = orderId;
+  var order = LUNA.findOrder ? LUNA.findOrder(orderId) : null;
+  if (!order) return;
+  checkmarks = {};
+  colorLayers = {};
+  var hands = (order.marker_complete && order.marker_complete.hands) || 1;
+  var markerLen = (order.marker_complete && order.marker_complete.length) || '-';
+  orderCutData = order;
+  // Preview
+  var items = order.items || [];
+  var codes = [], totalQty = order.total_qty || 0;
+  items.forEach(function(it) { if (it.code && codes.indexOf(it.code) === -1) codes.push(it.code); });
+  document.getElementById('modalPreview').innerHTML =
+    '<div style="font-size:11px;color:var(--gold);font-weight:600">' + esc(order.id) + '</div>' +
+    '<div style="font-size:16px;font-weight:500;margin:2px 0">' + esc(order.customer) + '</div>' +
+    '<div style="font-size:12px;color:var(--text-muted)">款号 #' + esc(codes.join(', ')) + ' · 共 ' + totalQty + ' 件 · 📐 ' + markerLen + 'm</div>';
+  // Hands + Layers
+  var handsHtml = '<div class="form-group"><label class="form-label">🧮 几手</label>' +
+    '<input class="form-input" type="number" id="handsInput" value="' + hands + '" min="1" onchange="updateLayerUI()"></div>';
+  document.getElementById('modalPreview').innerHTML += handsHtml;
+  // Layers per color
+  renderLayers(order, hands);
+  // Operator
+  var user = LUNA.getUser ? LUNA.getUser() : null;
+  document.getElementById('operator').value = (user && (user.name || user.username)) || 'admin';
+  // Reset checkmarks
+  document.querySelectorAll('#checklist .checkmark-box').forEach(function(b) { b.textContent = '☐'; b.classList.remove('checked'); });
+  document.getElementById('cuttingModal').classList.add('active');
+}
+
+function renderLayers(order, hands) {
+  var items = order.items || [];
+  var html = '';
+  items.forEach(function(item) {
+    var itemTotal = 0;
+    if (item.qty) Object.keys(item.qty).forEach(function(s) { itemTotal += item.qty[s] || 0; });
+    var suggested = Math.ceil(itemTotal / hands);
+    if (!colorLayers[item.color]) colorLayers[item.color] = { layers: Math.max(1, suggested) };
+    var current = colorLayers[item.color].layers;
+    var cutTotal = current * hands;
+    html += '<div class="layer-row">' +
+      '<div style="flex:1"><div class="layer-label"><span class="color-dot" style="background:' + colorHex(item.color) + '"></span>' + esc(item.color) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted)">' + itemTotal + '件 ÷ ' + hands + '手 → 建议 ' + suggested + '层</div></div>' +
+      '<div style="text-align:right"><div class="layer-ctrl">' +
+      '<button class="layer-btn" onclick="adjLayer(\'' + escJsId(item.color) + '\',-1)">−</button>' +
+      '<span class="layer-num" id="layer_' + escJsId(item.color) + '">' + current + '</span>' +
+      '<button class="layer-btn" onclick="adjLayer(\'' + escJsId(item.color) + '\',1)">+</button></div>' +
+      '<div class="layer-summary" id="total_' + escJsId(item.color) + '">' + current + '层×' + hands + '手=' + cutTotal + '件</div></div></div>';
+  });
+  document.getElementById('modalLayers').innerHTML = html;
+}
+
+function adjLayer(color, delta) {
+  var el = document.getElementById('layer_' + escJsId(color));
+  if (!el || !colorLayers[color]) return;
+  var v = Math.max(1, parseInt(el.textContent) + delta);
+  el.textContent = v;
+  colorLayers[color].layers = v;
+  var hands = parseInt(document.getElementById('handsInput').value) || 1;
+  var totalEl = document.getElementById('total_' + escJsId(color));
+  if (totalEl) totalEl.innerHTML = v + '层×' + hands + '手=' + (v * hands) + '件';
+}
+
+function updateLayerUI() {
+  var hands = parseInt(document.getElementById('handsInput').value) || 1;
+  if (orderCutData) renderLayers(orderCutData, hands);
+}
+
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+  el.textContent = el.classList.contains('checked') ? '✔' : '☐';
+}
+
+function closeModal() {
+  document.getElementById('cuttingModal').classList.remove('active');
+  selectedOrderId = null;
+  orderCutData = null;
+}
+
+function confirmCutting() {
+  if (!selectedOrderId) { alert('请先选择订单'); return; }
+  var order = orderCutData;
+  if (!order) return;
+  var hands = parseInt(document.getElementById('handsInput').value) || 1;
+  // Build summary
+  var summary = '', totalCut = 0;
+  (order.items || []).forEach(function(item) {
+    var layers = (colorLayers[item.color] ? colorLayers[item.color].layers : 1);
+    var cutForColor = layers * hands;
+    totalCut += cutForColor;
+    summary += esc(item.color) + ': ' + layers + '层×' + hands + '手=' + cutForColor + '件  ';
+  });
+  if (!confirm('确认裁剪完成？\n' + summary + '\n总计: ' + totalCut + '件')) return;
+  var op = document.getElementById('operator').value.trim() || 'admin';
+  var chk = {};
+  document.querySelectorAll('#checklist .checkmark-box').forEach(function(el, i) {
+    if (el.classList.contains('checked')) {
+      var parts = ['领','袖','身'];
+      chk[parts[i]] = true;
+    }
+  });
+  LUNA.completeCutting(selectedOrderId, colorLayers, chk, op);
+  alert('✅ 裁剪完成。总计: ' + totalCut + '件');
+  location.href = 'orders.html';
+}
+
+function colorHex(name) {
+  var m = {'黑':'#1a1a1a','红':'#c0392b','蓝':'#2980b9','绿':'#27ae60','黄':'#f1c40f','灰':'#95a5a6','驼':'#c9a96e','米':'#f5e6d3','酒':'#722f37','白':'#f5f5f5','藏':'#1a237e','军':'#4b5320','卡':'#c3b091','棕':'#6d4c41','杏':'#e8c9a6','粉':'#f5a0b0','紫':'#8e44ad','橙':'#e67e22','金':'#c8a56d','咖':'#8b6914'};
+  for (var k in m) if (name && name.indexOf(k) !== -1) return m[k];
+  return '#c8a56d';
+}
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function escJsId(s) { return (s || '').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_'); }
+function escJs(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+
+init();
+window.addEventListener('luna-data-changed', init);
+</script>
+</body>
+</html>

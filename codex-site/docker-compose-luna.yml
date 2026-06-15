@@ -1,0 +1,55 @@
+services:
+  luna-services:
+    image: node:20-bullseye-slim
+    container_name: luna-services
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - /opt/data/luna/.luna-env
+    volumes:
+      - /opt/data/luna:/opt/data/luna
+      - /opt/data/home/.cc-connect:/root/.cc-connect
+      - /opt/data/home/npm-global:/root/npm-global
+      - /opt/data/code-server:/opt/code-server
+    working_dir: /opt/data/luna
+    command: >
+      bash -c "
+        set -e
+        ln -sf /root/npm-global/bin/* /usr/local/bin/ 2>/dev/null
+
+        # 安装依赖
+        npm install -g cc-connect cloudflared 2>&1 | tail -2
+
+        # 1. Flask
+        .venv/bin/python luna_app.py > /tmp/flask.log 2>&1 &
+        echo '[OK] Flask started'
+
+        sleep 2
+
+        # 2. cc-connect 程哥 Bot
+        cc-connect --config /root/.cc-connect/config.toml > /tmp/cc.log 2>&1 &
+        echo '[OK] cc-connect started'
+
+        sleep 2
+
+        # 3. LUNA 隧道
+        npx cloudflared tunnel --url http://localhost:8766 > /tmp/tun-luna.log 2>&1 &
+        echo '[OK] LUNA tunnel started'
+
+        # 4. code-server 隧道
+        npx cloudflared tunnel --url http://localhost:8081 > /tmp/tun-cs.log 2>&1 &
+        echo '[OK] code-server tunnel started'
+
+        # 等隧道生成 URL
+        sleep 8
+        LUNA_URL=\$$\$$(grep -o 'https://[a-z-]*\.trycloudflare\.com' /tmp/tun-luna.log 2>/dev/null | head -1)
+        CS_URL=\$$\$$(grep -o 'https://[a-z-]*\.trycloudflare\.com' /tmp/tun-cs.log 2>/dev/null | head -1)
+        echo ''
+        echo '===== LUNA 服务已启动 ====='
+        echo '🌐 网站: ' \$$\$$LUNA_URL
+        echo '🤖 程哥: @xiaocheng26526_bot'
+        echo '🖥️ 工作台: ' \$$\$$CS_URL
+        echo '============================'
+
+        tail -f /tmp/flask.log /tmp/cc.log /tmp/tun-luna.log /tmp/tun-cs.log
+      "

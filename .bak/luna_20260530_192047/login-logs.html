@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<title>登录记录 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
+.header{display:flex;align-items:center;padding:0 16px;height:54px;background:#fff;border-bottom:1px solid #e8e5e0;position:sticky;top:0;z-index:100}
+.hamburger{font-size:22px;cursor:pointer;padding:4px 10px 4px 0;background:none;border:none;color:#666;font-family:inherit;line-height:1}
+.hamburger:hover{color:#1a1a1a}
+.header .logo{font-size:16px;font-weight:700;letter-spacing:1px;text-decoration:none;color:#1a1a1a;margin-right:auto}
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;letter-spacing:2px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+.page{max-width:1000px;margin:0 auto;padding:16px}
+/* Filters */
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 14px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;cursor:pointer;background:#fff;color:#888;font-family:inherit;transition:all .15s}
+.filter-btn:hover{border-color:#c9a96e;color:#c9a96e}
+.filter-btn.active{background:#c9a96e;color:#fff;border-color:#c9a96e}
+.search-bar{padding:7px 12px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;font-family:inherit;outline:none;min-width:160px;flex:1}
+.search-bar:focus{border-color:#c9a96e}
+/* Stats bar */
+.stats{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;font-size:12px;color:#888}
+.stats span{padding:6px 14px;background:#fff;border:1px solid #e8e5e0;border-radius:6px}
+.stats strong{color:#1a1a1a}
+/* Table */
+.tbl-wrap{overflow-x:auto;background:#fff;border:1px solid #e8e5e0;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 12px;text-align:left;font-weight:600;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e8e5e0;background:#faf9f7;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid #f0ede8;vertical-align:middle}
+tr:hover td{background:#faf8f5}
+tr:last-child td{border-bottom:none}
+.badge-suc{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#eef5e8;color:#3a8a3a}
+.badge-fail{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#fef0f0;color:#c44}
+.loc-text{color:#666;font-size:11px}
+.ip-text{color:#999;font-size:11px;font-family:monospace}
+.time-text{color:#888;font-size:11px;white-space:nowrap}
+.user-link{color:#c9a96e;font-weight:600;cursor:pointer;text-decoration:none}
+.user-link:hover{text-decoration:underline}
+.empty-state{text-align:center;padding:60px 20px;color:#ccc;font-size:13px}
+.refresh-btn{padding:6px 14px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;cursor:pointer;background:#fff;color:#888;font-family:inherit;transition:all .15s;margin-left:auto}
+.refresh-btn:hover{border-color:#c9a96e;color:#c9a96e}
+@media(max-width:600px){.page{padding:10px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <span class="logo">🔍 登录记录</span>
+</div>
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
+    <a class="sm-link" href="add-style.html">➕ 添加款式</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="my-orders.html">📋 我的订单</a>
+    <a class="sm-link" href="orders.html">📋 订单管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
+    <a class="sm-link active" href="login-logs.html">🔍 登录记录</a>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+<div class="page">
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">全部</button>
+    <button class="filter-btn" data-filter="success" onclick="setFilter('success',this)">成功</button>
+    <button class="filter-btn" data-filter="fail" onclick="setFilter('fail',this)">失败</button>
+    <input class="search-bar" id="searchInput" placeholder="搜索用户名..." oninput="loadLogs()">
+    <button class="refresh-btn" onclick="loadLogs()">🔄 刷新</button>
+  </div>
+  <div class="user-info-bar" id="userInfoBar" style="display:none;background:#fff;border:1px solid #e8e5e0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:600" id="userInfoName"></span>
+    <span id="userInfoStatus" style="font-size:12px;padding:3px 10px;border-radius:10px"></span>
+    <button class="toggle-user-btn" id="toggleUserBtn" onclick="toggleUser()" style="padding:6px 14px;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:none"></button>
+    <span style="font-size:11px;color:#999" id="userInfoHint"></span>
+  </div>
+  <div class="stats" id="statsBar"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">#</th>
+          <th>用户</th>
+          <th style="width:60px">状态</th>
+          <th>IP 地址</th>
+          <th>登录位置</th>
+          <th style="width:160px">时间</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </div>
+  <div class="empty-state" id="emptyState" style="display:none">暂无登录记录</div>
+</div>
+<script src="luna-data.js?v=15"></script>
+<script>
+function toggleMenu(){document.getElementById('sideMenu').classList.toggle('open');document.getElementById('sideOverlay').classList.toggle('active')}
+function logout(){LUNA.clearUser();window.location.href='index.html'}
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+var currentFilter='all';
+
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});
+  if(el)el.classList.add('active');
+  loadLogs();
+}
+
+function loadLogs(){
+  var username=document.getElementById('searchInput').value.trim();
+  var url='/api/login-logs?limit=500';
+  if(username) url+='&username='+encodeURIComponent(username);
+  loadUserInfo(username);
+  var xhr=new XMLHttpRequest();
+  xhr.open('GET',url,true);
+  xhr.withCredentials=true;
+  xhr.onload=function(){
+    try{
+      var logs=JSON.parse(xhr.responseText);
+      renderLogs(logs);
+    }catch(e){}
+  };
+  xhr.send();
+}
+
+var _currentUser='';
+function loadUserInfo(username){
+  _currentUser=username||'';
+  var bar=document.getElementById('userInfoBar');
+  var nameEl=document.getElementById('userInfoName');
+  var statusEl=document.getElementById('userInfoStatus');
+  var btn=document.getElementById('toggleUserBtn');
+  var hint=document.getElementById('userInfoHint');
+  if(!username){
+    bar.style.display='none';
+    btn.style.display='none';
+    return;
+  }
+  bar.style.display='flex';
+  nameEl.textContent='👤 '+esc(username);
+  // Try to get user info via guests/employees endpoint
+  var xhr=new XMLHttpRequest();
+  xhr.open('GET','/api/data/guests',true);
+  xhr.withCredentials=true;
+  xhr.onload=function(){
+    try{
+      var users=JSON.parse(xhr.responseText);
+      var found=null;
+      for(var i=0;i<users.length;i++){if(users[i].username===username){found=users[i];break}}
+      if(!found){
+        // Check employees
+        var x2=new XMLHttpRequest();
+        x2.open('GET','/api/data/employees',true);
+        x2.withCredentials=true;
+        x2.onload=function(){
+          try{
+            var emps=JSON.parse(x2.responseText);
+            for(var i=0;i<emps.length;i++){if(emps[i].username===username){found=emps[i];break}}
+            if(found){showUserStatus(found,statusEl,btn,hint)}
+            else{bar.style.display='none'}
+          }catch(e){bar.style.display='none'}
+        };x2.send()
+      } else {
+        showUserStatus(found,statusEl,btn,hint);
+      }
+    }catch(e){}
+  };xhr.send();
+}
+function showUserStatus(user,statusEl,btn,hint){
+  var enabled=user.enabled!==false;
+  statusEl.textContent=enabled?'✅ 已启用':'🚫 已禁用';
+  statusEl.style.background=enabled?'#eef5e8':'#fef0f0';
+  statusEl.style.color=enabled?'#3a8a3a':'#c44';
+  btn.style.display='inline-block';
+  btn.textContent=enabled?'🚫 禁用此账号':'✅ 启用此账号';
+  btn.style.background=enabled?'#fef0f0':'#eef5e8';
+  btn.style.color=enabled?'#c44':'#3a8a3a';
+  btn._enabled=enabled;
+  hint.textContent='禁用后该账号无法登录系统';
+}
+function toggleUser(){
+  var username=_currentUser;
+  if(!username)return;
+  var btn=document.getElementById('toggleUserBtn');
+  btn.disabled=true;btn.textContent='⏳ 处理中...';
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/users/'+encodeURIComponent(username)+'/toggle-enabled',true);
+  xhr.withCredentials=true;
+  xhr.onload=function(){
+    btn.disabled=false;
+    try{
+      var r=JSON.parse(xhr.responseText);
+      if(r.ok){
+        loadUserInfo(username);
+        if(r.enabled) alert('✅ 账号 '+username+' 已启用');
+        else alert('🚫 账号 '+username+' 已禁用');
+      } else alert('❌ '+(r.error||'操作失败'));
+    }catch(e){alert('❌ 请求失败')}
+  };
+  xhr.onerror=function(){btn.disabled=false;alert('❌ 网络错误')};
+  xhr.send('{}');
+}
+
+function renderLogs(logs){
+  if(currentFilter==='success') logs=logs.filter(function(l){return l.success===1});
+  else if(currentFilter==='fail') logs=logs.filter(function(l){return l.success===0});
+
+  var total=logs.length;
+  var suc=logs.filter(function(l){return l.success===1}).length;
+  var fail=total-suc;
+  document.getElementById('statsBar').innerHTML='<span>📄 共 <strong>'+total+'</strong> 条</span><span>✅ 成功 <strong>'+suc+'</strong></span><span>❌ 失败 <strong>'+fail+'</strong></span>';
+
+  var body=document.getElementById('logBody');
+  var empty=document.getElementById('emptyState');
+  if(!total){
+    body.innerHTML='';
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+  body.innerHTML=logs.map(function(l,i){
+    var badge=l.success===1?'<span class="badge-suc">成功</span>':'<span class="badge-fail">失败</span>';
+    var loc=l.location?'<span class="loc-text">'+esc(l.location)+'</span>':'<span class="loc-text" style="color:#ccc">-</span>';
+    var ip=l.ip?'<span class="ip-text">'+esc(l.ip)+'</span>':'<span class="ip-text" style="color:#ccc">-</span>';
+    return '<tr>'+
+      '<td style="color:#ccc;font-size:10px">'+(total-i)+'</td>'+
+      '<td><a class="user-link" href="javascript:void(0)" onclick="document.getElementById(\'searchInput\').value=\''+esc(l.username)+'\';loadLogs()">'+esc(l.username)+'</a></td>'+
+      '<td>'+badge+'</td>'+
+      '<td>'+ip+'</td>'+
+      '<td>'+loc+'</td>'+
+      '<td class="time-text">'+esc(l.created_at||'')+'</td>'+
+      '</tr>';
+  }).join('');
+}
+
+// Init
+(function(){
+  var u=LUNA.getUser();
+  if(!u||u.role!=='admin'){window.location.href='index.html';return}
+  loadLogs();
+  // Auto-refresh every 30s
+  setInterval(loadLogs,30000);
+})();
+</script>
+</body>
+</html>

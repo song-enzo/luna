@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<title>发货管理 · LUNA ATELIER</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#C8A56D;--gold-light:#d4b98a;--cream:#f8f6f0;--border:#EBE8E3;--text:#1C1C1C;--text-muted:#999;--radius:8px;--success:#28a745}
+body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit-font-smoothing:antialiased}
+.container{max-width:800px;margin:0 auto;padding:16px}
+.header{background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.header-inner{max-width:800px;margin:0 auto;display:flex;align-items:center;padding:0 16px;height:52px;gap:12px}
+.logo{font-family:'Playfair Display',serif;font-size:14px;letter-spacing:3px;color:var(--text)}
+.logo span{color:var(--gold)}
+.back-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px;color:var(--text)}
+.page-title{font-size:13px;font-weight:500;color:var(--text-muted);letter-spacing:0.5px}
+.stats-bar{display:flex;gap:12px;margin-bottom:16px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px;text-align:center;flex:1;font-size:12px}
+.stat-num{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--gold)}
+.stat-label{font-size:10px;color:var(--text-muted);margin-top:2px;letter-spacing:0.5px}
+.order-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.oc-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--cream);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:4px;cursor:pointer}
+.oc-id{font-family:'SF Mono',Monaco,monospace;font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.02em}
+.oc-customer{font-size:13px;font-weight:600;color:var(--text)}
+.oc-date{font-size:11px;color:var(--text-muted)}
+.oc-body{padding:14px 16px}
+.style-header{font-size:13px;font-weight:600;color:var(--gold);margin-bottom:12px}
+.ship-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+.ship-table thead th{background:var(--cream);padding:7px 10px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.03em}
+.ship-table thead th:last-child{text-align:right}
+.ship-table tbody td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.ship-table tbody td:last-child{text-align:right}
+.ship-table .color-cell{display:flex;align-items:center;gap:6px;font-weight:500}
+.color-dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0}
+.ship-table .cut-qty{font-weight:600;color:var(--text)}
+.ship-table .recv-input{width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:inherit;text-align:center}
+.ship-table .recv-input:focus{outline:none;border-color:var(--gold)}
+.total-ref{padding:8px 12px;background:#faf9f6;border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text-muted);margin-bottom:12px}
+.total-ref strong{color:var(--text);font-weight:600}
+.factory-info{padding:6px 0;font-size:11px;color:var(--text-muted)}
+.oc-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.ship-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ship-form label{font-size:12px;color:var(--text-muted)}
+.ship-form input{padding:7px 10px;border:1px solid #ddd;border-radius:5px;font-size:14px;font-weight:600;font-family:inherit;text-align:center;width:80px}
+.ship-form input:focus{outline:none;border-color:var(--gold)}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 24px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;flex:1}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-gold:hover{background:#b8963e}
+.btn-gold:disabled{opacity:.5;cursor:not-allowed}
+.empty-state{text-align:center;padding:60px 20px;color:#ccc;font-size:13px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:5000;overflow-y:auto}.detail-box{background:#fff;max-width:700px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2)}.detail-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--cream);border-bottom:1px solid var(--border)}.detail-header h3{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--text)}.detail-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);padding:0 4px}.detail-close:hover{color:var(--text)}.detail-body{padding:20px}.detail-section{margin-bottom:20px}.detail-section h4{font-size:12px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}.detail-row{display:flex;padding:4px 0;font-size:13px}.detail-label{color:var(--text-muted);min-width:80px;flex-shrink:0}.detail-value{color:var(--text);font-weight:500}.detail-table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}.detail-table thead th{background:var(--cream);padding:6px 8px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;border-bottom:1px solid var(--border)}.detail-table tbody td{padding:6px 8px;border-bottom:1px solid var(--border)}.detail-table tbody td:last-child{text-align:right}@media(max-width:640px){.ship-table{font-size:11px}.ship-table .recv-input{width:60px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="logo">LUNA <span>A</span></span>
+    <span class="page-title">🚚 发货管理 — 成品出库</span>
+  </div>
+</div>
+<div class="container">
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-num" id="pendingCount">0</div><div class="stat-label">待发货</div></div>
+    <div class="stat-card"><div class="stat-num" id="todayCount">0</div><div class="stat-label">今日已发货</div></div>
+  </div>
+  <div id="orderList"></div>
+  <div id="emptyState" class="empty-state" style="display:none">
+    <div>🎉 没有待发货的订单</div>
+  </div>
+</div>
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-box">
+    <div class="detail-header">
+      <h3>订单详情</h3>
+      <button class="detail-close" onclick="document.getElementById('detailOverlay').style.display='none'">&times;</button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="luna-data.js?v=19"></script>
+<script>LUNA.renderNav();</script>
+<script>
+LUNA.checkAuth();
+
+function init() {
+  var orders = LUNA.getPendingShipOrders();
+  document.getElementById('pendingCount').textContent = orders.length;
+  var todayStr = new Date().toISOString().slice(0,10);
+  var todayDone = 0;
+  var all = LUNA.getOrders();
+  all.forEach(function(o){
+    if(o.shipping_complete && o.shipping_complete.completed===1 && o.shipping_complete.time){
+      var t=o.shipping_complete.time;
+      if(t.split(' ')[0].replace(/\//g,'-')===todayStr) todayDone++;
+    }
+  });
+  document.getElementById('todayCount').textContent = todayDone;
+  renderOrders(orders);
+}
+
+function renderOrders(orders) {
+  var c = document.getElementById('orderList');
+  var empty = document.getElementById('emptyState');
+  if (!orders.length) {
+    c.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  var html = '';
+  orders.forEach(function(o) { html += renderCard(o); });
+  c.innerHTML = html;
+}
+
+function getColorStyle(fabricName, colorName) {
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    if (allFabrics[fi].name === fabricName) {
+      var cols = allFabrics[fi].colors || [];
+      for (var ci = 0; ci < cols.length; ci++) {
+        if (cols[ci].name === colorName) {
+          if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+          return 'background:' + (cols[ci].hex || '#ccc');
+        }
+      }
+    }
+  }
+  var hash = 0;
+  for (var hi = 0; hi < colorName.length; hi++) { hash = colorName.charCodeAt(hi) + ((hash << 5) - hash); }
+  return 'background:hsl(' + (Math.abs(hash) % 360) + ',50%,70%)';
+}
+
+function getColorCuttingTotals(order) {
+  var totals = {};
+  var fabrics = order.cutting_complete && order.cutting_complete.fabrics;
+  if (fabrics) {
+    for (var fName in fabrics) {
+      var colors = fabrics[fName].colors || {};
+      for (var color in colors) {
+        totals[color] = (totals[color] || 0) + (colors[color].total || 0);
+      }
+    }
+  }
+  if (Object.keys(totals).length === 0 && order.items) {
+    order.items.forEach(function(item) {
+      var c = item.color;
+      if (!totals[c]) totals[c] = 0;
+      if (item.qty) Object.keys(item.qty).forEach(function(s) { totals[c] += item.qty[s] || 0; });
+    });
+  }
+  return totals;
+}
+
+function renderCard(order) {
+  var items = order.items || [];
+  var firstCode = items.length > 0 ? (items[0].code || '') : '';
+  var firstName = items.length > 0 ? (items[0].name || '') : '';
+  var totalCut = order.cutting_complete ? (order.cutting_complete.total_cut || 0) : (order.total_qty || 0);
+  var colorTotals = getColorCuttingTotals(order);
+
+  // Build color->fabric mapping
+  var colorFabrics = {};
+  items.forEach(function(item) {
+    if (!colorFabrics[item.color]) colorFabrics[item.color] = item.fabric || '';
+  });
+
+  var colors = Object.keys(colorTotals);
+  // If no cutting totals, use items
+  if (colors.length === 0) {
+    items.forEach(function(item) {
+      var c = item.color || '';
+      if (colorTotals[c] === undefined) {
+        var q = 0;
+        if (item.qty) Object.keys(item.qty).forEach(function(s) { q += item.qty[s] || 0; });
+        colorTotals[c] = q;
+      }
+    });
+    colors = Object.keys(colorTotals);
+  }
+
+  var factory = (order.pickup_complete && order.pickup_complete.factory) || '';
+
+  var card = '<div class="order-card" id="card_' + escJs(order.id) + '">' +
+    '<div class="oc-header" onclick="showOrderDetail(\'' + escJs(order.id) + '\')">' +
+    '<span class="oc-id">' + esc(order.id) + '</span>' +
+    '<span class="oc-customer">' + esc(order.customer) + (order.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(order.sub_customer)+')</span>':'') + '</span>' +
+    '<span class="oc-date">📅 ' + (order.date || '') + '</span>' +
+    '</div>' +
+    '<div class="oc-body">' +
+    '<div class="style-header">ART-' + esc(firstCode) + ' ' + esc(firstName) + '</div>';
+
+  // Factory info
+  if (factory) {
+    card += '<div class="factory-info">🧵 车缝工厂: ' + esc(factory) + '</div>';
+  }
+
+  // Color × cutting × received table
+  card += '<table class="ship-table"><thead><tr>' +
+    '<th>颜色</th><th>裁剪数</th><th>工厂收货</th>' +
+    '</tr></thead><tbody>';
+
+  var grandCut = 0;
+  colors.forEach(function(color) {
+    var cutQty = colorTotals[color] || 0;
+    grandCut += cutQty;
+    var fabric = colorFabrics[color] || '';
+    card += '<tr>' +
+      '<td><div class="color-cell"><span class="color-dot" style="' + getColorStyle(fabric, color) + '"></span>' + esc(color) + '</div></td>' +
+      '<td class="cut-qty">' + cutQty + '</td>' +
+      '<td><input class="recv-input" id="recv_' + escJs(order.id) + '_' + escJsId(color) + '" type="number" min="0" max="' + cutQty + '" value="' + cutQty + '" onchange="updateShipTotal(\'' + escJs(order.id) + '\')"></td>' +
+      '</tr>';
+  });
+
+  card += '</tbody></table>';
+
+  // Total reference
+  card += '<div class="total-ref">✂️ 裁剪总数参考: <strong>' + grandCut + '</strong> 件</div>';
+
+  // Received total from all colors
+  card += '</div>' + // close oc-body
+    '<div class="oc-footer">' +
+    '<div class="ship-form">' +
+    '<label>实际发货数量</label>' +
+    '<input type="number" id="ship_qty_' + escJs(order.id) + '" value="' + grandCut + '" min="1">' +
+    '<span style="font-size:11px;color:#999">件</span>' +
+    '</div>' +
+    '<div style="margin-top:10px">' +
+    '<button class="btn btn-gold" onclick="confirmShip(\'' + escJs(order.id) + '\')">📦 确认发货</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
+  return card;
+}
+
+function updateShipTotal(orderId) {
+  // Auto-calc total from color received inputs
+  var total = 0;
+  var inputs = document.querySelectorAll('[id^="recv_' + orderId + '_"]');
+  inputs.forEach(function(inp) {
+    total += parseInt(inp.value) || 0;
+  });
+  var shipInput = document.getElementById('ship_qty_' + orderId);
+  if (shipInput) shipInput.value = total;
+}
+
+function confirmShip(orderId) {
+  var shipInput = document.getElementById('ship_qty_' + orderId);
+  var qty = parseInt(shipInput.value) || 0;
+  if (qty <= 0) { toast('请输入发货数量'); return; }
+
+  // Collect per-color received quantities
+  var colorReceived = {};
+  var inputs = document.querySelectorAll('[id^="recv_' + orderId + '_"]');
+  inputs.forEach(function(inp) {
+    var idParts = inp.id.split('_');
+    var color = idParts.slice(2).join('_'); // After 'recv_' + orderId + '_'
+    var val = parseInt(inp.value) || 0;
+    colorReceived[color] = val;
+  });
+
+  LUNA.showConfirm('确认订单 ' + orderId + ' 发货 ' + qty + ' 件？', function() {
+    var result = LUNA.shipOrder(orderId, qty, '管理员', colorReceived);
+    if (result) {
+      toast('✅ 发货成功');
+      // 立即从 DOM 移除该卡片
+      var card = document.getElementById('card_' + orderId);
+      if (card) card.style.display = 'none';
+      setTimeout(function() { init(); }, 300);
+    } else {
+      toast('❌ 发货失败，服务器无响应，请重试');
+    }
+  });
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function escJs(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+function escJsId(s) { return (s || '').replace(/[^a-zA-Z0-9一-鿿]/g, '_'); }
+
+function showOrderDetail(orderId) {
+  var orders = LUNA.getOrders();
+  var order = null;
+  for (var i = 0; i < orders.length; i++) {
+    if (orders[i].id === orderId) { order = orders[i]; break; }
+  }
+  if (!order) { toast('未找到订单'); return; }
+
+  var html = '';
+
+  // Order info section
+  html += '<div class="detail-section"><h4>订单信息</h4>' +
+    '<div class="detail-row"><span class="detail-label">订单号</span><span class="detail-value">' + esc(order.id) + '</span></div>' +
+    '<div class="detail-row"><span class="detail-label">客户</span><span class="detail-value">' + esc(order.customer) + '</span></div>' +
+    (order.sub_customer ? '<div class="detail-row"><span class="detail-label">二级客人</span><span class="detail-value">' + esc(order.sub_customer) + '</span></div>' : '') +
+    '<div class="detail-row"><span class="detail-label">日期</span><span class="detail-value">' + (order.date || '') + '</span></div>' +
+    (order.note ? '<div class="detail-row"><span class="detail-label">备注</span><span class="detail-value">' + esc(order.note) + '</span></div>' : '') +
+    '</div>';
+
+  // Original order items
+  var items = order.items || [];
+  if (items.length) {
+    html += '<div class="detail-section"><h4>下单明细</h4>';
+    items.forEach(function(item) {
+      html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin:8px 0 4px">#' + esc(item.code || '') + ' ' + esc(item.name || '') + '</div>' +
+        '<table class="detail-table"><thead><tr><th>颜色</th><th>面料</th><th>尺码</th><th>数量</th></tr></thead><tbody>';
+      var qty = item.qty || {};
+      var sizes = Object.keys(qty);
+      if (sizes.length) {
+        sizes.forEach(function(s) {
+          html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(item.fabric || '') + '</td><td>' + esc(s) + '</td><td>' + (qty[s] || 0) + '</td></tr>';
+        });
+      } else {
+        html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(item.fabric || '') + '</td><td>-</td><td>0</td></tr>';
+      }
+      html += '</tbody></table>';
+    });
+    html += '</div>';
+  }
+
+  // Cutting data
+  var cutting = order.cutting_complete;
+  if (cutting && cutting.fabrics) {
+    html += '<div class="detail-section"><h4>裁剪数据</h4>' +
+      '<div class="detail-row"><span class="detail-label">裁剪总数</span><span class="detail-value">' + (cutting.total_cut || 0) + ' 件</span></div>' +
+      (cutting.time ? '<div class="detail-row"><span class="detail-label">裁剪时间</span><span class="detail-value">' + cutting.time + '</span></div>' : '') +
+      (cutting.operator ? '<div class="detail-row"><span class="detail-label">裁剪师</span><span class="detail-value">' + esc(cutting.operator) + '</span></div>' : '');
+
+    for (var fName in cutting.fabrics) {
+      var fab = cutting.fabrics[fName];
+      html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin:8px 0 4px">🧵 ' + esc(fName) + '</div>' +
+        '<table class="detail-table"><thead><tr><th>颜色</th><th>层数</th><th>手数</th><th>总件数</th><th>预估用料(m)</th></tr></thead><tbody>';
+      var colors = fab.colors || {};
+      for (var col in colors) {
+        var cd = colors[col];
+        html += '<tr>' +
+          '<td>' + esc(col) + '</td>' +
+          '<td>' + (cd.layers || 0) + '</td>' +
+          '<td>' + (cd.hands || 0) + '</td>' +
+          '<td>' + (cd.total || 0) + '</td>' +
+          '<td>' + (cd.estMeters ? parseFloat(cd.estMeters).toFixed(2) : '-') + '</td>' +
+          '</tr>';
+      }
+      if (fab.patternLen) {
+        html += '<tr style="background:var(--cream)"><td colspan="4" style="font-weight:600">唛架长度</td><td>' + parseFloat(fab.patternLen).toFixed(2) + 'm</td></tr>';
+      }
+      if (fab.lossCm) {
+        html += '<tr style="background:var(--cream)"><td colspan="4" style="font-weight:600">损耗</td><td>' + fab.lossCm + 'cm</td></tr>';
+      }
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+  }
+
+  // Pickup / factory info
+  var pickup = order.pickup_complete;
+  if (pickup) {
+    html += '<div class="detail-section"><h4>车缝外发</h4>' +
+      (pickup.factory ? '<div class="detail-row"><span class="detail-label">工厂</span><span class="detail-value">' + esc(pickup.factory) + '</span></div>' : '') +
+      (pickup.price ? '<div class="detail-row"><span class="detail-label">车缝价格</span><span class="detail-value">¥' + parseFloat(pickup.price).toFixed(2) + '</span></div>' : '') +
+      (pickup.operator ? '<div class="detail-row"><span class="detail-label">经办人</span><span class="detail-value">' + esc(pickup.operator) + '</span></div>' : '') +
+      (pickup.time ? '<div class="detail-row"><span class="detail-label">时间</span><span class="detail-value">' + pickup.time + '</span></div>' : '') +
+      (pickup.received_colors ? '<div class="detail-row"><span class="detail-label">工厂收货</span><span class="detail-value">' + JSON.stringify(pickup.received_colors) + '</span></div>' : '') +
+      '</div>';
+  }
+
+  // Shipping info
+  var shipping = order.shipping_complete;
+  if (shipping) {
+    html += '<div class="detail-section"><h4>发货数据</h4>' +
+      (shipping.qty ? '<div class="detail-row"><span class="detail-label">发货数量</span><span class="detail-value">' + shipping.qty + ' 件</span></div>' : '') +
+      (shipping.operator ? '<div class="detail-row"><span class="detail-label">经办人</span><span class="detail-value">' + esc(shipping.operator) + '</span></div>' : '') +
+      (shipping.time ? '<div class="detail-row"><span class="detail-label">发货时间</span><span class="detail-value">' + shipping.time + '</span></div>' : '') +
+      '</div>';
+  }
+
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailOverlay').style.display = 'block';
+}
+
+init();
+window.addEventListener('luna-data-changed', function() { setTimeout(init, 100); });
+</script>
+</body>
+</html>

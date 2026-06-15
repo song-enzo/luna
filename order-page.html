@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNA ATELIER · 下单</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:100px}
+.header{display:flex;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #EBE8E3;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 8px 4px 0;background:none;border:none;color:#666;font-family:inherit}
+.header .logo{font-family:'Playfair Display',serif;font-size:14px;letter-spacing:3px;color:#1C1C1C;margin-right:auto}
+.header .logo span{color:#C8A56D}
+.header .cart-icon{background:none;border:none;font-size:18px;cursor:pointer;position:relative;padding:4px;color:#999}
+.header .cart-badge{position:absolute;top:-2px;right:-6px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff}
+.pdp-wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
+/* Carousel */
+.carousel-wrap{position:relative;margin:12px 0;overflow:hidden;border-radius:8px;background:#f0ede8}
+.carousel-track{display:flex;will-change:transform}
+.carousel-slide{flex:0 0 100%;aspect-ratio:3/4;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:32px;color:#d5d0c9;flex-direction:column;gap:4px}
+.carousel-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.carousel-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.85);border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,.08);color:#333}
+.carousel-arrow.prev{left:10px}.carousel-arrow.next{right:10px}
+.carousel-dots{display:flex;justify-content:center;gap:4px;padding:8px 0 4px}
+.carousel-dot{width:5px;height:5px;border-radius:50%;background:#ddd;cursor:pointer;transition:all .2s}
+.carousel-dot.active{background:#C8A56D;width:14px;border-radius:3px}
+.carousel-counter{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:5;font-weight:500;letter-spacing:.5px}
+.carousel-track.dragging{transition:none!important;cursor:grab}
+.carousel-slide{cursor:pointer}
+/* Product Info */
+.product-info{padding:16px 0 8px}
+.product-code-line{display:flex;align-items:baseline;justify-content:space-between;margin-top:2px}
+.product-code{font-size:14px;color:#C8A56D;font-weight:600}
+.product-price{font-size:12px;color:#C8A56D;font-weight:600}
+.product-name{font-family:'Playfair Display',serif;font-size:22px;margin-top:4px;color:#1C1C1C}
+.product-desc{font-size:13px;color:#888;line-height:1.6;margin-top:8px;padding:12px;background:#f8f8f8;border-radius:6px}
+/* Color Selection */
+.opt-block{margin:16px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.opt-label{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:10px}
+.fabric-card{background:#faf9f7;border:1px solid #EBE8E3;border-radius:6px;padding:10px;margin-bottom:8px}
+.fabric-card .fab-name{font-size:13px;font-weight:600;color:#333;margin-bottom:2px}
+.fabric-card .fab-comp{font-size:10px;color:#aaa;margin-bottom:8px}
+.fabric-card .fab-swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch-chip{width:56px;height:56px;border-radius:0;border:2px solid #ddd;cursor:pointer;transition:all .15s;object-fit:cover;position:relative}
+.swatch-chip:hover{border-color:#C8A56D}
+.swatch-chip.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
+.swatch-chip .dot{width:100%;height:100%;border-radius:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.swatch-supplier{font-size:8px;color:#aaa;text-align:center;margin-top:2px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selected-color-preview{display:none}
+/* Order Note */
+.order-note{margin-top:10px}
+.order-note textarea{width:100%;padding:8px 10px;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;font-family:inherit;resize:none;min-height:44px;outline:none;color:#333}
+.order-note textarea:focus{border-color:#C8A56D}
+/* Size + Qty */
+.size-btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.size-btn{padding:6px 12px;border:1.5px solid #C8A56D;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#C8A56D;font-family:inherit;transition:all .15s;min-width:44px;text-align:center}
+.size-btn:hover{background:#faf6ee}
+.size-btn.selected{background:#C8A56D;color:#fff;border-color:#C8A56D}
+.qty-select{padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;color:#333;outline:none;background:#fff;min-width:60px}
+.qty-select:focus{border-color:#C8A56D}
+.guest-select{flex:1;padding:6px 8px;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;font-family:inherit;outline:none;color:#333;background:#fff}
+.guest-select:focus{border-color:#C8A56D}
+/* Add to Cart Button */
+.add-btn{width:100%;padding:14px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .15s}
+.add-btn:disabled{opacity:.5;cursor:default;background:#ddd;color:#999}
+.add-btn:hover:not(:disabled){background:#b8963e}
+.add-btn .sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:400}
+/* Cart Section */
+.cart-section{margin-top:4px}
+.cart-section .title{font-size:13px;font-weight:600;color:#333;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.cart-section .title .total{color:#C8A56D;font-weight:600}
+.cart-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:8px;margin-bottom:8px;font-size:13px;border:1px solid #EBE8E3}
+.cart-item .info{flex:1;min-width:0}
+.cart-item .info .sz{font-weight:600;color:#333;font-size:13px;margin-bottom:2px}
+.cart-item .info .detail{font-size:11px;color:#999;margin-bottom:4px}
+.cart-item .qty-row{display:flex;align-items:center;gap:8px;margin-top:3px}
+.cart-item .qty-sz{font-size:12px;color:#999;min-width:24px;font-weight:500}
+.cart-item .del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:2px 6px;font-family:inherit;margin-top:2px;transition:color .15s}
+.cart-item .del-btn:hover{color:#c41e3a}
+.cart-empty{text-align:center;padding:24px;color:#bbb;font-size:13px}
+.remark-wrap{width:100%}
+.remark-wrap textarea{width:100%;padding:10px;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;font-family:inherit;resize:vertical;min-height:44px;outline:none;color:#333}
+.remark-wrap textarea:focus{border-color:#C8A56D}
+/* Submit Button */
+.submit-btn{width:100%;padding:16px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin:8px 0;transition:background .15s}
+.submit-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+.submit-btn:hover:not(:disabled){background:#b8963e}
+.submit-btn .sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:400}
+/* Cart Qty Controls */
+.qty-ctrl{display:inline-flex;align-items:center;gap:3px}
+.qty-btn{width:26px;height:26px;border:1.5px solid #C8A56D;border-radius:6px;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#C8A56D;font-family:inherit;line-height:1;transition:all .15s}
+.qty-btn:hover{background:#C8A56D;color:#fff}
+.qty-val{min-width:20px;text-align:center;font-size:13px;font-weight:600;color:#1C1C1C}
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1C1C1C;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+/* Floating cart */
+.cart-float{position:fixed;bottom:24px;right:20px;z-index:900;width:52px;height:52px;border-radius:50%;background:#1C1C1C;color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:transform .15s;font-family:inherit}
+.cart-float:hover{transform:scale(1.08)}
+.cart-float .badge{position:absolute;top:-4px;right:-4px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 4px}
+.cart-modal{display:none;position:fixed;bottom:90px;right:16px;width:340px;max-width:92vw;max-height:60vh;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:901;overflow:hidden;flex-direction:column}
+.cart-modal.open{display:flex}
+.cart-modal .cm-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #EBE8E3}
+.cart-modal .cm-header .cm-title{font-size:13px;font-weight:600;color:#1C1C1C}
+.cart-modal .cm-header .cm-close{background:none;border:none;font-size:18px;color:#999;cursor:pointer;font-family:inherit;padding:2px}
+.cart-modal .cm-body{overflow-y:auto;flex:1;padding:8px 0}
+.cart-empty{text-align:center;padding:20px;color:#bbb;font-size:12px}
+/* Cart code-grouped */
+.cart-code-group{border:1.5px dashed #C8A56D;border-radius:8px;padding:8px;margin:0 8px 10px;background:#fff}
+.cart-code-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px;font-size:13px}
+.cart-code-header .cc-code{font-weight:700;color:#1C1C1C;font-size:12px}
+.cart-code-header .cc-price{color:#C8A56D;font-weight:600;font-size:12px;white-space:nowrap}
+.cart-color-item{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-top:1px solid #EBE8E3}
+.cart-color-item:first-of-type{border-top:none}
+.cart-color-swatch{width:26px;height:26px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;margin-top:2px;background-size:cover;background-position:center;background-repeat:no-repeat}
+.cart-color-info{flex:1;min-width:0}
+.cart-color-name{font-size:11px;font-weight:600;color:#555;margin-bottom:1px}
+.cart-qty-ctrl{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.cart-qty-cell{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid #EBE8E3;border-radius:6px;padding:4px 5px 3px;background:#fafaf8;min-width:36px}
+.cart-qty-btn{width:26px;height:20px;border:1px solid #C8A56D;border-radius:3px;background:#fff;color:#C8A56D;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;padding:0;transition:all .1s}
+.cart-qty-btn:active{background:#C8A56D;color:#fff}
+.cart-qty-val{font-size:12px;font-weight:700;color:#1C1C1C;line-height:1.2}
+.cart-qty-lbl{font-size:9px;color:#999;font-weight:500}
+.cart-item .del-btn{background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:2px 4px}
+.cart-item .del-btn:hover{color:#c41e3a}
+.cart-modal .cm-footer{padding:10px 14px;border-top:1px solid #EBE8E3;display:flex;gap:12px;align-items:flex-start}
+.cart-modal .cm-footer .guest-select{flex:1;min-width:0}
+.cart-modal .cm-footer .submit-btn{flex:1;padding:14px 0;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;text-align:center}
+.cart-modal .cm-footer .submit-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+.cart-modal .cm-footer .submit-btn:hover:not(:disabled){background:#b8963e}
+.cart-modal .cm-footer .submit-btn .sub{font-size:13px;color:#fff;font-weight:600}
+/* Cart backdrop */
+.cart-backdrop{display:none;position:fixed;inset:0;z-index:898;background:transparent}
+.cart-backdrop.show{display:block}
+/* Color Card Grid — 5 columns, color on top, name on white bg below */
+.color-card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.color-card{cursor:pointer;border-radius:6px;overflow:hidden;background:#fff;border:1.5px solid #EBE8E3;transition:all .15s}
+.color-card:hover{border-color:#C8A56D}
+.color-card.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
+.color-card .swatch-area{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#f0ede8;cursor:pointer}
+.color-card .swatch-area img{width:100%;height:100%;object-fit:cover}
+.color-card .color-label{padding:4px 2px;text-align:center;font-size:10px;font-weight:500;color:#1C1C1C;background:#fff;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+/* Quick Add Color Button */
+.qadd-btn{width:100%;padding:8px;margin-top:8px;border:1.5px dashed #C8A56D;border-radius:6px;background:#faf6ee;font-size:12px;color:#C8A56D;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;text-align:center}
+.qadd-btn:hover{background:#C8A56D;color:#fff}
+/* Quick Add Color Modal */
+.qc-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center}
+.qc-overlay.active{display:flex}
+.qc-panel{background:#fff;border-radius:10px;padding:20px;width:420px;max-width:92vw;max-height:90vh;overflow-y:auto}
+.qc-panel h3{font-size:15px;font-weight:700;margin-bottom:12px;color:#1C1C1C}
+.qc-panel .field-group{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.qc-panel .field-group label{font-size:10px;color:#888;font-weight:500}
+.qc-panel .field-group input{padding:8px 10px;border:1px solid #e8e5e0;border-radius:4px;font-size:13px;font-family:inherit}
+.qc-panel .field-group input:focus{border-color:#C8A56D;outline:none}
+/* Mode tabs inside modal */
+.qc-mode-tabs{display:flex;gap:0;margin-bottom:12px;background:#f0ede8;border-radius:6px;padding:2px}
+.qc-mode-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:500;border:none;background:transparent;color:#999;cursor:pointer;border-radius:5px;font-family:inherit;transition:all .15s}
+.qc-mode-tab.active{background:#fff;color:#1C1C1C;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.qc-mode-tab:hover:not(.active){color:#666}
+/* Solid color preview */
+.solid-preview-wrap{padding:12px;background:#faf9f7;border-radius:8px;margin-bottom:10px;text-align:center}
+.solid-preview-swatch{width:100%;height:140px;border-radius:8px;border:1px solid #e8e5e0;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.3);transition:background .15s}
+.solid-picker-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.solid-picker-row label{font-size:11px;color:#666;min-width:50px;font-weight:500}
+.solid-picker-row input[type=color]{width:40px;height:34px;border:1px solid #ddd;border-radius:4px;padding:2px;cursor:pointer;background:#fff}
+.solid-picker-row .hex-label{font-size:12px;color:#999;font-family:monospace;margin-left:4px;min-width:70px}
+.solid-slider-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.solid-slider-row label{font-size:11px;color:#666;min-width:50px;font-weight:500}
+.solid-slider-row input[type=range]{flex:1;accent-color:#C8A56D;height:4px}
+.solid-slider-row .val{font-size:10px;color:#999;min-width:28px;text-align:right}
+/* Photo section (shown only in photo mode) */
+.qc-photo-section{display:block}
+.qc-photo-section.hidden{display:none}
+/* Drop zone */
+.drop-zone{width:100%;height:180px;border:2px dashed #d5d0c9;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:#faf9f7;margin-bottom:10px;overflow:hidden;position:relative}
+.drop-zone.drag-over{border-color:#C8A56D;background:#faf6ee}
+.drop-zone .drop-hint{text-align:center;color:#bbb;font-size:13px;pointer-events:none}
+.drop-zone .drop-hint .icon{font-size:36px;margin-bottom:4px}
+.drop-zone .drop-hint .sub{font-size:10px;color:#ddd;margin-top:4px}
+.drop-zone .preview-img{width:100%;height:100%;object-fit:contain;display:none}
+.drop-zone .anchor-overlay{display:none;position:absolute;inset:0;pointer-events:none}
+.drop-zone .anchor-overlay.active{display:block}
+.drop-zone .anchor-dot{position:absolute;width:16px;height:16px;border-radius:50%;background:#ff4444;border:2px solid #fff;transform:translate(-50%,-50%);box-shadow:0 1px 3px rgba(0,0,0,.3);pointer-events:none}
+.drop-zone .anchor-dot .lbl{position:absolute;left:20px;top:-2px;white-space:nowrap;font-size:10px;color:#fff;background:rgba(0,0,0,.6);padding:1px 5px;border-radius:3px}
+/* Filter sliders */
+.filter-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.filter-row label{font-size:11px;color:#666;min-width:60px;font-weight:500}
+.filter-row input[type=range]{flex:1;accent-color:#C8A56D;height:4px}
+.filter-row .val{font-size:10px;color:#999;min-width:36px;text-align:right}
+.qc-panel .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.qc-panel .btn-row button{padding:9px 18px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.qc-panel .btn-row .confirm{background:#1C1C1C;color:#fff;border:none}
+.qc-panel .btn-row .confirm:hover{background:#333}
+.qc-panel .btn-row .cancel{background:#f5f5f5;color:#888;border:1px solid #e0e0e0}
+.qc-panel .btn-row .save-anchor{background:#C8A56D;color:#fff;border:none;font-size:11px;padding:6px 12px}
+.qc-panel .btn-row .save-anchor:hover{background:#b8963e}
+/* Anchor marker in drop zone */
+.anchor-cursor{cursor:crosshair}
+/* 撞色 toggle */
+.contrast-toggle{display:flex;align-items:center;gap:8px;margin:12px 0 10px;padding:10px 12px;background:#faf9f7;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;color:#666}
+.contrast-toggle .switch{position:relative;width:40px;height:22px;flex-shrink:0}
+.contrast-toggle .switch input{opacity:0;width:0;height:0}
+.contrast-toggle .switch .slider{position:absolute;inset:0;background:#ddd;border-radius:11px;cursor:pointer;transition:all .2s}
+.contrast-toggle .switch .slider::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:all .2s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.contrast-toggle .switch input:checked+.slider{background:#C8A56D}
+.contrast-toggle .switch input:checked+.slider::before{left:20px}
+.contrast-toggle .hint{font-size:10px;color:#bbb;margin-left:4px}
+/* Mode Tabs */
+.mode-tabs{display:flex;gap:0;margin-bottom:12px;background:#f0ede8;border-radius:6px;padding:2px}
+.mode-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:500;border:none;background:transparent;color:#999;cursor:pointer;border-radius:5px;font-family:inherit;transition:all .15s}
+.mode-tab.active{background:#fff;color:#1C1C1C;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.mode-tab:hover:not(.active){color:#666}
+/* Stampa Grid */
+.stampa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.stampa-card{border:1.5px solid #EBE8E3;border-radius:6px;overflow:hidden;cursor:pointer;transition:all .15s;background:#fff}
+.stampa-card:hover{border-color:#C8A56D}
+.stampa-card.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
+.stampa-card .stampa-img{width:100%;aspect-ratio:1;object-fit:cover;background:#f0ede8;display:block}
+.stampa-card .stampa-label{padding:4px;text-align:center;font-size:10px;font-weight:500;color:#1C1C1C}
+/* Stampa upload area */
+.stampa-upload{border:2px dashed #ddd;border-radius:6px;padding:16px;text-align:center;margin:8px 0;cursor:pointer;transition:all .15s;background:#faf9f7}
+.stampa-upload:hover,.stampa-upload.drag-over{border-color:#C8A56D;background:#faf6ee}
+.stampa-upload .icon{font-size:24px;margin-bottom:6px}
+.stampa-upload .hint{font-size:12px;color:#999}
+.stampa-upload .sub{font-size:10px;color:#ccc;margin-top:2px}
+.stampa-upload.preview-active{padding:8px}
+.stampa-upload .upload-preview{max-width:100%;max-height:120px;object-fit:contain;display:none;margin:0 auto 8px;border-radius:4px}
+.stampa-code-row{display:flex;gap:6px;margin:8px 0}
+.stampa-code-row input{flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:inherit;outline:none}
+.stampa-code-row input:focus{border-color:#C8A56D}
+.stampa-code-row button{padding:8px 14px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.stampa-code-row button:disabled{opacity:.5;cursor:default}
+/* Selected stampa display + size matrix */
+.sel-stampa{display:none;padding:10px;background:#faf9f7;border:1px solid #EBE8E3;border-radius:6px;margin:8px 0}
+.sel-stampa.active{display:block}
+.sel-stampa .ss-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sel-stampa .ss-thumb{width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid #EBE8E3;background:#f0ede8}
+.sel-stampa .ss-info{flex:1;font-size:12px;font-weight:600;color:#333}
+.sel-stampa .ss-code{font-size:10px;color:#C8A56D;font-weight:400}
+.stampa-size-row{display:flex;align-items:center;gap:6px;margin:4px 0}
+.stampa-size-row .ssz-label{font-size:12px;font-weight:600;color:#666;min-width:32px}
+.stampa-size-row .ssz-qty{width:60px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:12px;text-align:center;font-family:inherit;outline:none}
+.stampa-size-row .ssz-qty:focus{border-color:#C8A56D}
+.stampa-size-row .ssz-qty::-webkit-inner-spin-button{-webkit-appearance:none}
+.stampa-section-label{font-size:11px;color:#999;font-weight:500;margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center}
+.stampa-section-label .action{font-size:10px;color:#C8A56D;cursor:pointer}
+/* 撞色 combo matrix */
+.combo-matrix{display:none;margin-top:8px}
+.combo-matrix.active{display:block}
+.contrast-wall{margin-top:14px;padding-top:12px;border-top:1px solid #EBE8E3}
+.contrast-wall .wall-label{font-size:12px;font-weight:600;color:#1C1C1C;margin-bottom:4px}
+.contrast-wall .wall-label .wall-idx{color:#999;font-weight:400;font-size:11px}
+.combo-del{background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:2px 4px;font-family:inherit}
+.combo-del:hover{color:#c41e3a}
+.combo-add-row{display:flex;gap:6px;align-items:center;padding:6px 8px;margin-top:2px}
+/* Color card lightbox */
+.color-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;align-items:center;justify-content:center;padding:24px;flex-direction:column}
+.color-lightbox.show{display:flex}
+.color-lightbox .cl-close{position:absolute;top:18px;right:18px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .2s;z-index:2}
+.color-lightbox .cl-close:hover{background:rgba(255,255,255,.3);transform:scale(1.08)}
+.color-lightbox .cl-img{max-width:100%;max-height:80vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.4);object-fit:contain}
+.color-lightbox .cl-name{color:#fff;text-align:center;margin-top:14px;font-size:15px;font-weight:500;letter-spacing:.5px;opacity:.85}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back" onclick="history.back()">←</button>
+  <span class="logo">LUNA <span>A</span></span>
+  <button class="cart-icon" onclick="toggleCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+</div>
+<div class="pdp-wrap">
+  <!-- Carousel -->
+  <div class="carousel-wrap" id="carouselWrap">
+    <div class="carousel-track" id="carouselTrack"></div>
+    <button class="carousel-arrow prev" id="prevBtn">‹</button>
+    <button class="carousel-arrow next" id="nextBtn">›</button>
+    <div class="carousel-dots" id="carouselDots"></div>
+    <div class="carousel-counter" id="carouselCounter"></div>
+  </div>
+  <!-- Info -->
+  <div class="product-info" id="productInfo"></div>
+
+  <!-- Color Selection -->
+  <div class="opt-block" id="colorBlock">
+    <div class="opt-label" id="modeLabel">① 选择颜色</div>
+    <div id="fabricColors"></div>
+    <!-- Stampa Area (hidden by default, shown when style.type === 'stampa') -->
+    <div id="stampaArea" style="display:none">
+      <div class="stampa-section-label">历史花版 <span class="action" onclick="loadHistoryStampe()">🔄 刷新</span></div>
+      <div id="historyStampaGrid" class="stampa-grid"></div>
+      <div class="stampa-section-label" style="margin-top:16px">上传新花版</div>
+      <div class="stampa-code-row">
+        <input id="stampaCodeInput" placeholder="花版编号 e.g. SP-2026-001" maxlength="30">
+        <button id="stampaUploadBtn" onclick="uploadStampa()">上传</button>
+      </div>
+      <div class="stampa-upload" id="stampaDropZone" tabindex="0">
+        <div class="icon">📸</div>
+        <div class="hint">Ctrl+V 粘贴或拖入花版图片</div>
+        <div class="sub">点击也可选择文件</div>
+        <img class="upload-preview" id="stampaPreviewImg" alt="">
+      </div>
+      <div class="sel-stampa" id="selStampa">
+        <div class="ss-header">
+          <img class="ss-thumb" id="ssThumb" alt="">
+          <div class="ss-info">
+            <div id="ssName"></div>
+            <div class="ss-code" id="ssCode"></div>
+          </div>
+        </div>
+        <div class="opt-label" style="margin-top:8px">尺码 &amp; 数量</div>
+        <div id="stampaSizeMatrix"></div>
+      </div>
+    </div>
+    <button class="qadd-btn" id="quickAddBtn" onclick="openQuickColor()">➕ 快捷添加颜色（粘贴/拖入截图）</button>
+    <div class="order-note">
+      <textarea id="orderNoteInput" placeholder="订单备注（选填）：袖长改短2cm、内衬换颜色…" rows="2"></textarea>
+    </div>
+  </div>
+  <!-- 撞色 Toggle -->
+  <div class="contrast-toggle" id="contrastToggle" style="display:none">
+    <label class="switch">
+      <input type="checkbox" id="contrastModeInput" onchange="toggleContrastMode()">
+      <span class="slider"></span>
+    </label>
+    <span>撞色模式</span>
+    <span class="hint">开启后可为主料和配料分别选择颜色组成撞色搭配</span>
+  </div>
+  <div class="combo-matrix" id="comboMatrix"></div>
+
+  <!-- Step 2: Size + Qty -->
+  <div class="opt-block" id="sizeQtySection">
+    <div class="opt-label">② 尺码 &amp; 数量 <span style="font-size:10px;color:#999;font-weight:400;margin-left:6px;cursor:help" title="XS≈80cm | S≈84cm | M≈88cm | L≈92cm | XL≈96cm | 2XL≈100cm | 3XL≈104cm | UNICA=均码">❓ 尺码对照</span></div>
+    <div class="size-btn-row" id="sizeBtns"></div>
+    <div style="font-size:10px;color:#999;margin-top:6px">&#x2139; UNICA = 均码，与其他码数互斥选择</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <span style="font-size:13px;color:#666">数量</span>
+      <select class="qty-select" id="qtySelect"></select>
+    </div>
+    <button class="add-btn" id="addToCartBtn" disabled>🛒 加入购物车 <span class="sub" id="addSub">— 先选择颜色</span></button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<!-- Quick Add Color Modal -->
+<div class="qc-overlay" id="quickColorModal" onclick="if(event.target===this)closeQuickColor()">
+  <div class="qc-panel">
+    <h3>➕ 快捷建色</h3>
+    <!-- Mode Tabs -->
+    <div class="qc-mode-tabs">
+      <button class="qc-mode-tab active" data-mode="solid" onclick="switchQcMode('solid')">🎨 纯色</button>
+      <button class="qc-mode-tab" data-mode="photo" onclick="switchQcMode('photo')">📷 有图</button>
+    </div>
+
+    <!-- Solid Color Mode -->
+    <div id="qcSolidSection">
+      <div class="solid-preview-wrap">
+        <div class="solid-preview-swatch" id="solidPreviewSwatch" style="background:#b0a99e">预览色块</div>
+        <div class="solid-picker-row">
+          <label>选色</label>
+          <input type="color" id="solidColorPicker" value="#b0a99e" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
+          <span class="hex-label" id="solidHexLabel">#b0a99e</span>
+        </div>
+      </div>
+      <div class="solid-slider-row">
+        <label>饱和度</label>
+        <input type="range" min="0" max="100" value="50" id="solidSatSlider" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
+        <span class="val" id="solidSatVal">50%</span>
+      </div>
+      <div class="solid-slider-row">
+        <label>明度</label>
+        <input type="range" min="0" max="100" value="70" id="solidBriSlider" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
+        <span class="val" id="solidBriVal">70%</span>
+      </div>
+    </div>
+
+    <!-- Photo Mode -->
+    <div id="qcPhotoSection" class="qc-photo-section hidden">
+      <div class="drop-zone" id="dropZone" tabindex="0">
+        <div class="drop-hint" id="dropHint">
+          <div class="icon">📸</div>
+          <div>Ctrl+V 粘贴或拖入截图</div>
+          <div class="sub">点击也可选择文件</div>
+        </div>
+        <img class="preview-img" id="previewImg" alt="">
+        <div class="anchor-overlay" id="anchorOverlay"></div>
+      </div>
+      <div class="filter-row">
+        <label>☀️ 亮度</label>
+        <input type="range" min="50" max="150" value="100" id="brightnessSlider" oninput="updatePreviewFilter()">
+        <span class="val" id="brightnessVal">100%</span>
+      </div>
+      <div class="filter-row">
+        <label>🌓 对比度</label>
+        <input type="range" min="50" max="150" value="100" id="contrastSlider" oninput="updatePreviewFilter()">
+        <span class="val" id="contrastVal">100%</span>
+      </div>
+      <div class="filter-row">
+        <label>🎨 色相旋转</label>
+        <input type="range" min="0" max="360" value="0" id="hueSlider" oninput="updatePreviewFilter()">
+        <span class="val" id="hueVal">0°</span>
+      </div>
+      <div style="font-size:10px;color:#bbb;margin-bottom:6px">💡 在图上点击可标记多色锚点，一张图派生多个颜色</div>
+    </div>
+
+    <!-- Common: Color Name -->
+    <div class="field-group">
+      <label>颜色名称 <span id="anchorInfo" style="color:#C8A56D;font-weight:400"></span></label>
+      <input id="quickColorName" list="colorNameDatalist" placeholder="请输入颜色名称再调节" oninput="suggestColorFromName()">
+      <datalist id="colorNameDatalist"></datalist>
+    </div>
+    <div class="field-group" id="qcFabricGroup" style="display:none">
+      <label>归属面料</label>
+      <div id="qcFabricRadios"></div>
+    </div>
+    <div class="btn-row">
+      <button class="cancel" onclick="closeQuickColor()">取消</button>
+      <button class="save-anchor" id="addAnchorBtn" onclick="addAnchorPoint()" style="display:none">📌 标记锚点颜色</button>
+      <button class="confirm" onclick="saveQuickColor()">💾 保存颜色</button>
+    </div>
+  </div>
+</div>
+<!-- Color Card Lightbox -->
+<div class="color-lightbox" id="colorLightbox" onclick="if(event.target===this)closeColorLightbox()">
+  <button class="cl-close" onclick="closeColorLightbox()">✕</button>
+  <img class="cl-img" id="clImage" alt="">
+  <div class="cl-name" id="clName"></div>
+</div>
+<!-- Floating cart -->
+<div class="cart-backdrop" id="cartBackdrop" onclick="toggleCart()"></div>
+<button class="cart-float" id="cartFloatBtn" onclick="toggleCart()">🛒<span class="badge" id="cartBadgeFloat">0</span></button>
+<div class="cart-modal" id="cartModal">
+  <div class="cm-header">
+    <span class="cm-title">🛒 购物车</span>
+    <button class="cm-close" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cm-body" id="cartBody"><div class="cart-empty">购物车是空的</div></div>
+  <div class="cm-footer">
+    <select id="guestSelect" class="guest-select">
+      <option value="">— 选择客人 —</option>
+    </select>
+    <button class="submit-btn" id="submitOrderBtn" disabled>📋 下单 <span class="sub" id="submitSub">(购物车为空)</span></button>
+  </div>
+</div>
+<script src="luna-data.js?v=23"></script>
+<script>LUNA.renderNav();</script>
+<script>
+var style, selectedColor = '';
+var carouselState = null;
+var cart = [];
+var _contrastOn = false;
+var _contrastSelections = {};
+var _selectedStampa = null;
+var _stampaImageData = null;
+var _stampaFile = null;
+var _qcMode = 'solid';
+var _qcImageData = null;
+var _qcAnchors = [];
+var _qcFile = null;
+
+function init() {
+  var code = new URLSearchParams(location.search).get('code');
+  style = LUNA.findStyle(code);
+  if (!style) { alert('款式不存在'); history.back(); return; }
+  selectedColor = '';
+  if (style.fabrics && style.fabrics.length) {
+    var allFabrics = LUNA.getFabrics();
+    for (var fi = 0; fi < style.fabrics.length; fi++) {
+      var sf = style.fabrics[fi];
+      for (var ai = 0; ai < allFabrics.length; ai++) {
+        if (allFabrics[ai].id === sf.code || allFabrics[ai].name === sf.name) {
+          var cols = allFabrics[ai].colors || [];
+          if (cols.length) { selectedColor = cols[0].name; break; }
+        }
+      }
+      if (selectedColor) break;
+    }
+  }
+  renderCarousel();
+  renderInfo();
+  renderColors();
+  renderSizes();
+  renderCart();
+  updateCartBadge();
+  updateAddBtn();
+  updateSubmitBtn();
+  renderGuestDropdowns();
+
+  // Auto-detect stampa mode from style.type
+  if (style && style.type === 'stampa') {
+    document.getElementById('fabricColors').style.display = 'none';
+    document.getElementById('quickAddBtn').style.display = 'none';
+    document.getElementById('contrastToggle').style.display = 'none';
+    document.getElementById('stampaArea').style.display = 'block';
+    document.getElementById('modeLabel').textContent = '① 选择花版';
+    loadHistoryStampe();
+  } else {
+    document.getElementById('stampaArea').style.display = 'none';
+  }
+}
+
+// ====== Carousel ======
+function renderCarousel() {
+  var imgs = style.images || [];
+  var track = document.getElementById('carouselTrack');
+  var total = imgs.length || 1;
+  var html = '';
+  for (var i = 0; i < total; i++) {
+    if (imgs[i]) { html += '<div class="carousel-slide"><img src="'+imgs[i]+'" alt=""></div>'; }
+    else { var bg = ['#f5f1eb','#efe9e0','#faf5ee']; html += '<div class="carousel-slide" style="background:'+bg[i%3]+'">◇<br><span style="font-size:11px;color:#bbb">暂无图片</span></div>'; }
+  }
+  track.innerHTML = html;
+  if (total <= 1) { document.getElementById('prevBtn').style.display='none'; document.getElementById('nextBtn').style.display='none'; document.getElementById('carouselDots').innerHTML=''; return; }
+
+  // Build dots
+  var dotsHtml = '';
+  for (var di = 0; di < total; di++) { dotsHtml += '<span class="carousel-dot'+(di===0?' active':'')+'" data-idx="'+di+'"></span>'; }
+  document.getElementById('carouselDots').innerHTML = dotsHtml;
+
+  carouselState = { idx: 0, total: total };
+
+  var wrap = document.getElementById('carouselWrap');
+  var getW = function() { return wrap.clientWidth; };
+  var startX = 0, baseTx = 0, dragTx = 0;
+  var isDragging = false, wasDragged = false;
+  var velHistory = [];
+
+  function go(targetIdx, animate) {
+    if (targetIdx < 0) targetIdx = total - 1;
+    if (targetIdx >= total) targetIdx = 0;
+    carouselState.idx = targetIdx;
+    track.style.transition = animate ? 'transform .5s cubic-bezier(.25,.46,.45,.94)' : 'none';
+    track.style.transform = 'translateX(-' + (targetIdx * getW()) + 'px)';
+    updateDots(targetIdx);
+    document.getElementById('carouselCounter').textContent = (targetIdx + 1) + '/' + total;
+  }
+
+  function getX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
+  function onStart(e) {
+    isDragging = true; wasDragged = false;
+    startX = getX(e);
+    baseTx = -carouselState.idx * getW();
+    velHistory = [];
+    track.style.transition = 'none';
+    track.style.transform = 'translateX(' + baseTx + 'px)';
+    track.classList.add('dragging');
+  }
+  function onMove(e) {
+    if (!isDragging) return;
+    var cx = getX(e), dx = cx - startX;
+    dragTx = baseTx + dx;
+    track.style.transform = 'translateX(' + dragTx + 'px)';
+    if (Math.abs(dx) > 5) wasDragged = true;
+    velHistory.push({ x: cx, t: Date.now() });
+    if (velHistory.length > 6) velHistory.shift();
+  }
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    track.classList.remove('dragging');
+    var w = getW(), dx = dragTx - baseTx, velocity = 0;
+    if (velHistory.length >= 3) {
+      var first = velHistory[0], last = velHistory[velHistory.length - 1];
+      var dt = last.t - first.t;
+      if (dt > 0) velocity = (last.x - first.x) / dt;
+    }
+    var target = carouselState.idx;
+    if (Math.abs(dx) > w * 0.2 || Math.abs(velocity) > 0.5) {
+      if (dx < -w * 0.2 || velocity < -0.5) target = carouselState.idx + 1;
+      else if (dx > w * 0.2 || velocity > 0.5) target = carouselState.idx - 1;
+    }
+    go(target, true);
+  }
+
+  wrap.addEventListener('touchstart', onStart, { passive: true });
+  wrap.addEventListener('touchmove', onMove, { passive: true });
+  wrap.addEventListener('touchend', onEnd);
+  wrap.addEventListener('touchcancel', onEnd);
+
+  var mouseDown = false;
+  wrap.addEventListener('mousedown', function(e) { if (e.button === 0) { mouseDown = true; onStart(e); }});
+  document.addEventListener('mousemove', function(e) { if (mouseDown) { e.preventDefault(); onMove(e); }});
+  document.addEventListener('mouseup', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
+  document.addEventListener('mouseleave', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
+
+  document.getElementById('prevBtn').onclick = function() { go(carouselState.idx - 1, true); };
+  document.getElementById('nextBtn').onclick = function() { go(carouselState.idx + 1, true); };
+
+  document.querySelectorAll('.carousel-dot').forEach(function(dot) {
+    dot.addEventListener('click', function() { go(parseInt(this.dataset.idx), true); });
+  });
+
+  track.querySelectorAll('.carousel-slide').forEach(function(slide) {
+    var img = slide.querySelector('img');
+    if (img) {
+      img.addEventListener('click', function(e) {
+        if (wasDragged) return;
+        // 图片点击放大已移除
+      });
+    }
+  });
+
+  go(0, false);
+}
+function updateDots(idx) {
+  document.querySelectorAll('.carousel-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+}
+
+// ====== Product Info ======
+function renderInfo() {
+  var fabrics = (style.fabrics && style.fabrics.length) ? style.fabrics.map(function(f){return f.name;}).join(' + ') : '';
+  var desc = style.description || style.note || '';
+  document.getElementById('productInfo').innerHTML =
+    '<div class="product-code-line"><span class="product-code">ART-'+esc(style.code)+'</span>' +
+    '<span class="product-price">€'+(style.suggestedPrice||0).toFixed(2)+'</span></div>' +
+    '<div class="product-name">'+esc(style.name)+'</div>' +
+    (fabrics?'<div style="font-size:12px;color:#999;margin-top:6px">面料: '+esc(fabrics)+'</div>':'') +
+    (desc?'<div class="product-desc">'+esc(desc)+'</div>':'');
+}
+
+// ====== Colors (from LUNA.getFabrics() colors[], 5 per row card grid) ======
+function renderColors() {
+  var container = document.getElementById('fabricColors');
+  var allFabrics = LUNA.getFabrics();
+  var allColors = [];
+  if (style.fabrics && style.fabrics.length && allFabrics.length) {
+    // Only show colors from fabric 1 (main fabric)
+    var mainFabric = style.fabrics[0];
+    for (var i = 0; i < allFabrics.length; i++) {
+      if ((mainFabric.id && allFabrics[i].id === mainFabric.id) || allFabrics[i].name === mainFabric.name) {
+        var cols = allFabrics[i].colors || [];
+        cols.forEach(function(c) {
+          var dup = false;
+          for (var j = 0; j < allColors.length; j++) {
+            if (allColors[j].name === c.name) { dup = true; break; }
+          }
+          if (!dup) {
+            allColors.push({name: c.name, hex: c.hex || '#ccc', img: c.img || c.img_path || ''});
+          }
+        });
+        break;
+      }
+    }
+  }
+  // Fallback
+  if (!allColors.length && style.colors && style.colors.length) {
+    allColors = style.colors.map(function(c) {
+      return {name: c.name, hex: c.hex || '#ccc', img: ''};
+    });
+  }
+  if (!allColors.length) {
+    container.innerHTML = '<div style="color:#bbb;font-size:13px">暂无颜色选项</div>';
+    return;
+  }
+  if (!selectedColor) selectedColor = allColors[0].name;
+  var html = '<div class="color-card-grid">';
+  allColors.forEach(function(c) {
+    var isSel = (selectedColor === c.name);
+    var bgStyle = c.img ? '' : 'background:'+(c.hex||'#ccc');
+    var imgTag = c.img ? '<img src="'+esc(c.img)+'" alt="">' : '';
+    html += '<div class="color-card'+(isSel?' selected':'')+'" onclick="selectColorCard(this,\''+escJs(c.name)+'\')">'+
+      '<div class="swatch-area" style="'+bgStyle+'"'+(c.img?' onclick="event.stopPropagation();openColorLightbox(\''+escJs(c.img)+'\',\''+escJs(c.name)+'\')"':'')+'>'+imgTag+'</div>'+
+      '<div class="color-label">'+esc(c.name)+'</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Show/hide 撞色 toggle based on number of fabrics
+  var parts = getFabricParts();
+  var toggle = document.getElementById('contrastToggle');
+  var input = document.getElementById('contrastModeInput');
+  if (parts.length >= 2) {
+    toggle.style.display = 'flex';
+  } else {
+    toggle.style.display = 'none';
+    if (input) input.checked = false;
+    _contrastOn = false;
+    var cm = document.getElementById('comboMatrix');
+    cm.innerHTML = '';
+    cm.classList.remove('active');
+  }
+}
+
+function selectColorCard(el, name) {
+  selectedColor = name;
+  document.querySelectorAll('.color-card').forEach(function(s){s.classList.remove('selected');});
+  if (el) { el.classList.add('selected'); }
+  updateAddBtn();
+}
+
+function getColorVisual(colorName) {
+  var allFabrics = LUNA.getFabrics();
+  if (!allFabrics || !style) return '#ccc';
+  if (style.fabrics) {
+    for (var fi = 0; fi < style.fabrics.length; fi++) {
+      var sf = style.fabrics[fi];
+      for (var ai = 0; ai < allFabrics.length; ai++) {
+        if (allFabrics[ai].id === sf.code || allFabrics[ai].name === sf.name) {
+          var cols = allFabrics[ai].colors || [];
+          for (var ci = 0; ci < cols.length; ci++) {
+            if (cols[ci].name === colorName) return cols[ci].img || cols[ci].img_path || cols[ci].hex || '#ccc';
+          }
+        }
+      }
+    }
+  }
+  return '#ccc';
+}
+function showSelectedColor(name) {
+  // removed - color preview replaced by order note field
+}
+
+// ====== Sizes (multi-select, UNICA exclusive) ======
+function renderSizes() {
+  var sizes = ['UNICA','XS','S','M','L','XL','2XL','3XL'];
+  var btnsEl = document.getElementById('sizeBtns');
+  var html = '';
+  sizes.forEach(function(sz){
+    html += '<button class="size-btn" onclick="toggleSizeBtn(this,\''+sz+'\')">'+sz+'</button>';
+  });
+  btnsEl.innerHTML = html;
+  // Qty dropdown
+  var qtySel = document.getElementById('qtySelect');
+  var qhtml = '';
+  for (var qi = 1; qi <= 50; qi++) qhtml += '<option value="'+qi+'">'+qi+'</option>';
+  qtySel.innerHTML = qhtml;
+  qtySel.value = '1';
+}
+function toggleSizeBtn(btn, sz) {
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+  } else {
+    if (sz === 'UNICA') {
+      // UNICA exclusive: deselect all others
+      document.querySelectorAll('.size-btn').forEach(function(b){b.classList.remove('selected');});
+    } else {
+      // Non-UNICA: deselect UNICA if selected
+      var allBtns = document.querySelectorAll('.size-btn');
+      for (var i = 0; i < allBtns.length; i++) {
+        if (allBtns[i].textContent === 'UNICA') allBtns[i].classList.remove('selected');
+      }
+    }
+    btn.classList.add('selected');
+  }
+  updateAddBtn();
+}
+function getSelectedSizes() {
+  var result = {};
+  var qty = parseInt(document.getElementById('qtySelect').value) || 1;
+  document.querySelectorAll('.size-btn.selected').forEach(function(btn){
+    result[btn.textContent] = qty;
+  });
+  return result;
+}
+function updateAddBtn() {
+  var btn = document.getElementById('addToCartBtn');
+  var sub = document.getElementById('addSub');
+  // 撞色 mode check
+  var cmInput = document.getElementById('contrastModeInput');
+  if (cmInput && cmInput.checked) {
+    // Must have main color (fabric 1)
+    if (!selectedColor) { btn.disabled = true; sub.textContent = '— 请选择主料颜色'; return; }
+    // Must have selections for all additional fabrics
+    var parts = getFabricParts();
+    if (parts.length < 2) { btn.disabled = true; sub.textContent = '— 当前款式仅有一种面料'; return; }
+    for (var fi = 1; fi < parts.length; fi++) {
+      if (!_contrastSelections[fi]) {
+        btn.disabled = true;
+        sub.textContent = '— 请选择面料' + (fi+1) + '（' + parts[fi].name + '）颜色';
+        return;
+      }
+    }
+    // All colors selected — show summary and enable
+    btn.disabled = false;
+    var desc = selectedColor;
+    for (var fi = 1; fi < parts.length; fi++) {
+      desc += ' + ' + _contrastSelections[fi];
+    }
+    var sizes = getSelectedSizes();
+    var total = 0; Object.keys(sizes).forEach(function(s){ total += sizes[s]; });
+    sub.textContent = '— ' + desc + (total > 0 ? ' · ' + total + '件' : '');
+    return;
+  }
+  // Stampa mode auto-detection (from style.type)
+  if (style && style.type === 'stampa') {
+    if (!_selectedStampa) { btn.disabled = true; sub.textContent = '— 请先选择花版'; return; }
+    var stotal = 0;
+    if (_selectedStampa.qty) {
+      Object.keys(_selectedStampa.qty).forEach(function(s){ stotal += _selectedStampa.qty[s] || 0; });
+    }
+    if (stotal === 0) { btn.disabled = true; sub.textContent = '— 请填写花版数量'; return; }
+    btn.disabled = false;
+    sub.textContent = '— ' + _selectedStampa.code + ' · ' + stotal + '件';
+    return;
+  }
+  if (!selectedColor) { btn.disabled = true; sub.textContent = '— 先选择颜色'; return; }
+  var sizes = getSelectedSizes();
+  var total = 0; Object.keys(sizes).forEach(function(s){total+=sizes[s];});
+  if (total === 0) { btn.disabled = true; sub.textContent = '— 请选择尺码'; return; }
+  btn.disabled = false;
+  var sizeDesc = Object.keys(sizes).map(function(s){return s+'×'+sizes[s];}).join(', ');
+  sub.textContent = '— '+selectedColor+' · '+sizeDesc;
+}
+
+// ====== Add to Cart ======
+document.getElementById('addToCartBtn').addEventListener('click', function() {
+  var btn = this; btn.innerHTML = '⏳ 添加中...'; btn.disabled = true;
+  setTimeout(function(){ btn.disabled = false; updateAddBtn(); }, 400);
+
+  // ── Stampa mode ──
+  if (style && style.type === 'stampa') {
+    if (!_selectedStampa) { showToast('⚠️ 请先选择花版'); return; }
+    var sqty = {};
+    var stotal = 0;
+    if (_selectedStampa.qty) {
+      Object.keys(_selectedStampa.qty).forEach(function(s){
+        var v = _selectedStampa.qty[s] || 0;
+        if (v > 0) { sqty[s] = v; stotal += v; }
+      });
+    }
+    if (stotal === 0) { showToast('⚠️ 请填写花版数量'); return; }
+    var sfabric = (style.fabrics && style.fabrics.length) ? style.fabrics.map(function(f){return f.name;}).join(', ') : '';
+    var sprice = style.suggestedPrice || 0;
+    LUNA.addToCart(style.code, style.name, '', sqty, sprice, sfabric, '',
+      [], 'stampa', _selectedStampa.img_url, _selectedStampa.code);
+    updateCartBadge(); renderCart();
+    showToast('✅ 花版已加入购物车');
+    document.getElementById('orderNoteInput').value = '';
+    toggleCart();
+    return;
+  }
+
+  if (document.getElementById('contrastModeInput') && document.getElementById('contrastModeInput').checked) {
+    // 撞色 mode: comma-separated fabrics + per-fabric colors in components
+    var parts = getFabricParts();
+    if (parts.length < 2) { showToast('当前款式无撞色面料'); return; }
+    var sizes = getSelectedSizes();
+    var total = 0; Object.keys(sizes).forEach(function(s){ total += sizes[s]; });
+    if (total === 0) { showToast('⚠️ 请选择尺码和数量'); btn.disabled = false; updateAddBtn(); return; }
+
+    // Build components array with per-fabric colors for marker/cutting
+    var components = [{part: parts[0].name, color: selectedColor}];
+    for (var fi = 1; fi < parts.length; fi++) {
+      var col = _contrastSelections[fi];
+      if (col) {
+        components.push({part: parts[fi].name, color: col});
+      }
+    }
+    // color stored as selectedColor — components array holds per-fabric colors for marker/cutting
+    var fabric = parts.map(function(p) { return p.name; }).join(', ');
+    var price = style.suggestedPrice || 0;
+
+    LUNA.addToCart(style.code, style.name, selectedColor, sizes, price, fabric, '', components, 'contrast');
+    updateCartBadge();
+    renderCart();
+    showToast('✅ 撞色搭配已加入购物车');
+    document.getElementById('orderNoteInput').value = '';
+    toggleCart();
+    return;
+  }
+
+  // Original single-color flow
+  if (!selectedColor) return;
+  var sizes = getSelectedSizes();
+  var total = 0; Object.keys(sizes).forEach(function(s){total+=sizes[s];});
+  if (total === 0) return;
+  var fabric = (style.fabrics && style.fabrics.length) ? style.fabrics.map(function(f){return f.name;}).join(', ') : '';
+  var price = style.suggestedPrice || 0;
+  LUNA.addToCart(style.code, style.name, selectedColor, sizes, price, fabric, '');
+  updateCartBadge();
+  renderCart();
+  showToast('✅ 已加入购物车');
+  document.getElementById('orderNoteInput').value='';
+  toggleCart();
+});
+
+// ====== Floating Cart ======
+function toggleCart() {
+  var modal = document.getElementById('cartModal');
+  var backdrop = document.getElementById('cartBackdrop');
+  modal.classList.toggle('open');
+  backdrop.classList.toggle('show');
+  if (modal.classList.contains('open')) renderCart();
+}
+function renderCart() {
+  cart = LUNA.getCart();
+  var body = document.getElementById('cartBody');
+  if (!cart || cart.length === 0) {
+    body.innerHTML = '<div class="cart-empty">购物车是空的</div>';
+    updateSubmitBtn();
+    return;
+  }
+  // Group by style code
+  var groups = {};
+  cart.forEach(function(item, idx) {
+    var key = item.code;
+    if (!groups[key]) {
+      groups[key] = { code: item.code, price: item.price || 0, items: [] };
+    }
+    groups[key].items.push({ idx: idx, item: item });
+  });
+  var html = '';
+  var totalQty = 0;
+  Object.keys(groups).forEach(function(code) {
+    var g = groups[code];
+    html += '<div class="cart-code-group">' +
+      '<div class="cart-code-header">' +
+        '<span class="cc-code">ART-'+esc(code)+'</span>' +
+        (function(){var n=document.getElementById('orderNoteInput');return n&&n.value?'<span style="font-size:10px;color:#999;margin-left:6px">📝 '+esc(n.value.trim())+'</span>':''})() +
+        '<span class="cc-price">€'+g.price.toFixed(2)+'/件</span></div>';
+    g.items.forEach(function(gi) {
+      var item = gi.item;
+      var idx = gi.idx;
+      var itemQty = 0;
+      var sizesHtml = '';
+      if (item.qty) {
+        ['XS','S','M','L','XL','2XL','3XL','UNICA'].forEach(function(s) {
+          var v = item.qty[s] || 0;
+          if (v <= 0) return;
+          itemQty += v;
+          sizesHtml += '<div class="cart-qty-cell">' +
+            '<button class="cart-qty-btn" onclick="chgQty('+idx+',\''+s+'\',1)">+</button>' +
+            '<span class="cart-qty-val">'+v+'</span>' +
+            '<button class="cart-qty-btn" onclick="chgQty('+idx+',\''+s+'\',-1)">−</button>' +
+            '<span class="cart-qty-lbl">'+s+'</span></div>';
+        });
+      }
+      totalQty += itemQty;
+      var visual = getColorVisual(item.color);
+      var isStampa = item.item_type === 'stampa' || item.color === 'STAMPA';
+      if (isStampa && item.stampa_img_url) {
+        html += '<div class="cart-color-item">' +
+          '<div class="cart-color-swatch" style="background-image:url('+esc(item.stampa_img_url)+');background-size:cover;background-position:center;background-repeat:no-repeat"></div>' +
+          '<div class="cart-color-info">' +
+          '<div class="cart-color-name">🎨 '+esc(item.stampa_code||item.color)+'</div>' +
+          (sizesHtml ? '<div class="cart-qty-ctrl">'+sizesHtml+'</div>' : '') + '</div>' +
+          '<button class="del-btn" onclick="removeCartItem('+idx+')">✕</button></div>';
+      } else {
+        var isImg = visual.indexOf('http')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+        var swatchStyle = isImg ? 'background-image:url('+esc(visual)+');background-size:cover;background-position:center;background-repeat:no-repeat' : 'background:'+visual;
+        html += '<div class="cart-color-item">' +
+          '<div class="cart-color-swatch" style="'+swatchStyle+'"></div>' +
+          '<div class="cart-color-info">' +
+          '<div class="cart-color-name">'+esc(item.color)+'</div>' +
+          (sizesHtml ? '<div class="cart-qty-ctrl">'+sizesHtml+'</div>' : '') + '</div>' +
+          '<button class="del-btn" onclick="removeCartItem('+idx+')">✕</button></div>';
+      }
+    });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+  updateSubmitBtn();
+}
+function chgQty(idx, sz, d) {
+  LUNA.updateCartQty(idx, sz, d);
+  renderCart();
+  updateCartBadge();
+}
+function removeCartItem(idx) {
+  LUNA.removeFromCart(idx);
+  updateCartBadge();
+  renderCart();
+}
+function updateCartBadge() {
+  var count = LUNA.getCartCount();
+  document.getElementById('cartBadge').textContent = count;
+  document.getElementById('cartBadgeFloat').textContent = count;
+}
+function updateSubmitBtn() {
+  var btn = document.getElementById('submitOrderBtn');
+  var sub = document.getElementById('submitSub');
+  var cart = LUNA.getCart();
+  var total = 0;
+  if (cart) cart.forEach(function(i){if(i.qty)Object.keys(i.qty).forEach(function(s){total+=i.qty[s]||0;});});
+  if (total > 0) { btn.disabled = false; sub.textContent = '(共'+total+'件)'; }
+  else { btn.disabled = true; sub.textContent = '(购物车为空)'; }
+}
+
+// ====== Guest Dropdown ======
+function renderGuestDropdowns() {
+  var guests = [];
+  try { guests = LUNA.getGuests(); } catch(e) {}
+  var sel = document.getElementById('guestSelect');
+  var html = '<option value="">— 选择客人 —</option>';
+  guests.forEach(function(g) {
+    var n = g.name || g.username || '';
+    if (!n || g.parent_id) return;
+    html += '<option value="'+escJs(n)+'">A '+esc(n)+'</option>';
+    // B 级缩进在 A 下面
+    guests.forEach(function(s) {
+      var sn = s.name || s.username || '';
+      if (!sn || (s.parent_id !== g.id && s.parent_id !== g.username)) return;
+      html += '<option value="'+escJs(sn)+'">  B '+esc(sn)+'</option>';
+    });
+  });
+  sel.innerHTML = html;
+}
+
+// ====== Submit Order ======
+document.getElementById('submitOrderBtn').addEventListener('click', function() {
+  try {
+    var cart = LUNA.getCart();
+    if (!cart || cart.length === 0) { showToast('购物车为空'); return; }
+    // 选择客人（支持一级或二级）
+    var sel = document.getElementById('guestSelect');
+    var customerName = sel.value;
+    if (!customerName) { showToast('请选择客人'); sel.focus(); return; }
+    // 判断选中客人是一级还是二级
+    var guests = []; try { guests = LUNA.getGuests(); } catch(e) {}
+    var picked = null;
+    for (var gi = 0; gi < guests.length; gi++) {
+      var gn = guests[gi].name || guests[gi].username || '';
+      if (gn === customerName) { picked = guests[gi]; break; }
+    }
+    var subCustomer = '';
+    if (picked && picked.parent_id) {
+      // 选了二级客人 → 找出一级客人作为 customer，选中的作为 subCustomer
+      subCustomer = customerName;
+      for (var gi = 0; gi < guests.length; gi++) {
+        if (guests[gi].id === picked.parent_id || guests[gi].username === picked.parent_id) {
+          customerName = guests[gi].name || guests[gi].username || '';
+          break;
+        }
+      }
+    }
+    // 备注：页面备注
+    var orderNote = document.getElementById('orderNoteInput').value.trim();
+    var finalNote = orderNote || '';
+    // 直接传入备注和二级客人到 checkout
+    var order = LUNA.checkout(customerName, finalNote, subCustomer);
+    if (!order || !order.id) { showToast('❌ 提交失败，请重试'); return; }
+    showToast('❤️ 非常感谢！编号: '+order.id);
+    toggleCart();
+    setTimeout(function() {
+      window.location.href = 'marker.html';
+    }, 1200);
+  } catch(e) {
+    console.error('Submit error:', e);
+    showToast('❌ 提交失败: ' + (e.message || '未知错误'));
+  }
+});
+
+// ====== Utility ======
+function showToast(m) { var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2500); }
+function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function escJs(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+// ====== Color Card Lightbox ======
+function openColorLightbox(imgSrc, colorName) {
+  if (!imgSrc) return;
+  document.getElementById('clImage').src = imgSrc;
+  document.getElementById('clName').textContent = colorName || '';
+  document.getElementById('colorLightbox').classList.add('show');
+}
+function closeColorLightbox() {
+  document.getElementById('colorLightbox').classList.remove('show');
+}
+
+// ====== Color Name Datalist (autocomplete existing names) ======
+function refreshColorNameDatalist() {
+  var dl = document.getElementById('colorNameDatalist');
+  if (!dl) return;
+  var names = [];
+  var allFabrics = [];
+  try { allFabrics = LUNA.getFabrics(); } catch(e) {}
+  allFabrics.forEach(function(f) {
+    (f.colors || []).forEach(function(c) {
+      if (c.name && names.indexOf(c.name) === -1) names.push(c.name);
+    });
+  });
+  dl.innerHTML = names.map(function(n) { return '<option value="'+esc(n)+'">'; }).join('');
+}
+
+// ====== Quick Add Color (dual-mode: solid swatch & photo) ======
+
+// ── HSL / Hex conversion utilities ──
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  var c = (1 - Math.abs(2*l - 1)) * s;
+  var x = c * (1 - Math.abs((h/60)%2 - 1));
+  var m = l - c/2;
+  var r, g, b;
+  if (h < 60) { r=c; g=x; b=0; }
+  else if (h < 120) { r=x; g=c; b=0; }
+  else if (h < 180) { r=0; g=c; b=x; }
+  else if (h < 240) { r=0; g=x; b=c; }
+  else if (h < 300) { r=x; g=0; b=c; }
+  else { r=c; g=0; b=x; }
+  return '#' + [r,g,b].map(function(v){ return Math.round((v+m)*255).toString(16).padStart(2,'0'); }).join('');
+}
+function hexToHsl(hex) {
+  var r = parseInt(hex.slice(1,3),16)/255;
+  var g = parseInt(hex.slice(3,5),16)/255;
+  var b = parseInt(hex.slice(5,7),16)/255;
+  var mx = Math.max(r,g,b), mn = Math.min(r,g,b);
+  var h = 0, s = 0, l = (mx+mn)/2;
+  if (mx !== mn) {
+    var d = mx - mn;
+    s = l > 0.5 ? d/(2-mx-mn) : d/(mx+mn);
+    if (mx===r) h = (g-b)/d + (g<b ? 6 : 0);
+    else if (mx===g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h /= 6;
+  }
+  return {h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100)};
+}
+
+// ── Keyword → base color matching ──
+function suggestBaseColor(name) {
+  if (!name) return null;
+  var n = name.toLowerCase();
+  var map = [
+    {kw:['红','赤','朱','丹','绯','粉','rose','red','pink'], hex:'#D44A4A'},
+    {kw:['橙','橘','柑','orange'], hex:'#E8923E'},
+    {kw:['黄','金','浅驼','cream','yellow','gold','beige','米'], hex:'#D4B86A'},
+    {kw:['绿','翠','碧','绿灰','green','olive'], hex:'#6B8E5A'},
+    {kw:['蓝','靛','藏','宝蓝','blue','navy'], hex:'#4A6FA5'},
+    {kw:['紫','紫红','violet','purple','lavender'], hex:'#8B6FA5'},
+    {kw:['棕','咖','褐','brown','choco','驼'], hex:'#8B6B4A'},
+    {kw:['灰','grey','gray','silver','花灰'], hex:'#999999'},
+    {kw:['黑','墨','night','black'], hex:'#3A3A3A'},
+    {kw:['白','white','ivory','象牙'], hex:'#E8E4DA'},
+    {kw:['杏','apricot'], hex:'#D4A98A'},
+    {kw:['卡其','khaki'], hex:'#BFA580'}
+  ];
+  for (var mi = 0; mi < map.length; mi++) {
+    for (var ki = 0; ki < map[mi].kw.length; ki++) {
+      if (n.indexOf(map[mi].kw[ki]) >= 0) return map[mi].hex;
+    }
+  }
+  return null;
+}
+
+// ── Solid Mode: color picker + sliders → live preview ──
+function syncSolidColor() {
+  var pickerHex = document.getElementById('solidColorPicker').value;
+  var sat = parseInt(document.getElementById('solidSatSlider').value);
+  var bri = parseInt(document.getElementById('solidBriSlider').value);
+  var hsl = hexToHsl(pickerHex);
+  var adjHex = hslToHex(hsl.h, sat, bri);
+  var swatch = document.getElementById('solidPreviewSwatch');
+  swatch.style.background = adjHex;
+  document.getElementById('solidColorPicker').value = adjHex;
+  document.getElementById('solidHexLabel').textContent = adjHex;
+  document.getElementById('solidSatVal').textContent = sat + '%';
+  document.getElementById('solidBriVal').textContent = bri + '%';
+  swatch.style.color = (bri > 75 || sat < 15) ? '#666' : '#fff';
+  swatch.textContent = adjHex;
+}
+
+// ── Switch between solid / photo mode ──
+function switchQcMode(mode) {
+  _qcMode = mode;
+  document.querySelectorAll('.qc-mode-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.dataset.mode === mode);
+  });
+  document.getElementById('qcSolidSection').style.display = (mode === 'solid') ? 'block' : 'none';
+  document.getElementById('qcPhotoSection').classList.toggle('hidden', mode !== 'photo');
+  document.getElementById('addAnchorBtn').style.display = 'none';
+}
+
+// ── Auto-suggest color from typed name ──
+function suggestColorFromName() {
+  var name = document.getElementById('quickColorName').value.trim();
+  var hex = suggestBaseColor(name);
+  if (hex && _qcMode === 'solid') {
+    var hsl = hexToHsl(hex);
+    document.getElementById('solidColorPicker').value = hex;
+    document.getElementById('solidSatSlider').value = hsl.s;
+    document.getElementById('solidBriSlider').value = hsl.l;
+    syncSolidColor();
+  }
+}
+
+function openQuickColor() {
+  // Reset all state
+  _qcMode = 'solid';
+  _qcImageData = null;
+  _qcAnchors = [];
+  _qcFile = null;
+  document.getElementById('quickColorName').value = '';
+  // Reset solid mode controls
+  document.getElementById('solidColorPicker').value = '#b0a99e';
+  document.getElementById('solidSatSlider').value = 100;
+  document.getElementById('solidBriSlider').value = 100;
+  syncSolidColor();
+  // Reset photo mode
+  document.getElementById('previewImg').style.display = 'none';
+  document.getElementById('previewImg').style.filter = 'none';
+  document.getElementById('dropHint').style.display = 'block';
+  document.getElementById('anchorOverlay').innerHTML = '';
+  document.getElementById('anchorOverlay').classList.remove('active');
+  document.getElementById('addAnchorBtn').style.display = 'none';
+  document.getElementById('brightnessSlider').value = 100;
+  document.getElementById('contrastSlider').value = 100;
+  document.getElementById('hueSlider').value = 0;
+  document.getElementById('dropZone').classList.remove('anchor-cursor');
+  updatePreviewFilterLabels();
+  populateQcFabricRadios();
+  // Default to solid mode
+  switchQcMode('solid');
+  document.getElementById('quickColorModal').classList.add('active');
+  setTimeout(function(){ document.getElementById('dropZone').focus(); }, 100);
+  refreshColorNameDatalist();
+}
+
+function closeQuickColor() {
+  document.getElementById('quickColorModal').classList.remove('active');
+}
+
+// ── Paste (Ctrl+V) ──
+document.getElementById('dropZone').addEventListener('paste', function(e) {
+  e.preventDefault();
+  var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') === 0) {
+      var blob = items[i].getAsFile();
+      if (blob) {
+        _qcFile = blob;
+        loadQCImage(blob);
+      }
+      break;
+    }
+  }
+});
+
+// ── Drag & Drop ──
+var dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', function(e) { this.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  this.classList.remove('drag-over');
+  var files = e.dataTransfer.files;
+  if (files && files.length > 0) {
+    _qcFile = files[0];
+    loadQCImage(files[0]);
+  }
+});
+
+// ── Click to select file ──
+dropZone.addEventListener('click', function(e) {
+  if (_qcImageData) return;
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = function(ev) {
+    if (ev.target.files && ev.target.files[0]) {
+      _qcFile = ev.target.files[0];
+      loadQCImage(ev.target.files[0]);
+    }
+  };
+  input.click();
+});
+
+function loadQCImage(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    _qcImageData = e.target.result;
+    var img = document.getElementById('previewImg');
+    img.src = _qcImageData;
+    img.style.display = 'block';
+    img.style.filter = getFilterString();
+    document.getElementById('dropHint').style.display = 'none';
+    document.getElementById('addAnchorBtn').style.display = 'inline-block';
+    document.getElementById('dropZone').classList.add('anchor-cursor');
+    updatePreviewFilter();
+    showToast('✅ 已加载图片，可拖动滑块微调色差');
+  };
+  reader.readAsDataURL(file);
+}
+
+function getFilterString() {
+  var b = parseInt(document.getElementById('brightnessSlider').value);
+  var c = parseInt(document.getElementById('contrastSlider').value);
+  var h = parseInt(document.getElementById('hueSlider').value);
+  return 'brightness(' + b + '%) contrast(' + c + '%) hue-rotate(' + h + 'deg)';
+}
+
+function updatePreviewFilter() {
+  var img = document.getElementById('previewImg');
+  if (!_qcImageData) return;
+  img.style.filter = getFilterString();
+  updatePreviewFilterLabels();
+}
+function updatePreviewFilterLabels() {
+  document.getElementById('brightnessVal').textContent = document.getElementById('brightnessSlider').value + '%';
+  document.getElementById('contrastVal').textContent = document.getElementById('contrastSlider').value + '%';
+  document.getElementById('hueVal').textContent = document.getElementById('hueSlider').value + '°';
+}
+
+// ── Anchor point click on preview ──
+document.getElementById('dropZone').addEventListener('click', function(e) {
+  if (!_qcImageData) return;
+  var img = document.getElementById('previewImg');
+  if (img.style.display === 'none') return;
+  var rect = this.getBoundingClientRect();
+  var xPct = ((e.clientX - rect.left) / rect.width) * 100;
+  var yPct = ((e.clientY - rect.top) / rect.height) * 100;
+  var name = prompt('为此处颜色命名（如: 大红花款）:', '');
+  if (!name || !name.trim()) return;
+  _qcAnchors.push({x: xPct, y: yPct, name: name.trim()});
+  renderAnchorOverlay();
+  document.getElementById('anchorInfo').textContent = '已标记 ' + _qcAnchors.length + ' 个锚点';
+});
+
+function renderAnchorOverlay() {
+  var overlay = document.getElementById('anchorOverlay');
+  overlay.classList.add('active');
+  var html = '';
+  _qcAnchors.forEach(function(a, i) {
+    html += '<div class="anchor-dot" style="left:' + a.x + '%;top:' + a.y + '%">' +
+      '<span class="lbl">' + esc(a.name) + '</span></div>';
+  });
+  overlay.innerHTML = html;
+}
+
+function addAnchorPoint() {
+  showToast('💡 直接在预览图上点击即可标记锚点颜色');
+}
+
+function populateQcFabricRadios() {
+  var group = document.getElementById('qcFabricGroup');
+  var radiosDiv = document.getElementById('qcFabricRadios');
+  if (!style || !style.fabrics || style.fabrics.length < 1) {
+    group.style.display = 'none';
+    return;
+  }
+  group.style.display = 'block';
+  var html = '';
+  style.fabrics.forEach(function(f, i) {
+    var checked = i === 0 ? ' checked' : '';
+    html += '<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:12px;cursor:pointer">' +
+      '<input type="radio" name="qcFabric" value="' + escJs(f.id || '') + '"' + checked + '>' +
+      esc(f.name) + '</label>';
+  });
+  radiosDiv.innerHTML = html;
+}
+
+// ── Save (handles both solid & photo modes) ──
+function saveQuickColor() {
+  var name = document.getElementById('quickColorName').value.trim();
+  if (!name) { alert('请输入颜色名称'); return; }
+
+  var qcFabricRadio = document.querySelector('input[name="qcFabric"]:checked');
+  var qcFabricId = qcFabricRadio ? qcFabricRadio.value : '';
+
+  // ── SOLID MODE: save as hex color swatch ──
+  if (_qcMode === 'solid') {
+    var hexColor = document.getElementById('solidHexLabel').textContent;
+    var body = {
+      style_code: style.code,
+      color_name: name,
+      hex_color: hexColor,
+      fabric_id: qcFabricId
+    };
+    fetch('/api/order/quick-add-color', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(result) {
+      if (result.ok) {
+        if (result.fabrics) LUNA.saveFabrics(result.fabrics);
+        showToast('✅ 纯色「' + name + '」已保存');
+        closeQuickColor();
+        renderColors();
+        if (document.getElementById('contrastModeInput') && document.getElementById('contrastModeInput').checked) {
+          renderContrastWalls();
+        }
+        LUNA.getFabrics();
+        var r2 = LUNA.api('/api/data/fabrics');
+        if (r2 && !r2.error) LUNA.saveFabrics(r2);
+      } else {
+        throw new Error(result.error || '保存失败');
+      }
+    }).catch(function(err) {
+      showToast('❌ ' + (err.message || '保存失败'));
+    });
+    return;
+  }
+
+  // ── PHOTO MODE: require image ──
+  if (!_qcImageData) {
+    alert('请先粘贴或拖入图片，或切换到「纯色」模式创建纯色色卡');
+    return;
+  }
+
+  var canvas = document.createElement('canvas');
+  var img = new Image();
+  img.onload = function() {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    var ctx = canvas.getContext('2d');
+    var b = parseInt(document.getElementById('brightnessSlider').value) / 100;
+    var c_val = parseInt(document.getElementById('contrastSlider').value);
+    var h = parseInt(document.getElementById('hueSlider').value);
+    ctx.filter = 'brightness(' + b + ') contrast(' + c_val + '%) hue-rotate(' + h + 'deg)';
+    ctx.drawImage(img, 0, 0);
+    var exportedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+    var body = {
+      style_code: style.code,
+      color_name: name,
+      image_data: exportedDataUrl,
+      fabric_id: qcFabricId
+    };
+
+    fetch('/api/order/quick-add-color', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(result) {
+      if (result.ok) {
+        if (result.fabrics) LUNA.saveFabrics(result.fabrics);
+        var anchorPromises = [];
+        if (_qcAnchors.length > 0 && result.image_path) {
+          _qcAnchors.forEach(function(anchor) {
+            var abody = {
+              style_code: style.code,
+              color_name: anchor.name,
+              image_path: result.image_path,
+              anchor_x: Math.round(anchor.x),
+              anchor_y: Math.round(anchor.y)
+            };
+            anchorPromises.push(
+              fetch('/api/order/add-anchor-color', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(abody)
+              }).then(function(r2) { return r2.json(); })
+            );
+          });
+        }
+        return Promise.all(anchorPromises);
+      } else {
+        throw new Error(result.error || '保存失败');
+      }
+    }).then(function() {
+      showToast('✅ 颜色「' + name + '」已保存' +
+        (_qcAnchors.length ? ' + ' + _qcAnchors.length + ' 个锚点色' : ''));
+      closeQuickColor();
+      renderColors();
+      if (document.getElementById('contrastModeInput') && document.getElementById('contrastModeInput').checked) {
+        renderContrastWalls();
+      }
+      LUNA.getFabrics();
+      var r2 = LUNA.api('/api/data/fabrics');
+      if (r2 && !r2.error) LUNA.saveFabrics(r2);
+    }).catch(function(err) {
+      showToast('❌ ' + (err.message || '保存失败'));
+    });
+  };
+  img.src = _qcImageData;
+}
+
+// ====== 撞色 Mode ======
+
+function toggleContrastMode() {
+  _contrastOn = document.getElementById('contrastModeInput').checked;
+  var matrix = document.getElementById('comboMatrix');
+  if (_contrastOn) {
+    matrix.classList.add('active');
+    _contrastSelections = {};
+    renderContrastWalls();
+  } else {
+    matrix.classList.remove('active');
+    matrix.innerHTML = '';
+    _contrastSelections = {};
+  }
+  updateAddBtn();
+}
+
+function getFabricParts() {
+  // Return fabric part info from the style, ordered
+  if (!style || !style.fabrics || style.fabrics.length < 2) return [];
+  return style.fabrics.map(function(f) { return {id: f.id, name: f.name}; });
+}
+
+function getFabricColorsByPart(partIndex) {
+  // Return colors for the fabric at given position in style.fabrics, matched by ID then name
+  if (!style || !style.fabrics || !style.fabrics[partIndex]) return [];
+  var target = style.fabrics[partIndex];
+  var allFabrics = LUNA.getFabrics();
+  if (!allFabrics) return [];
+  for (var i = 0; i < allFabrics.length; i++) {
+    if ((target.id && allFabrics[i].id === target.id) || allFabrics[i].name === target.name) {
+      return allFabrics[i].colors || [];
+    }
+  }
+  return [];
+}
+
+function getColorsForFabric(fabricName) {
+  // Deprecated — kept for inline fallback; prefer getFabricColorsByPart
+  var allFabrics = LUNA.getFabrics();
+  if (!allFabrics) return [];
+  for (var i = 0; i < allFabrics.length; i++) {
+    if (allFabrics[i].name === fabricName) {
+      return allFabrics[i].colors || [];
+    }
+  }
+  return [];
+}
+
+// ====== 撞色多开色卡墙 ======
+
+function renderContrastWalls() {
+  var container = document.getElementById('comboMatrix');
+  var parts = getFabricParts();
+  if (parts.length < 2) return;
+
+  var html = '<div style="margin-top:4px">';
+  for (var fi = 1; fi < parts.length; fi++) {
+    var wall = renderSingleWall(fi, parts[fi]);
+    html += wall;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+  updateAddBtn();
+}
+
+function renderSingleWall(fabricIdx, part) {
+  var colors = getFabricColorsByPart(fabricIdx);
+  if (!colors || !colors.length) {
+    return '<div class="contrast-wall"><div class="wall-label">面料' + (fabricIdx+1) + '：<span class="wall-idx">' + esc(part.name) + '</span></div>' +
+      '<div style="color:#bbb;font-size:12px;padding:6px 0">该面料暂无颜色选项</div></div>';
+  }
+
+  // Default select first color if none selected yet for this fabric
+  if (!_contrastSelections[fabricIdx]) {
+    _contrastSelections[fabricIdx] = colors[0].name;
+  }
+  var selectedName = _contrastSelections[fabricIdx];
+
+  var html = '<div class="contrast-wall">' +
+    '<div class="wall-label">面料' + (fabricIdx+1) + '：<span class="wall-idx">' + esc(part.name) + '</span></div>' +
+    '<div class="color-card-grid">';
+
+  colors.forEach(function(c) {
+    var isSel = (c.name === selectedName);
+    var bgStyle = c.img ? '' : 'background:' + (c.hex || '#ccc');
+    var imgTag = c.img
+      ? '<img src="' + esc(c.img) + '" alt="">'
+      : '';
+    html += '<div class="color-card' + (isSel ? ' selected' : '') + '" onclick="selectContrastColor(this,' + fabricIdx + ',\'' + escJs(c.name) + '\')">' +
+      '<div class="swatch-area" style="' + bgStyle + '"' + (c.img ? ' onclick="event.stopPropagation();openColorLightbox(\'' + escJs(c.img) + '\',\'' + escJs(c.name) + '\')"' : '') + '>' + imgTag + '</div>' +
+      '<div class="color-label">' + esc(c.name) + '</div></div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+function selectContrastColor(el, fabricIdx, colorName) {
+  _contrastSelections[fabricIdx] = colorName;
+  // Deselect all siblings in this wall, then select the clicked one
+  var parent = el.parentNode;
+  if (parent) {
+    parent.querySelectorAll('.color-card').forEach(function(c) { c.classList.remove('selected'); });
+  }
+  el.classList.add('selected');
+  updateAddBtn();
+}
+
+function chipStyle(colors, colorName) {
+  for (var i = 0; i < colors.length; i++) {
+    if (colors[i].name === colorName) {
+      var c = colors[i];
+      if (c.img) return 'background:url(' + esc(c.img) + ') center/cover';
+      return 'background:' + (c.hex || '#ccc');
+    }
+  }
+  return 'background:#ccc';
+}
+
+// ====== Stampa / Print Mode ======
+
+function loadHistoryStampe() {
+  var grid = document.getElementById('historyStampaGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:#bbb;font-size:12px">⏳ 加载中...</div>';
+  fetch('/api/history-stampe')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (!data || data.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:#bbb;font-size:12px">暂无历史花版，请上传新花版</div>';
+        return;
+      }
+      var html = '';
+      data.forEach(function(s){
+        var isSel = _selectedStampa && _selectedStampa.code === s.code;
+        html += '<div class="stampa-card'+(isSel?' selected':'')+'" onclick="selectStampa(\''+escJs(s.code)+'\',\''+escJs(s.img_url)+'\')">'+
+          '<img class="stampa-img" src="'+esc(s.img_url)+'" alt="'+esc(s.code)+'" loading="lazy">'+
+          '<div class="stampa-label">'+esc(s.code)+'</div></div>';
+      });
+      grid.innerHTML = html;
+    })
+    .catch(function(){
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:#c41e3a;font-size:12px">❌ 加载失败</div>';
+    });
+}
+
+function selectStampa(code, img_url) {
+  _selectedStampa = {code: code, img_url: img_url};
+  document.querySelectorAll('.stampa-card').forEach(function(c){
+    c.classList.toggle('selected', c.textContent.trim() === code);
+  });
+  var panel = document.getElementById('selStampa');
+  panel.classList.add('active');
+  document.getElementById('ssThumb').src = img_url;
+  document.getElementById('ssName').textContent = code;
+  document.getElementById('ssCode').textContent = '花版编号: ' + code;
+  renderStampaSizes();
+  updateAddBtn();
+}
+
+function renderStampaSizes() {
+  var sizes = ['XS','S','M','L','XL','2XL','3XL'];
+  var html = '';
+  sizes.forEach(function(sz){
+    var val = (_selectedStampa.qty && _selectedStampa.qty[sz]) ? _selectedStampa.qty[sz] : 0;
+    html += '<div class="stampa-size-row">'+
+      '<span class="ssz-label">'+sz+'</span>'+
+      '<input class="ssz-qty" type="number" min="0" max="999" value="'+val+'" onchange="updateStampaQty(\''+sz+'\',this.value)">'+
+    '</div>';
+  });
+  document.getElementById('stampaSizeMatrix').innerHTML = html;
+}
+
+function updateStampaQty(size, val) {
+  if (!_selectedStampa) return;
+  _selectedStampa.qty = _selectedStampa.qty || {};
+  _selectedStampa.qty[size] = parseInt(val) || 0;
+  updateAddBtn();
+}
+
+// ── Stampa upload (paste/drop/click) ──
+function setupStampaUpload() {
+  var zone = document.getElementById('stampaDropZone');
+
+  zone.addEventListener('paste', function(e) {
+    e.preventDefault();
+    var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') === 0) {
+        var blob = items[i].getAsFile();
+        if (blob) { _stampaFile = blob; loadStampaPreview(blob); }
+        break;
+      }
+    }
+  });
+
+  zone.addEventListener('dragover', function(e){ e.preventDefault(); this.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', function(e){ this.classList.remove('drag-over'); });
+  zone.addEventListener('drop', function(e){
+    e.preventDefault(); this.classList.remove('drag-over');
+    var files = e.dataTransfer.files;
+    if (files && files.length > 0) { _stampaFile = files[0]; loadStampaPreview(files[0]); }
+  });
+
+  zone.addEventListener('click', function(e) {
+    if (_stampaImageData) return;
+    var input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = function(ev) {
+      if (ev.target.files && ev.target.files[0]) {
+        _stampaFile = ev.target.files[0];
+        loadStampaPreview(ev.target.files[0]);
+      }
+    };
+    input.click();
+  });
+}
+
+function loadStampaPreview(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    _stampaImageData = e.target.result;
+    var img = document.getElementById('stampaPreviewImg');
+    img.src = _stampaImageData;
+    img.style.display = 'block';
+    document.querySelector('#stampaDropZone .hint').style.display = 'none';
+    document.querySelector('#stampaDropZone .sub').style.display = 'none';
+    document.querySelector('#stampaDropZone .icon').style.display = 'none';
+    document.getElementById('stampaDropZone').classList.add('preview-active');
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadStampa() {
+  var code = document.getElementById('stampaCodeInput').value.trim();
+  if (!code) { showToast('⚠️ 请输入花版编号'); document.getElementById('stampaCodeInput').focus(); return; }
+  if (!_stampaImageData) { showToast('⚠️ 请先粘贴或上传花版图片'); return; }
+  var btn = document.getElementById('stampaUploadBtn');
+  btn.disabled = true; btn.textContent = '⏳ 上传中...';
+  fetch('/api/stampe/upload', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({stampa_code: code, image_data: _stampaImageData, style_code: style ? style.code : ''})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (data.ok && data.img_url) {
+      showToast('✅ 花版上传成功');
+      _stampaImageData = null; _stampaFile = null;
+      var img = document.getElementById('stampaPreviewImg');
+      img.style.display = 'none';
+      document.querySelector('#stampaDropZone .hint').style.display = '';
+      document.querySelector('#stampaDropZone .sub').style.display = '';
+      document.querySelector('#stampaDropZone .icon').style.display = '';
+      document.getElementById('stampaDropZone').classList.remove('preview-active');
+      document.getElementById('stampaCodeInput').value = '';
+      selectStampa(code, data.img_url);
+      loadHistoryStampe();
+    } else {
+      showToast('❌ 上传失败: ' + (data.error || '未知错误'));
+    }
+  })
+  .catch(function(err){
+    showToast('❌ 上传失败: ' + (err.message || '网络错误'));
+  })
+  .then(function(){ btn.disabled = false; btn.textContent = '上传'; });
+}
+
+// Init stampa upload on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupStampaUpload);
+} else {
+  setupStampaUpload();
+}
+
+// 等服务器数据加载完再渲染
+function onDataReady() { init(); }
+if (typeof window !== 'undefined') {
+  var _initDone = false;
+  window.addEventListener('luna-data-initialized', function() {
+    if (!_initDone) { _initDone = true; init(); }
+  });
+  setTimeout(function() {
+    if (!_initDone) { _initDone = true; init(); }
+  }, 5000);
+}
+</script>
+</body>
+</html>

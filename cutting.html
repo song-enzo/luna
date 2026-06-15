@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNA ATELIER — 裁剪发料</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --gold: #C8A56D; --gold-light: #d4b98a; --cream: #f8f6f0; --white: #fff; --border: #EBE8E3; --text: #1C1C1C; --text-muted: #999; --radius: 8px; --success: #28a745; --success-bg: #e8f5e9; --warning: #e8a040; --warning-bg: #fff8e1; --radius-sm: 6px; }
+body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+.container { max-width: 900px; margin: 0 auto; padding: 16px; }
+.header { background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.header-inner { max-width: 900px; margin: 0 auto; display: flex; align-items: center; padding: 0 16px; height: 52px; gap: 12px; }
+.logo { font-family: 'Playfair Display', serif; font-size: 14px; letter-spacing: 3px; color: var(--text); }
+.logo span { color: var(--gold); }
+.back-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; color: var(--text); }
+.page-title { font-size: 13px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.5px; }
+
+/* Stats bar */
+.stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; text-align: center; }
+.stat-num { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--gold); }
+.stat-label { font-size: 10px; color: var(--text-muted); margin-top: 1px; letter-spacing: 0.5px; }
+
+/* Section title */
+.section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 12px; }
+
+/* ── Order Card ── */
+.order-card {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 16px; overflow: hidden;
+}
+.card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: var(--cream); border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.card-header .h-order-id { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 12px; color: var(--gold); font-weight: 700; letter-spacing: 0.02em; }
+.card-header .h-customer { font-weight: 600; font-size: 13px; color: var(--text); }
+.card-header .h-total { color: var(--text-muted); }
+.card-body { padding: 16px; }
+
+/* Style info row */
+.style-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.style-code { font-weight: 700; font-size: 18px; color: var(--gold); }
+.note-block {
+  margin: 8px 0; padding: 8px 12px; border-radius: var(--radius-sm);
+  font-size: 12px; line-height: 1.5;
+}
+.note-process { background: #fff3e0; border-left: 3px solid #ff6b35; color: #d4380d; font-weight: 600; }
+.note-edge { background: var(--cream); border-left: 3px solid var(--gold); color: #8a7a6a; }
+
+/* Marker info row */
+.marker-info {
+  display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 14px;
+  background: #faf9f6; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin: 10px 0; font-size: 12px;
+}
+.marker-info-item { display: flex; align-items: center; gap: 4px; color: var(--text-muted); }
+.marker-info-item b { color: var(--text); font-weight: 600; }
+
+/* Fabric Matrix table */
+.fabric-matrix-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.fabric-matrix { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 500px; }
+.fabric-matrix thead th { background: var(--cream); padding: 8px 10px; text-align: center; font-weight: 600; color: var(--text-muted); font-size: 11px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.03em; }
+.fabric-matrix tbody td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--border); }
+.fabric-matrix tbody tr:last-child td { border-bottom: none; }
+.fabric-matrix tbody tr:hover { background: var(--cream); }
+.matrix-color { font-weight: 600; display: flex; align-items: center; gap: 6px; justify-content: center; }
+.matrix-dot { display: inline-block; width: 20px; height: 20px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; cursor: pointer; transition: transform .1s; }
+.matrix-dot:hover { transform: scale(1.2); }
+.matrix-qty { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 13px; font-weight: 600; }
+
+.layer-ctrl { display: flex; align-items: center; gap: 6px; }
+.layer-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--white);
+  font-size: 16px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; transition: all .15s; font-weight: 600;
+}
+.layer-btn:hover { border-color: var(--gold); color: var(--gold); }
+.layer-num { font-size: 18px; font-weight: 700; min-width: 26px; text-align: center; }
+.layer-check {
+  width: 28px; height: 28px; border: 2px solid #ccc; border-radius: 4px;
+  cursor: pointer; text-align: center; line-height: 24px; font-size: 14px;
+  color: #fff; background: var(--white); user-select: none; transition: all .15s; font-weight: bold;
+}
+.layer-check.checked { background: var(--success); border-color: var(--success); }
+
+/* Layer controls section */
+.layer-section { margin: 14px 0 8px; }
+.layer-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.layer-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: 6px; background: #fafafa;
+}
+.layer-row:last-child { margin-bottom: 0; }
+.layer-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+.layer-dot { width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; cursor: pointer; transition: transform .1s; }
+.layer-dot:hover { transform: scale(1.2); }
+.layer-color-name { font-weight: 600; font-size: 13px; }
+.layer-formula { font-size: 11px; color: var(--text-muted); }
+.layer-right { display: flex; align-items: center; gap: 10px; }
+.layer-cut-total { font-size: 13px; font-weight: 600; color: var(--gold); min-width: 50px; }
+.layer-est { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+/* Hands control */
+.hands-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: #faf9f7; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+.hands-row label { font-size: 13px; font-weight: 500; }
+.hands-input {
+  width: 64px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 16px; font-weight: 700; text-align: center; font-family: 'Inter', sans-serif;
+}
+.hands-input:focus { outline: none; border-color: var(--gold); }
+
+
+/* Operator */
+.operator-row { margin: 10px 0; }
+.operator-row input {
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 14px; font-family: 'Inter', sans-serif; width: 200px;
+}
+.operator-row input:focus { outline: none; border-color: var(--gold); }
+
+/* Action button */
+.card-action { padding: 14px 16px; border-top: 1px solid var(--border); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 24px; border: none; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all .15s;
+}
+.btn-gold { background: var(--gold); color: #fff; width: 100%; }
+.btn-gold:hover { background: #b8963e; }
+.btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-done { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); cursor: default; width: 100%; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: #ccc; }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Status badge inline */
+.status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.status-badge.ready { background: rgba(201, 169, 110, 0.15); color: var(--gold); }
+.status-badge.done { background: var(--success-bg); color: var(--success); }
+.status-badge.wait { background: rgba(136, 136, 136, 0.1); color: #888; }
+
+/* Mobile */
+@media (max-width: 640px) {
+  .fabric-matrix { min-width: 0; font-size: 11px; }
+  .fabric-matrix thead th { font-size: 10px; padding: 6px 4px; }
+  .fabric-matrix tbody td { padding: 6px 4px; }
+  .layer-row { flex-wrap: wrap; gap: 6px; }
+  .layer-right { width: 100%; justify-content: flex-end; }
+  .stats-bar { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+/* Custom dialog */
+.dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}
+.dialog-box{background:#fff;border-radius:10px;padding:24px;max-width:360px;width:85vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.dialog-msg{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:18px;white-space:pre-wrap}
+.dialog-actions{display:flex;gap:10px;justify-content:flex-end}
+.dialog-actions .btn{min-width:72px}
+.btn-cancel{background:#f5f5f5;color:#666;border:1px solid #ddd}
+.btn-cancel:hover{background:#eee}
+/* Color preview modal */
+.cp-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center}
+.cp-box{background:#fff;border-radius:12px;padding:24px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:300px;width:85vw}
+.cp-swatch{width:180px;height:180px;border-radius:6px;border:2px solid #eee;margin:0 auto 12px;background-size:cover;background-position:center}
+.cp-label{font-size:14px;color:var(--text);margin-bottom:14px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="logo">LUNA <span>A</span></span>
+    <span class="page-title">✂️ 裁剪发料 — 裁剪车间</span>
+  </div>
+</div>
+<div class="container">
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-num" id="pendingCount">0</div><div class="stat-label">待裁剪</div></div>
+    <div class="stat-card"><div class="stat-num" id="todayCount">0</div><div class="stat-label">今日已裁剪</div></div>
+    <div class="stat-card"><div class="stat-num" id="totalQty">0</div><div class="stat-label">待裁剪件数</div></div>
+  </div>
+
+  <div id="orderList"></div>
+  <div id="emptyState" class="empty-state" style="display:none">
+    <div class="icon">✂️</div>
+    <div>暂无待裁剪订单</div>
+  </div>
+</div>
+
+<!-- Custom Dialog -->
+<div class="dialog-overlay" id="dialogOverlay" onclick="closeDialog(event)">
+  <div class="dialog-box">
+    <div class="dialog-msg" id="dialogMsg"></div>
+    <div class="dialog-actions" id="dialogActions">
+      <button class="btn btn-cancel" id="dialogCancelBtn">取消</button>
+      <button class="btn btn-gold" id="dialogOkBtn">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Color Preview -->
+<div class="cp-overlay" id="cpOverlay" onclick="if(event.target===this)closeColorPreview()">
+  <div class="cp-box">
+    <div class="cp-swatch" id="cpSwatch"></div>
+    <div class="cp-label" id="cpLabel"></div>
+    <button class="btn btn-cancel" onclick="closeColorPreview()">关闭</button>
+  </div>
+</div>
+
+<script src="luna-data.js?v=19"></script>
+<script>LUNA.renderNav();</script>
+<script>
+LUNA.checkAuth();
+
+function init() {
+  var orders = LUNA.getCuttingOrders ? LUNA.getCuttingOrders() : [];
+  renderStats(orders);
+  renderCards(orders);
+}
+
+function renderStats(orders) {
+  document.getElementById('pendingCount').textContent = orders.length;
+  var pendingQty = 0;
+  var all = LUNA.getOrders ? LUNA.getOrders() : [];
+  var todayStr = new Date().toISOString().slice(0, 10);
+  var todayDone = 0;
+  all.forEach(function(o) {
+    if (o.cutting_complete && o.cutting_complete.completed === 1 && o.cutting_complete.time) {
+      var t = o.cutting_complete.time;
+      var datePart = t.split(' ')[0].replace(/\//g, '-');
+      if (datePart === todayStr) todayDone += o.cutting_complete.total_cut || 0;
+    }
+  });
+  orders.forEach(function(o) { pendingQty += o.total_qty || 0; });
+  document.getElementById('todayCount').textContent = todayDone;
+  document.getElementById('totalQty').textContent = pendingQty;
+}
+
+// ── Color / Layer state ──
+var orderState = {}; // orderId -> { layers: {}, fabricHands: {}, checks: {} }
+
+function renderCards(orders) {
+  var c = document.getElementById('orderList');
+  var empty = document.getElementById('emptyState');
+  if (!orders || !orders.length) {
+    c.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  var html = '';
+  orders.forEach(function(order) {
+    html += renderCard(order);
+  });
+  c.innerHTML = html;
+}
+
+function renderCard(order) {
+  var items = order.items || [];
+  var firstCode = items.length > 0 ? (items[0].code || '') : '';
+  var firstName = items.length > 0 ? (items[0].name || '') : '';
+  var style = (firstCode && LUNA.findStyle) ? LUNA.findStyle(firstCode) : null;
+  var totalQty = order.total_qty || 0;
+  var markerInfo = order.marker_complete || {};
+  var markerFabrics = markerInfo.fabrics || [];
+
+  // Group items by fabric
+  var fabricGroups = {};
+  items.forEach(function(item) {
+    var fabricNames = (item.fabric || '默认面料').split(/\s*,\s*/);
+    fabricNames.forEach(function(fName) {
+      if (!fabricGroups[fName]) fabricGroups[fName] = [];
+      fabricGroups[fName].push(item);
+    });
+  });
+  var fabricNames = Object.keys(fabricGroups);
+
+  // Init state
+  if (!orderState[order.id]) {
+    orderState[order.id] = {
+      layers: {},
+      fabricHands: {},
+      fabricLen: {},
+      lossCm: {},
+      checks: {},
+    };
+  }
+  var st = orderState[order.id];
+
+  // Start card
+  var card = '<div class="order-card" id="card_' + escJs(order.id) + '">' +
+    '<div class="card-header">' +
+    '<span class="h-order-id">' + esc(order.id) + '</span>' +
+    '<span class="h-customer">' + esc(order.customer) + (order.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(order.sub_customer)+')</span>':'') + '</span>' +
+    '<span class="h-total">共 ' + totalQty + ' 件' + ((style && style.edgeNote) ? '<span style="font-size:10px;color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:1px 6px;margin-left:8px">包边: ' + esc(style.edgeNote) + '</span>' : '') + '</span>' +
+    '</div>' +
+    '<div class="card-body">';
+
+  // Style info
+  card += '<div class="style-row">' +
+    '<span class="style-code">#' + esc(firstCode) + '</span>' +
+    '</div>';
+
+  // Process notes (from style)
+  if (style && style.notes) {
+    card += '<div class="note-block note-process">📋 加工备注: ' + esc(style.notes) + '</div>';
+  }
+  if (order.note) {
+    card += '<div class="note-block note-process">💬 下单备注: ' + esc(order.note) + '</div>';
+  }
+
+  // Per-fabric sections — 只显示已出纸样的面料
+  fabricNames.forEach(function(fName) {
+    var fItems = fabricGroups[fName];
+    // Find marker data for this fabric
+    var fabMarker = null;
+    for (var fi = 0; fi < markerFabrics.length; fi++) {
+      if (markerFabrics[fi].name === fName) { fabMarker = markerFabrics[fi]; break; }
+    }
+    if (!fabMarker) return; // 跳过未出纸样的面料
+    var fabLen = fabMarker ? fabMarker.length : '-';
+    var fabHands = fabMarker ? fabMarker.hands : (markerInfo.hands || 1);
+    st.fabricHands[fName] = fabHands;
+
+    // 查找该面料的损耗（cm/层）
+    var lossCm = 6;
+    if (LUNA.getFabrics) {
+      var allFab = LUNA.getFabrics();
+      for (var lfi = 0; lfi < allFab.length; lfi++) {
+        if (allFab[lfi].name === fName) { lossCm = allFab[lfi].lossPerLayer || 6; break; }
+      }
+    }
+    st.fabricLen[fName] = fabLen;
+    st.lossCm[fName] = lossCm;
+
+    // Gather colors + totals for this fabric
+    var colorRows = [];
+    var colorMap = {};
+    var allSizes = ['XS','S','M','L','XL','2XL','3XL','UNICA'];
+    fItems.forEach(function(item) {
+      var c = getItemColor(item, fName);
+      if (!colorMap[c]) {
+        colorMap[c] = { color: c, total: 0, qty: item.qty || {} };
+      }
+      var itemTotal = 0;
+      if (item.qty) Object.keys(item.qty).forEach(function(s) { itemTotal += item.qty[s] || 0; });
+      colorMap[c].total += itemTotal;
+    });
+    Object.keys(colorMap).forEach(function(c) { colorRows.push(colorMap[c]); });
+
+    // Fabric section header with marker info
+    card += '<div style="margin:12px 0 8px;padding:10px 12px;background:#faf9f6;border:1px solid var(--border);border-radius:6px">';
+    card += '<div style="font-weight:600;font-size:14px;color:var(--gold);margin-bottom:4px">面料: ' + esc(fName) + '</div>';
+    card += '<div style="display:flex;gap:20px;font-size:15px;color:var(--text-muted)">' +
+      '<span>📐 纸样长度: <b style="color:var(--text);font-size:16px">' + fabLen + 'm</b></span>' +
+      '<span>🧮 几手: <b style="color:var(--text);font-size:16px">' + fabHands + '</b></span>' +
+      '</div></div>';
+
+    // Determine which sizes have quantities (hide empty columns)
+    var activeSizes = [];
+    allSizes.forEach(function(sz) {
+      var hasQty = false;
+      colorRows.forEach(function(cr) { if ((cr.qty[sz] || 0) > 0) hasQty = true; });
+      if (hasQty) activeSizes.push(sz);
+    });
+
+    // Fabric matrix: color × size table
+    card += '<div class="fabric-matrix-wrap"><table class="fabric-matrix"><thead><tr>' +
+      '<th>颜色</th>';
+    activeSizes.forEach(function(sz) { card += '<th>' + sz + '</th>'; });
+    card += '<th>小计</th></tr></thead><tbody>';
+
+    colorRows.forEach(function(cr) {
+      var c = cr.color;
+      var qty = cr.qty || {};
+      var rowTotal = 0;
+      card += '<tr>' +
+        '<td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '" onclick="showColorPreview(\'' + escJs(fName) + '\',\'' + escJs(c) + '\')"></span>' + esc(c) + '</div></td>';
+      activeSizes.forEach(function(sz) {
+        var v = qty[sz] || 0;
+        card += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
+        rowTotal += v;
+      });
+      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + rowTotal + '</span></td>';
+      card += '</tr>';
+    });
+
+    card += '</tbody></table></div>';
+
+    // Per-color layer rows below the matrix
+    card += '<div class="layer-section">';
+    colorRows.forEach(function(cr) {
+      var c = cr.color;
+      var total = cr.total;
+      var ck = fName + '\x00' + c; // composite key (fabric + color)
+      var idSafe = escJsId(ck);
+      var suggested = Math.max(1, Math.ceil(total / fabHands));
+      if (st.layers[ck] === undefined) st.layers[ck] = suggested;
+      var currentLayers = st.layers[ck];
+      var cutTotal = currentLayers * fabHands;
+      var estMeters = parseFloat(fabLen) > 0 ? (currentLayers * (parseFloat(fabLen) + lossCm / 100)).toFixed(2) : '—';
+
+      card += '<div class="layer-row" id="lr_' + escJs(order.id) + '_' + idSafe + '">' +
+        '<div class="layer-left">' +
+        '<span class="layer-dot" style="' + getColorStyle(fName, c) + '" onclick="showColorPreview(\'' + escJs(fName) + '\',\'' + escJs(c) + '\')"></span>' +
+        '<span class="layer-color-name">' + esc(c) + '</span>' +
+        '<span class="layer-formula">' + total + '件 ÷ ' + fabHands + '手 = 建议 ' + suggested + '层</span>' +
+        '</div>' +
+        '<div class="layer-right">' +
+        '<div class="layer-ctrl">' +
+        '<button class="layer-btn" onclick="adjLayer(\'' + escJs(order.id) + '\',\'' + escJs(fName) + '\',\'' + escJs(c) + '\',' + total + ',-1,' + fabHands + ')">−</button>' +
+        '<span class="layer-num" id="ln2_' + escJs(order.id) + '_' + idSafe + '">' + currentLayers + '</span>' +
+        '<button class="layer-btn" onclick="adjLayer(\'' + escJs(order.id) + '\',\'' + escJs(fName) + '\',\'' + escJs(c) + '\',' + total + ',1,' + fabHands + ')">+</button>' +
+        '</div>' +
+        '<span class="layer-cut-total" id="lct_' + escJs(order.id) + '_' + idSafe + '">✂️ ' + cutTotal + '</span>' +
+        '<span class="layer-est" id="lest_' + escJs(order.id) + '_' + idSafe + '">📦 ' + estMeters + 'm</span>' +
+        '<span class="layer-check" id="lchk2_' + escJs(order.id) + '_' + idSafe + '" onclick="toggleCheck(\'' + escJs(order.id) + '\',\'' + escJs(fName) + '\',\'' + escJs(c) + '\',this)">' + (st.checks[ck] ? '✔' : '☐') + '</span>' +
+        '</div>' +
+        '</div>';
+    });
+    card += '</div>';
+  });
+
+
+  // Operator
+  var user = LUNA.getUser ? LUNA.getUser() : null;
+  var opName = (user && (user.name || user.username)) || 'admin';
+  card += '<div class="operator-row"><input type="text" id="op_' + escJs(order.id) + '" value="' + esc(opName) + '" placeholder="操作人"></div>';
+
+  // Close body + action
+  card += '</div>' +
+    '<div class="card-action">' +
+    '<button class="btn btn-gold" onclick="confirmCutting(\'' + escJs(order.id) + '\')">✅ 裁剪完成，待拿货</button>' +
+    '</div>' +
+    '</div>';
+
+  return card;
+}
+
+// ── Layer adj ──
+function adjLayer(orderId, fabricName, color, total, delta, hands) {
+  var st = orderState[orderId];
+  if (!st) return;
+  var ck = fabricName + '\x00' + color;
+  var idSafe = escJsId(ck);
+  var numEl = document.getElementById('ln2_' + orderId + '_' + idSafe);
+  if (!numEl) return;
+  var v = Math.max(1, parseInt(numEl.textContent) + delta);
+  numEl.textContent = v;
+  st.layers[ck] = v;
+  updateLayerTotal(orderId, ck, v, hands || 1);
+}
+
+function updateLayerTotal(orderId, ck, layers, hands) {
+  var st = orderState[orderId];
+  if (!st) return;
+  var idSafe = escJsId(ck);
+  var totalEl = document.getElementById('lct_' + orderId + '_' + idSafe);
+  if (!totalEl) return;
+  var cutTotal = layers * (hands || 1);
+  totalEl.textContent = '✂️ ' + cutTotal;
+  // Update estimated fabric usage
+  var sepIdx = ck.indexOf('\x00');
+  var fName = sepIdx >= 0 ? ck.substring(0, sepIdx) : '';
+  var fabLen = st.fabricLen ? st.fabricLen[fName] : null;
+  var lossCm = st.lossCm ? st.lossCm[fName] : 6;
+  var estEl = document.getElementById('lest_' + orderId + '_' + idSafe);
+  if (estEl && parseFloat(fabLen) > 0) {
+    var est = (layers * (parseFloat(fabLen) + (parseFloat(lossCm) || 6) / 100)).toFixed(2);
+    estEl.textContent = '📦 ' + est + 'm';
+  } else if (estEl) {
+    estEl.textContent = '📦 —';
+  }
+}
+
+
+function toggleCheck(orderId, fabricName, color, el) {
+  var ck = fabricName + '\x00' + color;
+  el.classList.toggle('checked');
+  el.textContent = el.classList.contains('checked') ? '✔' : '☐';
+  var st = orderState[orderId];
+  if (!st) return;
+  st.checks[ck] = el.classList.contains('checked');
+}
+
+// Custom dialog functions
+function showAlert(msg, onOk) {
+  var overlay = document.getElementById('dialogOverlay');
+  document.getElementById('dialogMsg').textContent = msg;
+  document.getElementById('dialogOkBtn').textContent = '确定';
+  document.getElementById('dialogOkBtn').onclick = function() { overlay.style.display = 'none'; if (onOk) onOk(); };
+  document.getElementById('dialogCancelBtn').style.display = 'none';
+  overlay.style.display = 'flex';
+}
+function showConfirm(msg, onOk) {
+  var overlay = document.getElementById('dialogOverlay');
+  document.getElementById('dialogMsg').textContent = msg;
+  document.getElementById('dialogOkBtn').textContent = '确定';
+  document.getElementById('dialogOkBtn').onclick = function() { overlay.style.display = 'none'; if (onOk) onOk(); };
+  var cancelBtn = document.getElementById('dialogCancelBtn');
+  cancelBtn.style.display = '';
+  cancelBtn.onclick = function() { overlay.style.display = 'none'; };
+  overlay.style.display = 'flex';
+}
+function closeDialog(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('dialogOverlay').style.display = 'none';
+}
+
+// ── Confirm ──
+function getItemColor(item, fabricName) {
+  if (item.item_type === 'contrast' && item.components) {
+    for (var ci = 0; ci < item.components.length; ci++) {
+      if (item.components[ci].part === fabricName) return item.components[ci].color;
+    }
+  }
+  return item.color || '默认';
+}
+
+function getColorStyle(fabricName, colorName) {
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    if (allFabrics[fi].name === fabricName) {
+      var cols = allFabrics[fi].colors || [];
+      for (var ci = 0; ci < cols.length; ci++) {
+        if (cols[ci].name === colorName) {
+          if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+          return 'background:' + (cols[ci].hex || '#ccc');
+        }
+      }
+    }
+  }
+  var hash = 0;
+  var hashStr = fabricName + '\x00' + colorName;
+  for (var hi = 0; hi < hashStr.length; hi++) { hash = hashStr.charCodeAt(hi) + ((hash << 5) - hash); }
+  return 'background:hsl(' + (Math.abs(hash) % 360) + ',50%,70%)';
+}
+
+function showColorPreview(fabricName, colorName) {
+  var bg = getColorStyle(fabricName, colorName);
+  document.getElementById('cpSwatch').style.cssText = bg + ';width:180px;height:180px;border-radius:6px;border:2px solid #eee';
+  document.getElementById('cpLabel').textContent = colorName + ' · ' + fabricName;
+  document.getElementById('cpOverlay').style.display = 'flex';
+}
+function closeColorPreview() { document.getElementById('cpOverlay').style.display = 'none'; }
+
+function confirmCutting(orderId) {
+  var st = orderState[orderId];
+  if (!st) { showAlert('状态异常'); return; }
+  var order = LUNA.findOrder(orderId);
+  if (!order) { showAlert('订单数据异常'); return; }
+
+  // Build per-color cutting data from composite keys
+  var colorData = {};
+  var totalCut = 0;
+  var uncheckedNames = [];
+
+  for (var ck in st.layers) {
+    var sepIdx = ck.indexOf('\x00');
+    var fabricName = sepIdx >= 0 ? ck.substring(0, sepIdx) : '';
+    var color = sepIdx >= 0 ? ck.substring(sepIdx + 1) : ck;
+    var hands = st.fabricHands[fabricName] || 1;
+    var layers = st.layers[ck] || 1;
+    var cutTotal = layers * hands;
+    if (!colorData[ck]) colorData[ck] = { fabric: fabricName, hands: hands, layers: layers, total: 0 };
+    colorData[ck].total += cutTotal;
+    totalCut += cutTotal;
+    if (!st.checks[ck]) uncheckedNames.push(color + '(' + fabricName + ')');
+  }
+
+  // Checkmarks for colors
+  var checkmarks = {};
+  for (var ck in st.checks) {
+    if (st.checks[ck]) {
+      var sepIdx = ck.indexOf('\x00');
+      var color = sepIdx >= 0 ? ck.substring(sepIdx + 1) : ck;
+      checkmarks[color] = true;
+    }
+  }
+
+  var op = document.getElementById('op_' + orderId).value.trim() || 'admin';
+  var checkedTotal = 0;
+  for (var ck in st.checks) { if (st.checks[ck]) {
+    var sepIdx = ck.indexOf('\x00');
+    var fabricName = sepIdx >= 0 ? ck.substring(0, sepIdx) : '';
+    var hands = st.fabricHands[fabricName] || 1;
+    var layers = st.layers[ck] || 1;
+    checkedTotal += layers * hands;
+  }}
+  var msg = '总裁剪: ' + checkedTotal + '件';
+  if (uncheckedNames.length) msg += '  (其中 ' + (totalCut - checkedTotal) + '件未打勾不计)';
+  if (uncheckedNames.length) msg += '\n\n⚠️ 以下颜色未打勾: ' + uncheckedNames.join(', ');
+
+  showConfirm(msg + '\n\n确认完成？', function() {
+    if (LUNA.completeCutting) {
+      var result = LUNA.completeCutting(orderId, colorData, checkmarks, op);
+      if (result) {
+        showAlert('✅ 裁剪完成！有效件数: ' + checkedTotal + '件' + (uncheckedNames.length > 0 ? ' (未打勾不计)' : ''));
+        var card = document.getElementById('card_' + escJs(orderId));
+        if (card) {
+          card.style.opacity = '0.3';
+          card.style.transition = 'opacity .3s';
+          setTimeout(function() { init(); }, 500);
+        }
+      } else {
+        showAlert('❌ 保存失败，请重试（若持续失败，请退出重新登录）');
+      }
+    } else {
+      showAlert('❌ 系统错误：completeCutting 不可用');
+    }
+  });
+}
+
+// ── Utilities ──
+function colorHex(name) {
+  var m = {'黑':'#1a1a1a','红':'#c0392b','蓝':'#2980b9','绿':'#27ae60','黄':'#f1c40f','灰':'#95a5a6','驼':'#c9a96e','米':'#f5e6d3','酒':'#722f37','白':'#f5f5f5','藏':'#1a237e','军':'#4b5320','卡':'#c3b091','棕':'#6d4c41','杏':'#e8c9a6','粉':'#f5a0b0','紫':'#8e44ad','橙':'#e67e22','金':'#c8a56d','咖':'#8b6914'};
+  for (var k in m) if (name && name.indexOf(k) !== -1) return m[k];
+  return '#c8a56d';
+}
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function escJs(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+function escJsId(s) { return (s || '').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_'); }
+
+init();
+window.addEventListener('luna-data-changed', init);
+</script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNA ATELIER · 下单</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:100px}
+.header{display:flex;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #EBE8E3;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 8px 4px 0;background:none;border:none;color:#666;font-family:inherit}
+.header .logo{font-family:'Playfair Display',serif;font-size:14px;letter-spacing:3px;color:#1C1C1C;margin-right:auto}
+.header .logo span{color:#C8A56D}
+.header .cart-icon{background:none;border:none;font-size:18px;cursor:pointer;position:relative;padding:4px;color:#999}
+.header .cart-badge{position:absolute;top:-2px;right:-6px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff}
+.pdp-wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
+/* Carousel */
+.carousel-wrap{position:relative;margin:12px 0;overflow:hidden;border-radius:8px;background:#f0ede8}
+.carousel-track{display:flex;will-change:transform}
+.carousel-slide{flex:0 0 100%;aspect-ratio:3/4;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:32px;color:#d5d0c9;flex-direction:column;gap:4px}
+.carousel-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.carousel-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.85);border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,.08);color:#333}
+.carousel-arrow.prev{left:10px}.carousel-arrow.next{right:10px}
+.carousel-dots{display:flex;justify-content:center;gap:4px;padding:8px 0 4px}
+.carousel-dot{width:5px;height:5px;border-radius:50%;background:#ddd;cursor:pointer;transition:all .2s}
+.carousel-dot.active{background:#C8A56D;width:14px;border-radius:3px}
+.carousel-counter{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:5;font-weight:500;letter-spacing:.5px}
+.carousel-track.dragging{transition:none!important;cursor:grab}
+.carousel-slide{cursor:pointer}
+/* Product Info */
+.product-info{padding:16px 0 8px}
+.product-brand{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#999}
+.product-code{font-size:12px;color:#C8A56D;font-weight:600;margin-top:2px}
+.product-name{font-family:'Playfair Display',serif;font-size:22px;margin-top:4px;color:#1C1C1C}
+.product-price{font-family:'Playfair Display',serif;font-size:26px;font-weight:600;color:#1C1C1C;margin-top:4px}
+.product-desc{font-size:13px;color:#888;line-height:1.6;margin-top:8px;padding:12px;background:#f8f8f8;border-radius:6px}
+/* Color Selection */
+.opt-block{margin:16px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.opt-label{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:10px}
+.fabric-card{background:#faf9f7;border:1px solid #EBE8E3;border-radius:6px;padding:10px;margin-bottom:8px}
+.fabric-card .fab-name{font-size:13px;font-weight:600;color:#333;margin-bottom:2px}
+.fabric-card .fab-comp{font-size:10px;color:#aaa;margin-bottom:8px}
+.fabric-card .fab-swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch-chip{width:56px;height:56px;border-radius:0;border:2px solid #ddd;cursor:pointer;transition:all .15s;object-fit:cover;position:relative}
+.swatch-chip:hover{border-color:#C8A56D}
+.swatch-chip.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
+.swatch-chip .dot{width:100%;height:100%;border-radius:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.swatch-supplier{font-size:8px;color:#aaa;text-align:center;margin-top:2px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selected-color-preview{display:none;margin-top:10px;padding:10px;background:#f8f6f0;border-radius:6px;font-size:13px;align-items:center;gap:10px}
+.selected-color-preview.active{display:flex}
+.selected-color-swatch{width:36px;height:36px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;overflow:hidden}
+/* Size + Qty */
+.size-btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.size-btn{padding:6px 12px;border:1.5px solid #1C1C1C;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#1C1C1C;font-family:inherit;transition:all .15s;min-width:44px;text-align:center}
+.size-btn:hover{border-color:#C8A56D;color:#C8A56D}
+.size-btn.selected{background:#1C1C1C;color:#fff;border-color:#1C1C1C}
+.size-btn.unica{border-color:#C8A56D;color:#C8A56D}
+.size-btn.unica.selected{background:#C8A56D;color:#fff}
+.qty-select{padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;color:#333;outline:none;background:#fff;min-width:60px}
+.qty-select:focus{border-color:#C8A56D}
+/* Add to Cart Button */
+.add-btn{width:100%;padding:14px;background:#1C1C1C;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .15s}
+.add-btn:disabled{opacity:.4;cursor:default}
+.add-btn:hover:not(:disabled){background:#333}
+.add-btn .sub{font-size:11px;color:#888;font-weight:400}
+/* Cart Section */
+.cart-section{margin-top:4px}
+.cart-section .title{font-size:13px;font-weight:600;color:#333;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.cart-section .title .total{color:#C8A56D;font-weight:600}
+.cart-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:8px;margin-bottom:8px;font-size:13px;border:1px solid #EBE8E3}
+.cart-item .info{flex:1;min-width:0}
+.cart-item .info .sz{font-weight:600;color:#333;font-size:13px;margin-bottom:2px}
+.cart-item .info .detail{font-size:11px;color:#999;margin-bottom:4px}
+.cart-item .qty-row{display:flex;align-items:center;gap:8px;margin-top:3px}
+.cart-item .qty-sz{font-size:12px;color:#999;min-width:24px;font-weight:500}
+.cart-item .del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:2px 6px;font-family:inherit;margin-top:2px;transition:color .15s}
+.cart-item .del-btn:hover{color:#c41e3a}
+.cart-empty{text-align:center;padding:24px;color:#bbb;font-size:13px}
+.remark-wrap{width:100%}
+.remark-wrap textarea{width:100%;padding:10px;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;font-family:inherit;resize:vertical;min-height:44px;outline:none;color:#333}
+.remark-wrap textarea:focus{border-color:#C8A56D}
+/* Submit Button */
+.submit-btn{width:100%;padding:16px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin:8px 0;transition:background .15s}
+.submit-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+.submit-btn:hover:not(:disabled){background:#b8963e}
+.submit-btn .sub{font-size:11px;color:rgba(255,255,255,.6);font-weight:400}
+/* Color Modal */
+.color-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;align-items:center;justify-content:center;flex-direction:column}
+.color-modal.show{display:flex}
+.color-modal img{max-width:90vw;max-height:70vh;border-radius:4px;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.color-modal .cm-name{color:#fff;font-size:15px;margin-top:12px;font-weight:600}
+.color-modal .cm-close{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer;background:none;border:none;font-family:inherit;line-height:1}
+/* Cart Qty Controls */
+.qty-ctrl{display:inline-flex;align-items:center;gap:3px}
+.qty-btn{width:26px;height:26px;border:1.5px solid #C8A56D;border-radius:6px;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#C8A56D;font-family:inherit;line-height:1;transition:all .15s}
+.qty-btn:hover{background:#C8A56D;color:#fff}
+.qty-val{min-width:20px;text-align:center;font-size:13px;font-weight:600;color:#1C1C1C}
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1C1C1C;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+/* Floating cart */
+.cart-float{position:fixed;bottom:24px;right:20px;z-index:900;width:52px;height:52px;border-radius:50%;background:#1C1C1C;color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:transform .15s;font-family:inherit}
+.cart-float:hover{transform:scale(1.08)}
+.cart-float .badge{position:absolute;top:-4px;right:-4px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 4px}
+.cart-modal{display:none;position:fixed;bottom:90px;right:16px;width:340px;max-width:92vw;max-height:60vh;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:901;overflow:hidden;flex-direction:column}
+.cart-modal.open{display:flex}
+.cart-modal .cm-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #EBE8E3}
+.cart-modal .cm-header .cm-title{font-size:13px;font-weight:600;color:#1C1C1C}
+.cart-modal .cm-header .cm-close{background:none;border:none;font-size:18px;color:#999;cursor:pointer;font-family:inherit;padding:2px}
+.cart-modal .cm-body{overflow-y:auto;flex:1;padding:8px 0}
+.cart-empty{text-align:center;padding:20px;color:#bbb;font-size:12px}
+/* Cart code-grouped */
+.cart-code-group{border:1.5px dashed #C8A56D;border-radius:8px;padding:8px;margin:0 8px 10px;background:#fff}
+.cart-code-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px;font-size:13px}
+.cart-code-header .cc-code{font-weight:700;color:#1C1C1C;font-size:12px}
+.cart-code-header .cc-price{color:#C8A56D;font-weight:600;font-size:12px;white-space:nowrap}
+.cart-color-item{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-top:1px solid #EBE8E3}
+.cart-color-item:first-of-type{border-top:none}
+.cart-color-swatch{width:26px;height:26px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;margin-top:2px;background-size:cover;background-position:center;background-repeat:no-repeat}
+.cart-color-info{flex:1;min-width:0}
+.cart-color-name{font-size:11px;font-weight:600;color:#555;margin-bottom:1px}
+.cart-qty-ctrl{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.cart-qty-cell{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid #EBE8E3;border-radius:6px;padding:4px 5px 3px;background:#fafaf8;min-width:36px}
+.cart-qty-btn{width:26px;height:20px;border:1px solid #C8A56D;border-radius:3px;background:#fff;color:#C8A56D;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;padding:0;transition:all .1s}
+.cart-qty-btn:active{background:#C8A56D;color:#fff}
+.cart-qty-val{font-size:12px;font-weight:700;color:#1C1C1C;line-height:1.2}
+.cart-qty-lbl{font-size:9px;color:#999;font-weight:500}
+.cart-item .del-btn{background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:2px 4px}
+.cart-item .del-btn:hover{color:#c41e3a}
+.cart-modal .cm-footer{padding:10px 14px;border-top:1px solid #EBE8E3}
+.cart-modal .cm-footer textarea{width:100%;padding:8px;border:1px solid #EBE8E3;border-radius:6px;font-size:11px;font-family:inherit;resize:none;min-height:36px;outline:none;margin-bottom:8px}
+.cart-modal .cm-footer textarea:focus{border-color:#C8A56D}
+.cart-modal .cm-footer .submit-btn{width:100%;padding:12px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.cart-modal .cm-footer .submit-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+.cart-modal .cm-footer .submit-btn:hover:not(:disabled){background:#b8963e}
+.cart-modal .cm-footer .submit-btn .sub{font-size:10px;color:rgba(255,255,255,.6);font-weight:400}
+/* Cart backdrop */
+.cart-backdrop{display:none;position:fixed;inset:0;z-index:898;background:transparent}
+.cart-backdrop.show{display:block}
+/* Color Card Grid — 5 columns, color on top, name on white bg below */
+.color-card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.color-card{cursor:pointer;border-radius:6px;overflow:hidden;background:#fff;border:1.5px solid #EBE8E3;transition:all .15s}
+.color-card:hover{border-color:#C8A56D}
+.color-card.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
+.color-card .swatch-area{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#f0ede8;cursor:pointer}
+.color-card .swatch-area img{width:100%;height:100%;object-fit:cover}
+.color-card .color-label{padding:4px 2px;text-align:center;font-size:10px;font-weight:500;color:#1C1C1C;background:#fff;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back" onclick="history.back()">←</button>
+  <span class="logo">LUNA <span>A</span></span>
+  <button class="cart-icon" onclick="toggleCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+</div>
+<div class="pdp-wrap">
+  <!-- Carousel -->
+  <div class="carousel-wrap" id="carouselWrap">
+    <div class="carousel-track" id="carouselTrack"></div>
+    <button class="carousel-arrow prev" id="prevBtn">‹</button>
+    <button class="carousel-arrow next" id="nextBtn">›</button>
+    <div class="carousel-dots" id="carouselDots"></div>
+    <div class="carousel-counter" id="carouselCounter"></div>
+  </div>
+  <!-- Info -->
+  <div class="product-info" id="productInfo"></div>
+
+  <!-- Color Selection -->
+  <div class="opt-block" id="colorBlock">
+    <div class="opt-label">① 选择颜色</div>
+    <div id="fabricColors"></div>
+    <div class="selected-color-preview" id="selectedColorPreview">
+      <div class="selected-color-swatch" id="selColorSwatch"></div>
+      <span id="selColorName"></span>
+    </div>
+  </div>
+
+  <!-- Step 2: Size + Qty -->
+  <div class="opt-block">
+    <div class="opt-label">② 尺码 &amp; 数量 <span style="font-weight:400;color:#bbb;font-size:10px">多选号码，UNICA 单选</span></div>
+    <div class="size-btn-row" id="sizeBtns"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <span style="font-size:13px;color:#666">数量</span>
+      <select class="qty-select" id="qtySelect"></select>
+    </div>
+    <button class="add-btn" id="addToCartBtn" disabled>🛒 加入购物车 <span class="sub" id="addSub">— 先选择颜色</span></button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<!-- Color Modal -->
+<div class="color-modal" id="colorModal" onclick="closeColorModal()">
+  <button class="cm-close" onclick="closeColorModal()">&times;</button>
+  <img id="colorModalImg" src="" alt="">
+  <div class="cm-name" id="colorModalName"></div>
+</div>
+<!-- Floating cart -->
+<div class="cart-backdrop" id="cartBackdrop" onclick="toggleCart()"></div>
+<button class="cart-float" id="cartFloatBtn" onclick="toggleCart()">🛒<span class="badge" id="cartBadgeFloat">0</span></button>
+<div class="cart-modal" id="cartModal">
+  <div class="cm-header">
+    <span class="cm-title">🛒 购物车</span>
+    <button class="cm-close" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cm-body" id="cartBody"><div class="cart-empty">购物车是空的</div></div>
+  <div class="cm-footer">
+    <textarea id="remarkInput" placeholder="备注：袖长改短2cm、内衬换颜色…"></textarea>
+    <button class="submit-btn" id="submitOrderBtn" disabled>📋 提交订单 <span class="sub" id="submitSub">(购物车为空)</span></button>
+  </div>
+</div>
+<script src="luna-data.js?v=10"></script>
+<script>
+var style, selectedColor = '';
+var carouselState = null;
+var cart = [];
+
+function init() {
+  var code = new URLSearchParams(location.search).get('code');
+  style = LUNA.findStyle(code);
+  if (!style) { alert('款式不存在'); history.back(); return; }
+  selectedColor = '';
+  if (style.fabrics && style.fabrics.length) {
+    var allFabrics = LUNA.getFabrics();
+    for (var fi = 0; fi < style.fabrics.length; fi++) {
+      var sf = style.fabrics[fi];
+      for (var ai = 0; ai < allFabrics.length; ai++) {
+        if (allFabrics[ai].id === sf.code || allFabrics[ai].name === sf.name) {
+          var cols = allFabrics[ai].colors || [];
+          if (cols.length) { selectedColor = cols[0].name; break; }
+        }
+      }
+      if (selectedColor) break;
+    }
+  }
+  renderCarousel();
+  renderInfo();
+  renderColors();
+  renderSizes();
+  renderCart();
+  updateCartBadge();
+  updateAddBtn();
+  updateSubmitBtn();
+}
+
+// ====== Carousel ======
+function renderCarousel() {
+  var imgs = style.images || [];
+  var track = document.getElementById('carouselTrack');
+  var total = Math.max(imgs.length, 3);
+  var html = '';
+  for (var i = 0; i < total; i++) {
+    if (imgs[i]) { html += '<div class="carousel-slide"><img src="'+imgs[i]+'" alt=""></div>'; }
+    else { var bg = ['#f5f1eb','#efe9e0','#faf5ee']; html += '<div class="carousel-slide" style="background:'+bg[i%3]+'">◇<br><span style="font-size:11px;color:#bbb">暂无图片</span></div>'; }
+  }
+  track.innerHTML = html;
+  if (total <= 1) { document.getElementById('prevBtn').style.display='none'; document.getElementById('nextBtn').style.display='none'; document.getElementById('carouselDots').innerHTML=''; return; }
+
+  // Build dots
+  var dotsHtml = '';
+  for (var di = 0; di < total; di++) { dotsHtml += '<span class="carousel-dot'+(di===0?' active':'')+'" data-idx="'+di+'"></span>'; }
+  document.getElementById('carouselDots').innerHTML = dotsHtml;
+
+  carouselState = { idx: 0, total: total };
+
+  var wrap = document.getElementById('carouselWrap');
+  var getW = function() { return wrap.clientWidth; };
+  var startX = 0, baseTx = 0, dragTx = 0;
+  var isDragging = false, wasDragged = false;
+  var velHistory = [];
+
+  function go(targetIdx, animate) {
+    if (targetIdx < 0) targetIdx = total - 1;
+    if (targetIdx >= total) targetIdx = 0;
+    carouselState.idx = targetIdx;
+    track.style.transition = animate ? 'transform .5s cubic-bezier(.25,.46,.45,.94)' : 'none';
+    track.style.transform = 'translateX(-' + (targetIdx * getW()) + 'px)';
+    updateDots(targetIdx);
+    document.getElementById('carouselCounter').textContent = (targetIdx + 1) + '/' + total;
+  }
+
+  function getX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
+  function onStart(e) {
+    isDragging = true; wasDragged = false;
+    startX = getX(e);
+    baseTx = -carouselState.idx * getW();
+    velHistory = [];
+    track.style.transition = 'none';
+    track.style.transform = 'translateX(' + baseTx + 'px)';
+    track.classList.add('dragging');
+  }
+  function onMove(e) {
+    if (!isDragging) return;
+    var cx = getX(e), dx = cx - startX;
+    dragTx = baseTx + dx;
+    track.style.transform = 'translateX(' + dragTx + 'px)';
+    if (Math.abs(dx) > 5) wasDragged = true;
+    velHistory.push({ x: cx, t: Date.now() });
+    if (velHistory.length > 6) velHistory.shift();
+  }
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    track.classList.remove('dragging');
+    var w = getW(), dx = dragTx - baseTx, velocity = 0;
+    if (velHistory.length >= 3) {
+      var first = velHistory[0], last = velHistory[velHistory.length - 1];
+      var dt = last.t - first.t;
+      if (dt > 0) velocity = (last.x - first.x) / dt;
+    }
+    var target = carouselState.idx;
+    if (Math.abs(dx) > w * 0.2 || Math.abs(velocity) > 0.5) {
+      if (dx < -w * 0.2 || velocity < -0.5) target = carouselState.idx + 1;
+      else if (dx > w * 0.2 || velocity > 0.5) target = carouselState.idx - 1;
+    }
+    go(target, true);
+  }
+
+  wrap.addEventListener('touchstart', onStart, { passive: true });
+  wrap.addEventListener('touchmove', onMove, { passive: true });
+  wrap.addEventListener('touchend', onEnd);
+  wrap.addEventListener('touchcancel', onEnd);
+
+  var mouseDown = false;
+  wrap.addEventListener('mousedown', function(e) { if (e.button === 0) { mouseDown = true; onStart(e); }});
+  document.addEventListener('mousemove', function(e) { if (mouseDown) { e.preventDefault(); onMove(e); }});
+  document.addEventListener('mouseup', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
+  document.addEventListener('mouseleave', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
+
+  document.getElementById('prevBtn').onclick = function() { go(carouselState.idx - 1, true); };
+  document.getElementById('nextBtn').onclick = function() { go(carouselState.idx + 1, true); };
+
+  document.querySelectorAll('.carousel-dot').forEach(function(dot) {
+    dot.addEventListener('click', function() { go(parseInt(this.dataset.idx), true); });
+  });
+
+  track.querySelectorAll('.carousel-slide').forEach(function(slide) {
+    var img = slide.querySelector('img');
+    if (img) {
+      img.addEventListener('click', function(e) {
+        if (wasDragged) return;
+        openColorModal(img.src, style.name);
+      });
+    }
+  });
+
+  go(0, false);
+}
+function updateDots(idx) {
+  document.querySelectorAll('.carousel-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+}
+
+// ====== Product Info ======
+function renderInfo() {
+  var fabrics = (style.fabrics && style.fabrics.length) ? style.fabrics.map(function(f){return f.name;}).join(' + ') : '';
+  var desc = style.description || style.note || '';
+  document.getElementById('productInfo').innerHTML =
+    '<div class="product-brand">LUNA ATELIER</div>' +
+    '<div class="product-code">#'+style.code+'</div>' +
+    '<div class="product-name">'+esc(style.name)+'</div>' +
+    '<div class="product-price">€'+(style.suggestedPrice||0).toFixed(2)+'</div>' +
+    (fabrics?'<div style="font-size:12px;color:#999;margin-top:6px">面料: '+esc(fabrics)+'</div>':'') +
+    (desc?'<div class="product-desc">'+esc(desc)+'</div>':'');
+}
+
+// ====== Colors (from LUNA.getFabrics() colors[], 5 per row card grid) ======
+function renderColors() {
+  var container = document.getElementById('fabricColors');
+  var allFabrics = LUNA.getFabrics();
+  var allColors = [];
+  if (style.fabrics && style.fabrics.length && allFabrics.length) {
+    style.fabrics.forEach(function(sf) {
+      for (var i = 0; i < allFabrics.length; i++) {
+        if (allFabrics[i].id === sf.code || allFabrics[i].name === sf.name) {
+          var fabric = allFabrics[i];
+          var cols = fabric.colors || [];
+          cols.forEach(function(c) {
+            var dup = false;
+            for (var j = 0; j < allColors.length; j++) {
+              if (allColors[j].name === c.name) { dup = true; break; }
+            }
+            if (!dup) {
+              allColors.push({name: c.name, hex: c.hex || '#ccc', img: c.img || c.img_path || ''});
+            }
+          });
+          break;
+        }
+      }
+    });
+  }
+  // Fallback
+  if (!allColors.length && style.colors && style.colors.length) {
+    allColors = style.colors.map(function(c) {
+      return {name: c.name, hex: c.hex || '#ccc', img: ''};
+    });
+  }
+  if (!allColors.length) {
+    container.innerHTML = '<div style="color:#bbb;font-size:13px">暂无颜色选项</div>';
+    return;
+  }
+  if (!selectedColor) selectedColor = allColors[0].name;
+  var html = '<div class="color-card-grid">';
+  allColors.forEach(function(c) {
+    var isSel = (selectedColor === c.name);
+    var bgStyle = c.img ? '' : 'background:'+(c.hex||'#ccc');
+    var imgTag = c.img ? '<img src="'+esc(c.img)+'" alt="">' : '<span style="font-size:9px;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.3)">'+esc(c.name.charAt(0))+'</span>';
+    var visual = escJs(c.img||c.hex||'#ccc');
+    html += '<div class="color-card'+(isSel?' selected':'')+'" onclick="selectColorCard(this,\''+escJs(c.name)+'\')">'+
+      '<div class="swatch-area" style="'+bgStyle+'" onclick="event.stopPropagation();selectAndEnlarge(\''+escJs(c.name)+'\',\''+visual+'\')">'+imgTag+'</div>'+
+      '<div class="color-label">'+esc(c.name)+'</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function selectColorCard(el, name) {
+  selectedColor = name;
+  document.querySelectorAll('.color-card').forEach(function(s){s.classList.remove('selected');});
+  if (el) { el.classList.add('selected'); }
+  showSelectedColor(name);
+  updateAddBtn();
+}
+
+function selectAndEnlarge(name, visual) {
+  selectColorCard(null, name);
+  openColorModal(visual, name);
+}
+
+function getColorVisual(colorName) {
+  var allFabrics = LUNA.getFabrics();
+  if (!allFabrics || !style) return '#ccc';
+  if (style.fabrics) {
+    for (var fi = 0; fi < style.fabrics.length; fi++) {
+      var sf = style.fabrics[fi];
+      for (var ai = 0; ai < allFabrics.length; ai++) {
+        if (allFabrics[ai].id === sf.code || allFabrics[ai].name === sf.name) {
+          var cols = allFabrics[ai].colors || [];
+          for (var ci = 0; ci < cols.length; ci++) {
+            if (cols[ci].name === colorName) return cols[ci].img || cols[ci].img_path || cols[ci].hex || '#ccc';
+          }
+        }
+      }
+    }
+  }
+  return '#ccc';
+}
+function openColorModal(hex_or_url, name) {
+  var img = document.getElementById('colorModalImg');
+  var modal = document.getElementById('colorModal');
+  document.getElementById('colorModalName').textContent = name || '';
+  var isImage = hex_or_url && (hex_or_url.indexOf('http') === 0 || hex_or_url.indexOf('data:') === 0 || hex_or_url.indexOf('photos/') === 0 || hex_or_url.indexOf('/photos/') >= 0);
+  if (isImage) {
+    var swEl = document.getElementById('colorModalSwatch');
+    if (swEl) swEl.style.display = 'none';
+    img.style.display = 'block';
+    img.src = hex_or_url || '';
+  } else if (hex_or_url && hex_or_url.charAt(0) === '#') {
+    img.style.display = 'none';
+    img.src = '';
+    if (!document.getElementById('colorModalSwatch')) {
+      var sw = document.createElement('div');
+      sw.id = 'colorModalSwatch';
+      sw.style.cssText = 'width:200px;height:200px;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+      modal.insertBefore(sw, img);
+    }
+    document.getElementById('colorModalSwatch').style.background = hex_or_url;
+    document.getElementById('colorModalSwatch').style.display = 'block';
+  } else {
+    var swEl = document.getElementById('colorModalSwatch');
+    if (swEl) swEl.style.display = 'none';
+    img.style.display = 'none';
+  }
+  modal.classList.add('show');
+}
+function closeColorModal() {
+  document.getElementById('colorModal').classList.remove('show');
+}
+function showSelectedColor(name) {
+  var preview = document.getElementById('selectedColorPreview');
+  var swatch = document.getElementById('selColorSwatch');
+  var nameEl = document.getElementById('selColorName');
+  var hex = '', swImg = '';
+  var allFabrics = LUNA.getFabrics();
+  if (style.fabrics && allFabrics.length) {
+    for (var fi = 0; fi < style.fabrics.length && !hex; fi++) {
+      var sf = style.fabrics[fi];
+      for (var ai = 0; ai < allFabrics.length; ai++) {
+        if (allFabrics[ai].id === sf.code || allFabrics[ai].name === sf.name) {
+          var fabric = allFabrics[ai];
+          var cols = fabric.colors || [];
+          for (var ci = 0; ci < cols.length; ci++) {
+            if (cols[ci].name === name) { hex = cols[ci].hex; swImg = swImg || cols[ci].img || ''; break; }
+          }
+          // Check swatches for image
+          var swatches = fabric.swatches || [];
+          for (var si = 0; si < swatches.length; si++) {
+            if (swatches[si].name === name || swatches[si].color === name) {
+              swImg = swImg || swatches[si].src || swatches[si].image || swatches[si].dataUrl || '';
+              break;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+  if (swImg) {
+    swatch.style.background = 'none';
+    swatch.style.backgroundImage = 'url('+esc(swImg)+')';
+    swatch.style.backgroundSize = 'cover';
+    swatch.style.backgroundPosition = 'center';
+  } else {
+    swatch.style.background = hex || '#C8A56D';
+    swatch.style.backgroundImage = 'none';
+  }
+  nameEl.textContent = name;
+  preview.classList.add('active');
+}
+
+// ====== Sizes (button row + dropdown qty) ======
+function renderSizes() {
+  var sizes = ['UNICA','XS','S','M','L','XL','2XL','3XL'];
+  var btnsEl = document.getElementById('sizeBtns');
+  var html = '';
+  sizes.forEach(function(sz){
+    var isUni = sz === 'UNICA';
+    html += '<button class="size-btn'+(isUni?' unica':'')+'" onclick="toggleSizeBtn(this,\''+sz+'\')">'+sz+'</button>';
+  });
+  btnsEl.innerHTML = html;
+  // Qty dropdown
+  var qtySel = document.getElementById('qtySelect');
+  var qhtml = '';
+  for (var qi = 1; qi <= 50; qi++) qhtml += '<option value="'+qi+'">'+qi+'</option>';
+  qtySel.innerHTML = qhtml;
+  qtySel.value = '1';
+}
+function toggleSizeBtn(btn, sz) {
+  var isUni = sz === 'UNICA';
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+  } else {
+    if (isUni) {
+      // UNICA exclusive: unselect all others
+      document.querySelectorAll('.size-btn:not(.unica)').forEach(function(b){b.classList.remove('selected');});
+    } else {
+      // Unselect UNICA if any non-UNICA is selected
+      document.querySelectorAll('.size-btn.unica').forEach(function(b){b.classList.remove('selected');});
+    }
+    btn.classList.add('selected');
+  }
+  updateAddBtn();
+}
+function getSelectedSizes() {
+  var result = {};
+  var qty = parseInt(document.getElementById('qtySelect').value) || 1;
+  document.querySelectorAll('.size-btn.selected').forEach(function(btn){
+    result[btn.textContent] = qty;
+  });
+  return result;
+}
+function updateAddBtn() {
+  var btn = document.getElementById('addToCartBtn');
+  var sub = document.getElementById('addSub');
+  if (!selectedColor) { btn.disabled = true; sub.textContent = '— 先选择颜色'; return; }
+  var sizes = getSelectedSizes();
+  var total = 0; Object.keys(sizes).forEach(function(s){total+=sizes[s];});
+  if (total === 0) { btn.disabled = true; sub.textContent = '— 请选择尺码'; return; }
+  btn.disabled = false;
+  var sizeDesc = Object.keys(sizes).map(function(s){return s+'×'+sizes[s];}).join(', ');
+  sub.textContent = '— '+selectedColor+' · '+sizeDesc;
+}
+
+// ====== Add to Cart ======
+
+document.getElementById('addToCartBtn').addEventListener('click', function() {
+  if (!selectedColor) return;
+  var sizes = getSelectedSizes();
+  var total = 0; Object.keys(sizes).forEach(function(s){total+=sizes[s];});
+  if (total === 0) return;
+  var fabric = (style.fabrics && style.fabrics.length) ? style.fabrics.map(function(f){return f.name;}).join(', ') : '';
+  var price = style.suggestedPrice || 0;
+  LUNA.addToCart(style.code, style.name, selectedColor, sizes, price, fabric, '');
+  updateCartBadge();
+  renderCart();
+  showToast('✅ 已加入购物车');
+});
+
+// ====== Floating Cart ======
+function toggleCart() {
+  var modal = document.getElementById('cartModal');
+  var backdrop = document.getElementById('cartBackdrop');
+  modal.classList.toggle('open');
+  backdrop.classList.toggle('show');
+  if (modal.classList.contains('open')) renderCart();
+}
+function renderCart() {
+  cart = LUNA.getCart();
+  var body = document.getElementById('cartBody');
+  if (!cart || cart.length === 0) {
+    body.innerHTML = '<div class="cart-empty">购物车是空的</div>';
+    updateSubmitBtn();
+    return;
+  }
+  // Group by style code
+  var groups = {};
+  cart.forEach(function(item, idx) {
+    var key = item.code;
+    if (!groups[key]) {
+      groups[key] = { code: item.code, price: item.price || 0, items: [] };
+    }
+    groups[key].items.push({ idx: idx, item: item });
+  });
+  var html = '';
+  var totalQty = 0;
+  Object.keys(groups).forEach(function(code) {
+    var g = groups[code];
+    html += '<div class="cart-code-group">' +
+      '<div class="cart-code-header">' +
+        '<span class="cc-code">#'+esc(code)+'</span>' +
+        '<span class="cc-price">€'+g.price.toFixed(2)+'/件</span></div>';
+    g.items.forEach(function(gi) {
+      var item = gi.item;
+      var idx = gi.idx;
+      var itemQty = 0;
+      var sizesHtml = '';
+      if (item.qty) {
+        ['XS','S','M','L','XL','2XL','3XL','UNICA'].forEach(function(s) {
+          var v = item.qty[s] || 0;
+          if (v <= 0) return;
+          itemQty += v;
+          sizesHtml += '<div class="cart-qty-cell">' +
+            '<button class="cart-qty-btn" onclick="chgQty('+idx+',\''+s+'\',1)">+</button>' +
+            '<span class="cart-qty-val">'+v+'</span>' +
+            '<button class="cart-qty-btn" onclick="chgQty('+idx+',\''+s+'\',-1)">−</button>' +
+            '<span class="cart-qty-lbl">'+s+'</span></div>';
+        });
+      }
+      totalQty += itemQty;
+      var visual = getColorVisual(item.color);
+      var isImg = visual.indexOf('http')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+      var swatchStyle = isImg ? 'background-image:url('+esc(visual)+');background-size:cover;background-position:center;background-repeat:no-repeat' : 'background:'+visual;
+      html += '<div class="cart-color-item">' +
+        '<div class="cart-color-swatch" style="'+swatchStyle+'"></div>' +
+        '<div class="cart-color-info">' +
+        '<div class="cart-color-name">'+esc(item.color)+'</div>' +
+        (sizesHtml ? '<div class="cart-qty-ctrl">'+sizesHtml+'</div>' : '') + '</div>' +
+        '<button class="del-btn" onclick="removeCartItem('+idx+')">✕</button></div>';
+    });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+  updateSubmitBtn();
+}
+function chgQty(idx, sz, d) {
+  LUNA.updateCartQty(idx, sz, d);
+  renderCart();
+  updateCartBadge();
+}
+function removeCartItem(idx) {
+  LUNA.removeFromCart(idx);
+  updateCartBadge();
+  renderCart();
+}
+function updateCartBadge() {
+  var count = LUNA.getCartCount();
+  document.getElementById('cartBadge').textContent = count;
+  document.getElementById('cartBadgeFloat').textContent = count;
+}
+function updateSubmitBtn() {
+  var btn = document.getElementById('submitOrderBtn');
+  var sub = document.getElementById('submitSub');
+  var cart = LUNA.getCart();
+  var total = 0;
+  if (cart) cart.forEach(function(i){if(i.qty)Object.keys(i.qty).forEach(function(s){total+=i.qty[s]||0;});});
+  if (total > 0) { btn.disabled = false; sub.textContent = '(共'+total+'件)'; }
+  else { btn.disabled = true; sub.textContent = '(购物车为空)'; }
+}
+
+// ====== Submit Order (使用登录用户) ======
+document.getElementById('submitOrderBtn').addEventListener('click', function() {
+  try {
+    var cart = LUNA.getCart();
+    if (!cart || cart.length === 0) { showToast('购物车为空'); return; }
+    // 谁登录谁下单
+    var user = LUNA.getUser();
+    var customerName = user ? (user.name || user.username || '客人') : '客人';
+    var remark = document.getElementById('remarkInput').value.trim();
+    var order = LUNA.checkout(customerName);
+    if (!order || !order.id) { showToast('❌ 提交失败，请重试'); return; }
+    if (remark) {
+      var orders = LUNA.getOrders();
+      for (var i = orders.length - 1; i >= 0; i--) {
+        if (orders[i].id === order.id) { orders[i].note = remark; LUNA.saveOrders(orders); break; }
+      }
+    }
+    showToast('❤️ 非常感谢！编号: '+order.id);
+    toggleCart();
+    setTimeout(function() {
+      window.location.href = 'marker.html';
+    }, 1200);
+  } catch(e) {
+    console.error('Submit error:', e);
+    showToast('❌ 提交失败: ' + (e.message || '未知错误'));
+  }
+});
+
+// ====== Utility ======
+function showToast(m) { var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2500); }
+function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function escJs(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+// 等服务器数据加载完再渲染
+function onDataReady() { init(); }
+if (typeof window !== 'undefined') {
+  var _initDone = false;
+  window.addEventListener('luna-data-initialized', function() {
+    if (!_initDone) { _initDone = true; init(); }
+  });
+  setTimeout(function() {
+    if (!_initDone) { _initDone = true; init(); }
+  }, 5000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>购物车 — LUNA ATELIER</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:100px}
+.header{display:flex;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #EBE8E3;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 8px 4px 0;background:none;border:none;color:#666;font-family:inherit}
+.header .logo{font-family:'Playfair Display',serif;font-size:14px;letter-spacing:3px;color:#1C1C1C;margin-right:auto}
+.header .logo span{color:#C8A56D}
+.cart-wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
+.cart-title{font-family:'Playfair Display',serif;font-size:18px;padding:16px 0;color:#1C1C1C}
+.cart-title span{font-size:13px;color:#999;font-family:'Inter',sans-serif;font-weight:400}
+.empty-state{text-align:center;padding:60px 20px;color:#bbb}
+.empty-state .icon{font-size:36px;margin-bottom:8px}
+.empty-state .txt{font-size:14px}
+/* Cart code group - gold dashed box (same as order-page.html) */
+.cart-code-group{border:1.5px dashed #C8A56D;border-radius:8px;padding:10px;margin-bottom:10px;background:#fff}
+.cart-code-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px;font-size:13px}
+.cart-code-header .cc-code{font-weight:700;color:#1C1C1C;font-size:12px}
+.cart-code-header .cc-price{color:#C8A56D;font-weight:600;font-size:12px;white-space:nowrap}
+.cart-remark{font-size:10px;color:#888;margin:2px 0 4px;padding:3px 6px;background:#f9f8f6;border-radius:4px;line-height:1.4}
+.cart-color-item{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;margin-top:3px;border-top:1px solid #EBE8E3}
+.cart-color-item:first-of-type{border-top:none;margin-top:0}
+.cart-color-swatch{width:26px;height:26px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;cursor:pointer;margin-top:2px;background-size:cover;background-position:center;background-repeat:no-repeat}
+.cart-color-info{flex:1;min-width:0}
+.cart-color-name{font-size:11px;font-weight:600;color:#555;margin-bottom:1px}
+.cart-color-item .del-btn{background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;padding:2px 4px;font-family:inherit;transition:color .15s;margin-top:2px}
+.cart-color-item .del-btn:hover{color:#c41e3a}
+/* Size cells (same as order-page.html) */
+.cart-size-row{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.cart-size-cell{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid #EBE8E3;border-radius:6px;padding:4px 5px 3px;background:#fafaf8;min-width:36px}
+.cart-qty-btn{width:26px;height:20px;border:1px solid #C8A56D;border-radius:3px;background:#fff;color:#C8A56D;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;padding:0;transition:all .1s}
+.cart-qty-btn:active{background:#C8A56D;color:#fff}
+.cart-qty-val{font-size:12px;font-weight:700;color:#1C1C1C;line-height:1.2}
+.cart-qty-lbl{font-size:9px;color:#999;font-weight:500}
+/* Bottom bar */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #EBE8E3;padding:12px 16px;z-index:50;max-width:480px;margin:0 auto}
+.bottom-bar .total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.bottom-bar .total-row .label{font-size:12px;color:#999}
+.bottom-bar .total-row .amount{font-size:20px;font-weight:700;color:#1C1C1C;font-family:'Playfair Display',serif}
+.checkout-btn{width:100%;padding:14px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.checkout-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+.checkout-btn:hover:not(:disabled){background:#b8963e}
+/* Color enlarge overlay */
+.color-enlarge-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center}
+.color-enlarge-overlay.show{display:flex}
+.color-enlarge-box{background:#fff;border-radius:10px;padding:16px;text-align:center;max-width:340px;width:85vw;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.color-enlarge-box .ce-img{width:100%;aspect-ratio:1;border-radius:6px;background:#f0ede8;background-size:contain;background-position:center;background-repeat:no-repeat;margin-bottom:10px}
+.color-enlarge-box .ce-name{font-size:16px;font-weight:600;color:#1C1C1C}
+/* Checkout modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:12px;padding:20px;max-width:360px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal-box .modal-title{font-family:'Playfair Display',serif;font-size:16px;margin-bottom:12px}
+.modal-box .form-group{margin-bottom:10px}
+.modal-box .form-label{font-size:11px;color:#999;display:block;margin-bottom:4px;font-weight:500}
+.modal-box .form-input{width:100%;padding:10px;border:1px solid #EBE8E3;border-radius:6px;font-size:13px;font-family:inherit;outline:none}
+.modal-box .form-input:focus{border-color:#C8A56D}
+.modal-box .btn-row{display:flex;gap:8px;margin-top:14px}
+.modal-box .btn-row button{flex:1;padding:10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.modal-box .btn-confirm{background:#C8A56D;color:#fff;border:none}
+.modal-box .btn-confirm:hover{background:#b8963e}
+.modal-box .btn-cancel{background:#f5f5f5;color:#888;border:1px solid #e0e0e0}
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1C1C1C;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:99999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back" onclick="history.back()">←</button>
+  <span class="logo">LUNA <span>A</span></span>
+</div>
+<div class="cart-wrap">
+  <div class="cart-title">购物车 <span id="cartCount"></span></div>
+  <div id="cartItems"></div>
+</div>
+<div class="bottom-bar" id="bottomBar">
+  <div class="total-row">
+    <span class="label">合计</span>
+    <span class="amount" id="totalAmount">€0.00</span>
+  </div>
+  <button class="checkout-btn" id="checkoutBtn" disabled>提交订单</button>
+</div>
+<!-- Color enlarge -->
+<div class="color-enlarge-overlay" id="colorEnlarge" onclick="if(event.target===this)closeColorEnlarge()">
+  <div class="color-enlarge-box">
+    <div class="ce-img" id="ceImg"></div>
+    <div class="ce-name" id="ceName"></div>
+  </div>
+</div>
+<!-- Checkout modal -->
+<div class="modal-overlay" id="checkoutModal" onclick="if(event.target===this)hideCheckout()">
+  <div class="modal-box">
+    <div class="modal-title">确认订单</div>
+    <div class="form-group">
+      <label class="form-label">客户</label>
+      <select class="form-input" id="customerSelect"></select>
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="hideCheckout()">取消</button>
+      <button class="btn-confirm" onclick="doCheckout()">确认提交</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="luna-data.js?v=13"></script>
+<script>
+var _cartData = [];
+
+function getColorVisual(colorName) {
+  var fabrics = LUNA.getFabrics();
+  if (!fabrics) return '#ccc';
+  for (var fi = 0; fi < fabrics.length; fi++) {
+    var cols = fabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) return cols[ci].img || cols[ci].img_path || cols[ci].hex || '#ccc';
+    }
+  }
+  return '#ccc';
+}
+
+function openColorEnlarge(name) {
+  var visual = getColorVisual(name);
+  var isImg = visual.indexOf('http')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+  var el = document.getElementById('ceImg');
+  if (isImg) { el.style.backgroundImage = 'url('+esc(visual)+')'; el.style.backgroundColor = 'transparent'; }
+  else { el.style.backgroundImage = 'none'; el.style.backgroundColor = visual; }
+  document.getElementById('ceName').textContent = name;
+  document.getElementById('colorEnlarge').classList.add('show');
+}
+function closeColorEnlarge() {
+  document.getElementById('colorEnlarge').classList.remove('show');
+}
+
+function render() {
+  _cartData = LUNA.getCart();
+  var container = document.getElementById('cartItems');
+  var totalAmount = 0, totalQty = 0;
+
+  if (!_cartData || _cartData.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><div class="txt">购物车是空的</div></div>';
+    document.getElementById('cartCount').textContent = '';
+    document.getElementById('bottomBar').style.display = 'none';
+    return;
+  }
+  document.getElementById('bottomBar').style.display = 'block';
+
+  // Group by code
+  var groups = {};
+  _cartData.forEach(function(item, idx) {
+    var key = item.code;
+    if (!groups[key]) groups[key] = { code: item.code, price: item.price || 0, items: [] };
+    groups[key].items.push({ idx: idx, item: item });
+  });
+
+  var html = '';
+  Object.keys(groups).forEach(function(code) {
+    var group = groups[code];    html += '<div class="cart-code-group">' +
+      '<div class="cart-code-header">' +
+        '<span class="cc-code">ART-'+esc(code)+'</span>' +
+        '<span class="cc-price">€'+group.price.toFixed(2)+'/件</span></div>';
+    // Remark (one per group)
+    var groupNote = '';
+    group.items.forEach(function(gi) {
+      if (gi.item.note && gi.item.note.trim() && !groupNote) groupNote = gi.item.note.trim();
+    });
+    if (groupNote) html += '<div class="cart-remark">📝 '+esc(groupNote)+'</div>';
+    // Each color
+    group.items.forEach(function(gi) {
+      var item = gi.item, idx = gi.idx, itemQty = 0;
+      var sizesRows = '';
+      if (item.qty) {
+        var sizeKeys = ['XS','S','M','L','XL','2XL','3XL','UNICA'];
+        sizeKeys.forEach(function(s) {
+          var v = item.qty[s] || 0;
+          if (v <= 0) return;
+          itemQty += v;
+          totalQty += v;
+          sizesRows += '<div class="cart-size-cell">' +
+            '<button class="cart-qty-btn" onclick="chgQty('+idx+',\''+s+'\',1)">+</button>' +
+            '<span class="cart-qty-val">'+v+'</span>' +
+            '<button class="cart-qty-btn" onclick="chgQty('+idx+',\''+s+'\',-1)">−</button>' +
+            '<span class="cart-qty-lbl">'+s+'</span></div>';
+        });
+      }
+      totalAmount += itemQty * (item.price || 0);
+      var visual = getColorVisual(item.color);
+      var isImg = visual.indexOf('http')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+      var swatchStyle = isImg ? 'background-image:url('+esc(visual)+')' : 'background:'+visual;
+      html += '<div class="cart-color-item">' +
+        '<div class="cart-color-swatch" style="'+swatchStyle+'" onclick="openColorEnlarge(\''+escJs(item.color)+'\')"></div>' +
+        '<div class="cart-color-info"><div class="cart-color-name">'+esc(item.color)+'</div>' +
+        (sizesRows ? '<div class="cart-size-row">'+sizesRows+'</div>' : '') + '</div>' +
+        '<button class="del-btn" onclick="removeItem('+idx+')">✕</button></div>';
+    });
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+  document.getElementById('cartCount').textContent = '— '+totalQty+' 件';
+  document.getElementById('totalAmount').textContent = '€'+totalAmount.toFixed(2);
+  var btn = document.getElementById('checkoutBtn');
+  btn.disabled = totalQty === 0;
+}
+
+function chgQty(idx, sz, d) {
+  LUNA.updateCartQty(idx, sz, d);
+  render();
+}
+
+function removeItem(idx) {
+  LUNA.removeFromCart(idx);
+  render();
+}
+
+function hideCheckout() {
+  document.getElementById('checkoutModal').classList.remove('show');
+}
+
+function getCustomerList() {
+  var guests = [];
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/data/guests', false);
+  xhr.withCredentials = true;
+  xhr.send();
+  if (xhr.status === 200) {
+    try { guests = JSON.parse(xhr.responseText); } catch(e) {}
+  }
+  return guests;
+}
+
+document.getElementById('checkoutBtn').addEventListener('click', function() {
+  var cart = LUNA.getCart();
+  if (!cart || cart.length === 0) return;
+  var user = LUNA.getUser();
+  var guests = getCustomerList();
+  var select = document.getElementById('customerSelect');
+  select.innerHTML = '';
+  var userRole = user ? user.role : null;
+  var userId = user ? user.id : null;
+  if (userRole === 'admin') {
+    var primaries = guests.filter(function(g){ return !g.parent_id; });
+    var secondaries = guests.filter(function(g){ return g.parent_id; });
+    primaries.forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = g.name; opt.textContent = g.name;
+      select.appendChild(opt);
+      secondaries.filter(function(s){ return s.parent_id === g.id || s.parent_id === g.username; }).forEach(function(s) {
+        var opt2 = document.createElement('option');
+        opt2.value = s.name; opt2.textContent = '↳ ' + s.name;
+        select.appendChild(opt2);
+      });
+    });
+  } else if (userRole === 'guest') {
+    var me = user.name || user.username || '客人';
+    var opt = document.createElement('option');
+    opt.value = me; opt.textContent = me + ' (本人)';
+    select.appendChild(opt);
+    guests.filter(function(g){ return g.parent_id === userId; }).forEach(function(g) {
+      var opt2 = document.createElement('option');
+      opt2.value = g.name; opt2.textContent = '↳ ' + g.name;
+      select.appendChild(opt2);
+    });
+  } else {
+    var opt = document.createElement('option');
+    opt.value = '客人'; opt.textContent = '客人';
+    select.appendChild(opt);
+  }
+  document.getElementById('checkoutModal').classList.add('show');
+});
+
+function doCheckout() {
+  var name = document.getElementById('customerSelect').value;
+  var result = LUNA.checkout(name, '');
+  if (!result || !result.id) { showToast('❌ 提交失败'); return; }
+  showToast('❤️ 订单已提交 — '+result.id);
+  hideCheckout();
+  render();
+}
+
+function showToast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2500); }
+function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function escJs(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+function init() { render(); }
+if (typeof window !== 'undefined') {
+  var _rdy = false;
+  window.addEventListener('luna-data-initialized', function() { if (!_rdy) { _rdy = true; init(); } });
+  setTimeout(function() { if (!_rdy) { _rdy = true; init(); } }, 5000);
+}
+</script>
+</body>
+</html>

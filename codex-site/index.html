@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<title>登录 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f3f0;color:#1a1a1a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:#fff;border:1px solid #e8e5e0;border-radius:12px;padding:40px 32px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.06)}
+.logo{text-align:center;margin-bottom:36px}
+.logo .main{font-family:'Playfair Display',Georgia,serif;font-size:28px;letter-spacing:4px;font-weight:700;color:#1a1a1a}
+.logo .sub{font-size:12px;color:#999;margin-top:8px;letter-spacing:1.5px;text-transform:uppercase}
+.logo .divider{width:40px;height:2px;background:#c9a96e;margin:12px auto 0;border-radius:1px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:11px;color:#888;margin-bottom:6px;font-weight:500;letter-spacing:.5px}
+.field input{width:100%;padding:12px 14px;border:1.5px solid #e0dcd5;border-radius:6px;font-size:15px;font-family:inherit;background:#fcfbf9;transition:border-color .2s,box-shadow .2s}
+.field input:focus{outline:none;border-color:#c9a96e;background:#fff;box-shadow:0 0 0 3px rgba(201,169,110,.1)}
+.login-btn{width:100%;padding:14px;background:#1a1a1a;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,transform .1s;margin-top:8px;letter-spacing:1px}
+.login-btn:hover{background:#333}
+.login-btn:active{transform:scale(.98)}
+.links{display:flex;justify-content:space-between;margin-top:18px;font-size:12px}
+.links a{color:#999;text-decoration:none;transition:color .15s}
+.links a:hover{color:#c9a96e}
+.error-msg{color:#d4433f;font-size:12px;text-align:center;margin-top:12px;display:none}
+.guest-btn{display:block;text-align:center;margin-top:16px;padding:10px;border:1px solid #e0dcd5;border-radius:6px;color:#888;font-size:13px;text-decoration:none;transition:all .15s}
+.guest-btn:hover{border-color:#c9a96e;color:#c9a96e}
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="logo">
+    <div class="main">LUNA ATELIER</div>
+    <div class="sub">高定服装定制系统</div>
+    <div class="divider"></div>
+  </div>
+  <div class="field">
+    <label>账号</label>
+    <input type="text" id="username" placeholder="输入账号" value="admin" autocomplete="username">
+  </div>
+  <div class="field">
+    <label>密码</label>
+    <input type="password" id="password" placeholder="输入密码" value="admin" autocomplete="current-password">
+  </div>
+  <button class="login-btn" id="loginBtn">登 录</button>
+  <div class="error-msg" id="errorMsg">账号或密码错误，请重试</div>
+  <div class="links">
+    <a href="guest-styles.html">客人看款下单 ›</a>
+    <a href="javascript:void(0)" id="forgotPwd">忘记密码？</a>
+  </div>
+  <a href="guest-styles.html" class="guest-btn">👤 客人入口（直接浏览款式）</a>
+</div>
+<script src="luna-data.js?v=19"></script>
+<script>
+document.getElementById('loginBtn').addEventListener('click', function(e) {
+  var user = document.getElementById('username').value.trim();
+  var pwd = document.getElementById('password').value.trim();
+  var errEl = document.getElementById('errorMsg');
+
+  // 管理员登录（走 API）
+  var result = LUNA.login(user, pwd);
+  if (result && !result.error) {
+    errEl.style.display = 'none';
+    // 保存到 localStorage，跳转后页面能读到
+    LUNA.setUser(result);
+    window.location.href = result.role === 'admin' ? 'dashboard.html' : 'guest-styles.html';
+    return;
+  }
+
+  var errMsg = result && result.error ? result.error : '登录失败，请重试';
+  errEl.textContent = errMsg;
+  errEl.style.display = 'block';
+});
+
+// 回车登录
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('loginBtn').click();
+});
+
+// 已登录直接跳转
+var _exUser = LUNA.getUser();
+if (_exUser) {
+  window.location.href = _exUser.role === 'admin' ? 'dashboard.html' : 'guest-styles.html';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LUNA ATELIER — Cutting History</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="luna-header"><button class="header-btn" onclick="history.back()">←</button><span class="logo">LUNA <span>A</span></span><span style="font-size:15px;font-weight:500">裁剪历史</span></header>
+<main class="container page-enter" style="padding-top:24px;padding-bottom:48px">
+  <div class="section-header"><h2 class="section-title">裁剪历史</h2></div>
+  <div class="form-group" style="max-width:200px"><input class="form-input" type="date" id="filterDate" onchange="render()"></div>
+  <div class="order-list" id="historyList"></div>
+</main>
+<script src="luna-data.js?v=10"></script>
+<script>
+LUNA.checkAuth();
+function render() {
+  var orders=LUNA.getOrders().filter(function(o){return o.cutting_complete;});
+  var fd=document.getElementById('filterDate').value;
+  if(fd) orders=orders.filter(function(o){return o.cutting_complete&&o.cutting_complete.time&&o.cutting_complete.time.indexOf(fd.replace(/-/g,'/'))===0;});
+  orders=orders.slice().reverse();
+  if(!orders.length){document.getElementById('historyList').innerHTML='<div class="empty-state"><div class="icon">📁</div><div class="title">暂无裁剪记录</div></div>';return;}
+  var h=''; orders.forEach(function(o){
+    h+='<div class="order-card" onclick="location.href=\'order-detail.html?id='+o.id+'"><div class="order-card-header"><div><div class="order-id">'+o.id+'</div><div class="order-customer">'+esc(o.customer)+(o.sub_customer?' <span style="color:#999;font-size:10px">(二级: '+esc(o.sub_customer)+')</span>':'')+'</div></div><span class="badge badge-sewing">已裁剪</span></div>' +
+      '<div class="order-meta"><span>📦 '+(o.cutting_complete.total_cut||o.cutting_complete.qty||0)+'件</span><span>🕐 '+o.cutting_complete.time+'</span><span>👤 '+o.cutting_complete.operator+'</span></div></div>';
+  });
+  document.getElementById('historyList').innerHTML=h;
+}
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+render();
+</script>
+</body>
+</html>

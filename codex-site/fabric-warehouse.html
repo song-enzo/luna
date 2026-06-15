@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面料仓库 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
+.setting-wrap{max-width:960px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:2px;overflow-x:auto;background:#f0ede8;border-radius:6px;padding:3px;margin-bottom:20px;flex-wrap:nowrap}
+.tabs::-webkit-scrollbar{height:0}
+.tab{white-space:nowrap;padding:10px 14px;font-size:11px;font-weight:500;border:none;border-radius:4px;cursor:pointer;background:transparent;color:#888;font-family:inherit;transition:all .15s;flex-shrink:0}
+.tab.active{background:#fff;color:#1a1a1a;box-shadow:0 1px 3px rgba(0,0,0,.06);font-weight:600}
+.panel{display:none}
+.panel.active{display:block}
+.btn-sm{padding:4px 10px;border:none;border-radius:3px;font-size:10px;cursor:pointer;font-family:inherit;font-weight:500}
+.btn-sm.primary{background:#c9a96e;color:#fff}
+.btn-sm.danger{background:#f5f5f5;color:#cc4444;border:1px solid #f0e8e0}
+.btn-sm.success{background:#1a1a1a;color:#fff}
+.add-row{margin-top:6px}
+.add-row button{background:none;border:1px dashed #ddd;border-radius:4px;padding:6px 14px;font-size:11px;color:#999;cursor:pointer;font-family:inherit;transition:all .1s;width:100%}
+.add-row button:hover{border-color:#c9a96e;color:#c9a96e}
+/* Toggle */
+.toggle{width:34px;height:18px;border-radius:9px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:all .15s}
+.toggle.on{background:#5a8f5a}
+.toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.toggle.on .knob{left:18px}
+/* Export */
+.export-card{background:#fff;border:1px solid #e8e5e0;border-radius:6px;padding:16px}
+.export-card h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.export-card p{font-size:11px;color:#888;margin-bottom:12px}
+.export-row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.export-row .field{display:flex;flex-direction:column;gap:3px}
+.export-row .field label{font-size:10px;color:#888}
+.export-row .field select{padding:6px 10px;border:1px solid #e8e5e0;border-radius:4px;font-size:12px;font-family:inherit;background:#fff}
+.export-btn{padding:8px 16px;background:#c9a96e;color:#1a1a1a;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+/* ===== FABRIC WAREHOUSE ===== */
+.fabric-card{background:#fff;border:1px solid #ebe8e3;border-radius:6px;padding:12px;margin-bottom:8px}
+.fabric-row{display:flex;gap:8px;align-items:end;margin-bottom:6px;flex-wrap:wrap}
+.fabric-row.end{align-items:center;margin-bottom:0}
+.fabric-row .fi{display:flex;flex-direction:column;gap:2px}
+.fabric-row .fi label{font-size:10px;color:#888;font-weight:500;white-space:nowrap}
+.fabric-row .fi input{padding:6px 8px;border:1px solid #d5d0c9;border-radius:4px;font-size:14px;font-family:inherit;background:#faf9f7}
+.fabric-row .fi input:focus{border-color:#c9a96e;outline:none;background:#fff}
+.fabric-row .fi-grow{flex:1;min-width:0}
+.fabric-row .fi-grow input{width:100%}
+.fabric-row .fi input.num{width:75px;text-align:right}
+.fabric-row .fi input.comp{width:100%}
+.fabric-row .fi span.stock{font-size:20px;font-weight:700;font-family:'Playfair Display',serif;color:var(--text);min-width:130px;display:inline-block;text-align:right}
+.fabric-row .fi input.add{width:85px;text-align:right}
+.btn-stock{padding:6px 14px;border:none;border-radius:4px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-stock:hover{background:#333}
+.color-section-title{font-size:12px;font-weight:600;color:#8a7a6a;margin:12px 0 8px}
+.color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:6px}
+.color-entry{position:relative;border:1.5px solid #e8e5e0;border-radius:5px;padding:4px;background:#fff;text-align:center;transition:all .15s}
+.color-entry:hover{border-color:#c9a96e;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.color-entry .color-box{width:100%;aspect-ratio:1;border-radius:3px;border:1px solid #f0ede8;cursor:pointer;background-size:cover;background-position:center;background-repeat:no-repeat}
+.color-entry .color-box:hover{opacity:.9}
+.color-entry .color-name{font-size:11px;color:#666;padding:4px 0 2px;width:100%;text-align:center;background:transparent;border:none;font-family:inherit;font-weight:500;display:block;outline:none}
+.color-entry .color-name:focus{color:#1a1a1a;font-weight:700;border-bottom:1px solid #c9a96e}
+.color-entry .color-actions{display:flex;position:absolute;top:4px;right:4px;gap:2px}
+.color-entry:hover .color-actions{display:flex}
+.color-entry .color-actions label,.color-entry .color-actions button{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:3px;border:none;cursor:pointer;font-size:11px;background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.1);font-family:inherit;transition:all .1s}
+.color-entry .color-actions label:hover,.color-entry .color-actions button:hover{background:#fff;transform:scale(1.1)}
+.color-entry .color-actions .del-btn{color:#e05050}
+.color-entry .color-actions .del-btn:hover{color:#cc0000;background:#ffe8e8}
+.color-entry .color-actions .upload-btn{color:#c9a96e;cursor:pointer}
+/* Pantone solid-color card */
+.color-entry .pantone-hex{font-size:9px;color:#aaa;font-family:'Courier New',monospace;letter-spacing:.5px;padding:0 0 2px}
+.color-entry .pantone-picker{width:100%;height:20px;border:none;padding:0;cursor:pointer;background:transparent;border-radius:2px}
+.color-entry .pantone-picker::-webkit-color-swatch-wrapper{padding:0}
+.color-entry .pantone-picker::-webkit-color-swatch{border:1px solid #e8e5e0;border-radius:2px}
+.color-add-btn{width:100%;padding:10px;border:1.5px dashed #ddd;border-radius:5px;background:none;font-size:12px;color:#bbb;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.color-add-btn:hover{border-color:#c9a96e;color:#c9a96e;background:#faf6ee}
+/* Lightbox */
+.lightbox-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;align-items:center;justify-content:center;cursor:pointer}
+.lightbox-overlay.active{display:flex}
+.lightbox-overlay .lightbox-hint{position:fixed;top:16px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,.5);letter-spacing:.5px}
+.lightbox-overlay .lightbox-media{max-width:90vw;max-height:80vh;border-radius:4px;object-fit:contain}
+.lightbox-overlay .lightbox-close{position:fixed;top:12px;right:16px;font-size:28px;color:rgba(255,255,255,.5);background:none;border:none;cursor:pointer;font-family:inherit;padding:8px}
+.lightbox-overlay .lightbox-close:hover{color:#fff}
+.lightbox-overlay .lightbox-label{position:fixed;bottom:24px;left:0;right:0;text-align:center;font-size:14px;color:rgba(255,255,255,.6)}
+.fabric-add-btn{width:100%;padding:6px;border:1px dashed #ddd;border-radius:4px;background:none;font-size:11px;color:#999;cursor:pointer;font-family:inherit;margin-top:4px}
+.fabric-add-btn:hover{border-color:#c9a96e;color:#c9a96e}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal-img{background:#fff;padding:16px;border-radius:8px;text-align:center;max-width:320px}
+.modal-img .big-box{width:220px;height:220px;border-radius:6px;border:1px solid #e8e5e0;margin:0 auto 10px;background-size:cover;background-position:center}
+.modal-img .big-name{text-align:center;font-size:16px;font-weight:700;color:#1a1a1a}
+.modal-close{position:absolute;top:20px;right:20px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center}
+.hamburger{font-size:22px;cursor:pointer;padding:4px 10px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
+.hamburger:hover{color:#1a1a1a}
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-size:15px;font-weight:700;letter-spacing:1px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:13px;color:#666;text-decoration:none;transition:all .1s}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+/* Add color modal */
+.add-color-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.add-color-overlay.active{display:flex}
+.add-color-panel{background:#fff;border-radius:8px;padding:20px;width:320px;max-width:90vw}
+.add-color-panel h3{font-size:14px;font-weight:600;margin-bottom:14px;color:#1a1a1a}
+.add-color-panel .field-group{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.add-color-panel .field-group label{font-size:10px;color:#888;font-weight:500}
+.add-color-panel .field-group input{padding:8px 10px;border:1px solid #e8e5e0;border-radius:4px;font-size:13px;font-family:inherit}
+.add-color-panel .field-group input:focus{border-color:#c9a96e;outline:none}
+.add-color-panel .color-preview{width:60px;height:60px;border-radius:4px;border:1px solid #ddd;margin-bottom:12px;background:#eee}
+.add-color-panel .btn-row{display:flex;gap:8px;justify-content:flex-end}
+.add-color-panel .btn-row button{padding:8px 16px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.add-color-panel .btn-row .confirm{background:#1a1a1a;color:#fff;border:none}
+.add-color-panel .btn-row .cancel{background:#f5f5f5;color:#888;border:1px solid #e0e0e0}
+/* Tables */
+.proc-table{width:100%;border-collapse:collapse;font-size:12px}
+.proc-table th{padding:8px 8px;text-align:left;font-weight:600;color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #e8e5e0}
+.proc-table td{padding:8px;border-bottom:1px solid #f0ede8}
+.proc-table td input{width:100%;padding:5px 6px;border:1px solid #e8e5e0;border-radius:3px;font-size:11px;font-family:inherit}
+.proc-table td input.num{width:60px;text-align:right}
+.proc-table .tag{font-size:9px;padding:2px 6px;border-radius:2px;display:inline-block}
+.proc-table .tag.work{background:#f5edd8;color:#a08050}
+.proc-table .tag.material{background:#e0e8f0;color:#507090}
+.panel-msg{text-align:center;padding:30px;color:#aaa;font-size:13px}
+/* Quick Add Color Modal (dual-mode) */
+.qc-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center}
+.qc-overlay.active{display:flex}
+.qc-panel{background:#fff;border-radius:10px;padding:20px;width:420px;max-width:92vw;max-height:90vh;overflow-y:auto}
+.qc-panel h3{font-size:15px;font-weight:700;margin-bottom:12px;color:#1a1a1a}
+.qc-panel .field-group{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.qc-panel .field-group label{font-size:10px;color:#888;font-weight:500}
+.qc-panel .field-group input{padding:8px 10px;border:1px solid #e8e5e0;border-radius:4px;font-size:13px;font-family:inherit}
+.qc-panel .field-group input:focus{border-color:#c9a96e;outline:none}
+.qc-mode-tabs{display:flex;gap:0;margin-bottom:12px;background:#f0ede8;border-radius:6px;padding:2px}
+.qc-mode-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:500;border:none;background:transparent;color:#999;cursor:pointer;border-radius:5px;font-family:inherit;transition:all .15s}
+.qc-mode-tab.active{background:#fff;color:#1a1a1a;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.qc-mode-tab:hover:not(.active){color:#666}
+.solid-preview-wrap{padding:12px;background:#faf9f7;border-radius:8px;margin-bottom:10px;text-align:center}
+.solid-preview-swatch{width:100%;height:140px;border-radius:8px;border:1px solid #e8e5e0;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.3);transition:background .15s}
+.solid-picker-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.solid-picker-row label{font-size:11px;color:#666;min-width:50px;font-weight:500}
+.solid-picker-row input[type=color]{width:40px;height:34px;border:1px solid #ddd;border-radius:4px;padding:2px;cursor:pointer;background:#fff}
+.solid-picker-row .hex-label{font-size:12px;color:#999;font-family:monospace;margin-left:4px;min-width:70px}
+.solid-slider-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.solid-slider-row label{font-size:11px;color:#666;min-width:50px;font-weight:500}
+.solid-slider-row input[type=range]{flex:1;accent-color:#c9a96e;height:4px}
+.solid-slider-row .val{font-size:10px;color:#999;min-width:28px;text-align:right}
+.qc-photo-section{display:block}
+.qc-photo-section.hidden{display:none}
+.drop-zone{width:100%;height:180px;border:2px dashed #d5d0c9;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;background:#faf9f7;margin-bottom:10px;overflow:hidden;position:relative}
+.drop-zone.drag-over{border-color:#c9a96e;background:#faf6ee}
+.drop-zone .drop-hint{text-align:center;color:#bbb;font-size:13px;pointer-events:none}
+.drop-zone .drop-hint .icon{font-size:36px;margin-bottom:4px}
+.drop-zone .drop-hint .sub{font-size:10px;color:#ddd;margin-top:4px}
+.drop-zone .preview-img{width:100%;height:100%;object-fit:contain;display:none}
+.drop-zone .anchor-overlay{display:none;position:absolute;inset:0;pointer-events:none}
+.drop-zone .anchor-overlay.active{display:block}
+.drop-zone .anchor-dot{position:absolute;width:16px;height:16px;border-radius:50%;background:#ff4444;border:2px solid #fff;transform:translate(-50%,-50%);box-shadow:0 1px 3px rgba(0,0,0,.3);pointer-events:none}
+.drop-zone .anchor-dot .lbl{position:absolute;left:20px;top:-2px;white-space:nowrap;font-size:10px;color:#fff;background:rgba(0,0,0,.6);padding:1px 5px;border-radius:3px}
+.filter-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.filter-row label{font-size:11px;color:#666;min-width:60px;font-weight:500}
+.filter-row input[type=range]{flex:1;accent-color:#c9a96e;height:4px}
+.filter-row .val{font-size:10px;color:#999;min-width:36px;text-align:right}
+.qc-panel .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.qc-panel .btn-row button{padding:9px 18px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.qc-panel .btn-row .confirm{background:#1a1a1a;color:#fff;border:none}
+.qc-panel .btn-row .confirm:hover{background:#333}
+.qc-panel .btn-row .cancel{background:#f5f5f5;color:#888;border:1px solid #e0e0e0}
+.qc-panel .btn-row .save-anchor{background:#c9a96e;color:#fff;border:none;font-size:11px;padding:6px 12px}
+.qc-panel .btn-row .save-anchor:hover{background:#b8963e}
+.anchor-cursor{cursor:crosshair}
+@media(max-width:480px){
+  .tabs{overflow-x:auto}
+  .tab{padding:8px 10px;font-size:10px}
+  .setting-wrap{padding:10px}
+  .fabric-card{padding:8px}
+  .fabric-row{gap:5px;margin-bottom:4px}
+  .fabric-row .fi input{padding:5px 6px;font-size:13px}
+  .fabric-row .fi input.num{width:60px}
+  .fabric-row .fi span.stock{font-size:16px;min-width:90px}
+  .fabric-row .fi input.add{width:70px}
+  .btn-stock{padding:5px 10px;font-size:11px}
+  .color-grid{gap:4px}
+  .color-entry{padding:3px}
+  .color-entry .color-name{font-size:10px;padding:3px 0 1px}
+}
+</style>
+<script>
+window.addEventListener('pageshow', function(event) {
+  if (event.persisted) {
+    window.location.reload(true);
+  }
+});
+</script>
+</head>
+<body>
+<div class="setting-wrap">
+  <div style="font-size:18px;font-weight:600;padding:16px 0;color:#1a1a1a">🧶 面料仓库</div>
+	  <div style="font-size:10px;color:#bbb;margin-top:-12px;margin-bottom:8px">v3-fix</div>
+
+  <div class="panel active" id="panel-warehouse"></div>
+</div>
+
+<!-- Color modal -->
+<div class="modal-overlay" id="colorModal" onclick="closeColor()">
+  <div class="modal-img">
+    <div class="big-box" id="bigBox"></div>
+    <div class="big-name" id="bigName"></div>
+  </div>
+  <button class="modal-close" onclick="closeColor()">✕</button>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
+  <div class="lightbox-hint">💡 核对实物时，请将手机屏幕亮度调至最大</div>
+  <div class="lightbox-media" id="lightboxMedia"></div>
+  <div class="lightbox-label" id="lightboxLabel"></div>
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+</div>
+
+<!-- Add Color Modal (Dual-Mode: Solid / Photo) -->
+<div class="qc-overlay" id="addColorModal" onclick="if(event.target===this)closeAddColor()">
+  <div class="qc-panel">
+    <h3>➕ 添加颜色</h3>
+
+    <!-- Quick basic colors -->
+    <div style="margin-bottom:12px;padding:8px;background:#faf9f7;border-radius:6px">
+      <div style="font-size:10px;color:#888;font-weight:500;margin-bottom:6px">
+        基础色快捷点击
+        <span id="qcManageBtn" style="margin-left:8px;color:#c9a96e;cursor:pointer;font-size:10px" onclick="toggleQuickColorEdit()">⚙ 管理</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px" id="quickColorBtns"></div>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="qc-mode-tabs">
+      <button class="qc-mode-tab active" data-mode="solid" onclick="switchQcMode('solid')">🎨 纯色</button>
+      <button class="qc-mode-tab" data-mode="photo" onclick="switchQcMode('photo')">📷 有图</button>
+    </div>
+
+    <!-- Solid Color Mode -->
+    <div id="qcSolidSection">
+      <div class="solid-preview-wrap">
+        <div class="solid-preview-swatch" id="solidPreviewSwatch" style="background:#b0a99e">预览色块</div>
+        <div class="solid-picker-row">
+          <label>选色</label>
+          <input type="color" id="solidColorPicker" value="#b0a99e" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
+          <span class="hex-label" id="solidHexLabel">#b0a99e</span>
+        </div>
+      </div>
+      <div class="solid-slider-row">
+        <label>饱和度</label>
+        <input type="range" min="0" max="100" value="50" id="solidSatSlider" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
+        <span class="val" id="solidSatVal">50%</span>
+      </div>
+      <div class="solid-slider-row">
+        <label>明度</label>
+        <input type="range" min="0" max="100" value="70" id="solidBriSlider" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
+        <span class="val" id="solidBriVal">70%</span>
+      </div>
+    </div>
+
+    <!-- Photo Mode -->
+    <div id="qcPhotoSection" class="qc-photo-section hidden">
+      <div class="drop-zone" id="dropZone" tabindex="0">
+        <div class="drop-hint" id="dropHint">
+          <div class="icon">📸</div>
+          <div>Ctrl+V 粘贴或拖入截图</div>
+          <div class="sub">点击也可选择文件</div>
+        </div>
+        <img class="preview-img" id="previewImg" alt="">
+        <div class="anchor-overlay" id="anchorOverlay"></div>
+      </div>
+      <div class="filter-row">
+        <label>☀️ 亮度</label>
+        <input type="range" min="50" max="150" value="100" id="brightnessSlider" oninput="updatePreviewFilter()">
+        <span class="val" id="brightnessVal">100%</span>
+      </div>
+      <div class="filter-row">
+        <label>🌓 对比度</label>
+        <input type="range" min="50" max="150" value="100" id="contrastSlider" oninput="updatePreviewFilter()">
+        <span class="val" id="contrastVal">100%</span>
+      </div>
+      <div class="filter-row">
+        <label>🎨 色相旋转</label>
+        <input type="range" min="0" max="360" value="0" id="hueSlider" oninput="updatePreviewFilter()">
+        <span class="val" id="hueVal">0°</span>
+      </div>
+      <div style="font-size:10px;color:#bbb;margin-bottom:6px">💡 在图上点击可标记多色锚点，一张图派生多个颜色</div>
+    </div>
+
+    <!-- Common: Color Name -->
+    <div class="field-group">
+      <label>颜色名称 <span id="anchorInfo" style="color:#c9a96e;font-weight:400"></span></label>
+      <input id="quickColorName" list="colorNameDatalist" placeholder="请输入颜色名称再调节" oninput="suggestColorFromName()">
+      <datalist id="colorNameDatalist"></datalist>
+    </div>
+
+    <div class="btn-row">
+      <button class="cancel" onclick="closeAddColor()">取消</button>
+      <button class="save-anchor" id="addAnchorBtn" onclick="addAnchorPoint()" style="display:none">📌 标记锚点颜色</button>
+      <button class="confirm" onclick="saveQuickColor()">💾 保存颜色</button>
+    </div>
+  </div>
+</div>
+
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
+    <a class="sm-link" href="javascript:void(0)" onclick="LUNA.showAlert('打成份纸功能即将开放')">🖨️ 打成份纸</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="my-orders.html">📋 我的订单</a>
+    <a class="sm-link" href="orders.html">📋 订单管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="settings.html">&#x2699; 设置</a>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+
+<script src="luna-data.js?v=22"></script>
+<script>LUNA.renderNav();</script>
+<script>
+window.onerror=function(m,u,l,c,e){var d=document.getElementById("debug-info");if(d){d.style.display="block";d.textContent="JS ERROR: "+m+" at line "+l;}console.error("ERROR:",m,l,c,e);};
+// ===== 先触发数据同步（从 API 加载到 localStorage）=====
+(function(){
+  try {
+    if (typeof LUNA !== 'undefined') {
+      LUNA.getFabrics(); LUNA.getCategories(); LUNA.getProcAcc(); LUNA.getFactories();
+    }
+  } catch(e){}
+})();
+
+// ===== SETTINGS DATA LAYER =====
+var SETTINGS = {
+  KEYS: {
+    fabrics: 'luna_settings_fabrics',
+    factories: 'luna_settings_factories',
+    procacc: 'luna_settings_procacc',
+    categories: 'luna_settings_categories',
+    guests: 'luna_settings_guests',
+    styleToggles: 'luna_settings_style_toggles',
+    quickColors: 'luna_settings_fabrics_qc'
+  },
+  get: function(key) {
+    var raw = localStorage.getItem(this.KEYS[key]);
+    if (raw) {
+      try {
+        var d = JSON.parse(raw);
+        return (Array.isArray(d) && d.length === 0) ? null : d;
+      } catch(e) { return []; }
+    }
+    return null;
+  },
+  save: function(key, data) {
+    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+    // 异步轻量同步（仅同步当前 key，不阻塞 UI）
+    var pathMap = {
+      fabrics: '/api/data/fabrics',
+      factories: '/api/data/factories',
+      procacc: '/api/data/procacc',
+      categories: '/api/data/categories',
+      guests: '/api/data/guests'
+    };
+    var path = pathMap[key];
+    if (path) {
+      fetch(path, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      }).catch(function(){});
+    }
+  }
+};
+
+// ===== DEFAULTS =====
+var DEFAULTS = {
+  fabrics: [
+    {id:'f0',name:'素罗马',pricePerM:12,composition:'涤纶95% 氨纶5%',stock:100,lossPerLayer:6,colors:[
+      {name:'黑色',hex:'#1a1a1a'},{name:'棕色',hex:'#8b4513'},{name:'驼色',hex:'#c9a96e'},{name:'白色',hex:'#f5f5f0'},{name:'蓝色',hex:'#4169e1'},{name:'绿色',hex:'#2e8b57'}
+    ]},
+    {id:'f1',name:'精纺羊毛',pricePerM:28,composition:'羊毛100%',stock:50,colors:[
+      {name:'灰色',hex:'#708090'},{name:'深绿',hex:'#2f4f4f'},{name:'酒红',hex:'#b22222'}
+    ]},
+    {id:'f2',name:'乔其纱',pricePerM:15,composition:'涤纶100%',stock:80,colors:[
+      {name:'浅紫',hex:'#dda0dd'},{name:'杏色',hex:'#f4a460'}
+    ]}
+  ],
+  factories: [
+    {id:'fact0',name:'Sartoria Rossi',phone:'+39 333 123 4567',workers:12,hourlyRate:18.5},
+    {id:'fact1',name:'Confezioni Prato',phone:'+39 320 987 6543',workers:25,hourlyRate:15},
+    {id:'fact2',name:'A&G Tessile',phone:'+39 338 555 1212',workers:8,hourlyRate:22},
+    {id:'fact3',name:'Mario Fashion',phone:'+39 347 222 3344',workers:18,hourlyRate:16.5}
+  ],
+  procacc: [
+    {id:'p0',name:'裁剪',price:8},{id:'p1',name:'车缝',price:25},{id:'p2',name:'锁边',price:6},
+    {id:'p3',name:'熨烫',price:5},{id:'p4',name:'上袖',price:12},{id:'p5',name:'纽扣',price:3.5},
+    {id:'p6',name:'拉链',price:2},{id:'p7',name:'垫肩',price:1.5}
+  ],
+  categories: [
+    {id:'c0',name:'连衣裙'},{id:'c1',name:'衬衫'},{id:'c2',name:'外套'},{id:'c3',name:'大衣'},
+    {id:'c4',name:'针织衫'},{id:'c5',name:'裤装'},{id:'c6',name:'裙装'},{id:'c7',name:'套装'}
+  ],
+  guests: [
+    {id:'g0',name:'Enzo Song',username:'enzo',password:'enzo123',phone:'+39 333 123 4567',enabled:true,parent_id:'',address:'Via Roma 15, Prato',tax_id:'IT01234567890',shop_name:'Sartoria Rossi'},
+    {id:'g1',name:'Laura Bianchi',username:'laura',password:'laura123',phone:'+39 333 987 6543',enabled:true,parent_id:'',address:'Via Firenze 28, Firenze',tax_id:'IT09876543210',shop_name:'Boutique Laura'},
+    {id:'g2',name:'王伟',username:'wei',password:'wei123',phone:'+39 333 456 7890',enabled:true,parent_id:'',address:'Via Pistoiese 120, Prato',tax_id:'IT05678901234',shop_name:'东方时装'},
+    {id:'g3',name:'李婷',username:'li',password:'li123',phone:'+39 333 654 3210',enabled:true,parent_id:'g0',address:'Via Cavour 5, Prato',tax_id:'',shop_name:'Tina Moda'},
+    {id:'g4',name:'Giuseppe Verdi',username:'giuseppe',password:'giuseppe123',phone:'+39 333 111 2222',enabled:true,parent_id:'g2',address:'Piazza Duomo 8, Milano',tax_id:'IT07890123456',shop_name:'Alta Moda Milano'}
+  ],
+  quickColors: [
+    {name:'黑色',hex:'#000000'},{name:'白色',hex:'#ffffff'},{name:'灰色',hex:'#708090'},
+    {name:'米色',hex:'#f5f5dc'},{name:'杏色',hex:'#f4a460'},{name:'藏青',hex:'#000080'},
+    {name:'酒红',hex:'#b22222'}
+  ]
+};
+
+// ===== 全局变量：记录用户本地修改快照（防止 firstLoad 覆盖）=====
+var _userData = {};
+
+// ===== INIT =====
+function initSettings() {
+  var keys = ['fabrics','factories','procacc','categories','guests'];
+  var _p = 'luna_';
+  var lsKeys = [_p + 'settings_fabrics',_p + 'settings_factories',_p + 'settings_procacc',_p + 'settings_categories',_p + 'settings_guests'];
+
+  // 第一阶段：读 localStorage，没有的话写默认值
+  keys.forEach(function(k, i) {
+    var data = SETTINGS.get(k);
+    var isValidArray = Array.isArray(data) && data.length > 0;
+    if (!isValidArray) {
+      localStorage.setItem(lsKeys[i], JSON.stringify(DEFAULTS[k]));
+    }
+  });
+
+  // 初始化基础色快捷面板
+  var qcData = localStorage.getItem(SETTINGS.KEYS.quickColors);
+  if (!qcData) {
+    localStorage.setItem(SETTINGS.KEYS.quickColors, JSON.stringify(DEFAULTS.quickColors));
+  }
+  renderQuickColors();
+
+  // 第二阶段：从 LUNA 缓存加载（仅覆盖默认值，用户修改过的数据保留）
+  var gotServer = false;
+  lsKeys.forEach(function(k, i) {
+    var v = LUNA.get(k);
+    if (v && Array.isArray(v) && v.length > 0) {
+      var existing = SETTINGS.get(keys[i]);
+      // 只在 localStorage 还是默认值时覆盖，用户修改过的保留
+      if (!existing || JSON.stringify(existing) === JSON.stringify(DEFAULTS[keys[i]])) {
+        localStorage.setItem(lsKeys[i], JSON.stringify(v));
+      }
+      gotServer = true;
+    }
+  });
+
+  // 保存用户修改过快照（防止 firstLoad 的 _syncToLocalStorage 覆盖）
+  _userData = {};
+  keys.forEach(function(k) {
+    var d = SETTINGS.get(k);
+    if (d && JSON.stringify(d) !== JSON.stringify(DEFAULTS[k])) {
+      _userData[k] = JSON.parse(JSON.stringify(d));
+    }
+  });
+
+  renderWarehouse();
+
+  // 第三阶段：如果只是默认值（不是服务器数据），等后台加载完替换
+  if (!gotServer) {
+    window.addEventListener('luna-data-changed', function onData() {
+      var found = false;
+      lsKeys.forEach(function(k, i) {
+        var v = LUNA.get(k);
+        if (v && Array.isArray(v) && v.length > 0) {
+          var existing = SETTINGS.get(keys[i]);
+          if (!existing || JSON.stringify(existing) === JSON.stringify(DEFAULTS[keys[i]])) {
+            localStorage.setItem(lsKeys[i], JSON.stringify(v));
+          }
+          found = true;
+        }
+      });
+      if (found) {
+        renderWarehouse();
+        window.removeEventListener('luna-data-changed', onData);
+      }
+    });
+  }
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  renderWarehouse();
+  renderFactories();
+  renderProcacc();
+  renderCategories();
+  renderStyles();
+}
+
+// ===== COUNTER FOR IDS =====
+var _idCounters = {fabrics:3,factories:4,procacc:8,categories:8,guests:2};
+function genId(prefix) {
+  return prefix + (_idCounters[prefix]++);
+}
+
+// ========== 1. WAREHOUSE (面料仓库) ==========
+function renderWarehouse() {
+  var el = document.getElementById('panel-warehouse');
+  if (!el) return;
+  var rawFabrics = SETTINGS.get('fabrics');
+  var fabrics = Array.isArray(rawFabrics) ? rawFabrics : [];
+  var html = '';
+  fabrics.forEach(function(f, fi) {
+    html += '<div class="fabric-card">';
+    html += '<div class="fabric-row">';
+    html += '<div class="fi fi-grow"><label>面料名称</label><input class="name" value="' + esc(f.name) + '" onchange="updateFabric(' + fi + ',\'name\',this.value)"></div>';
+    html += '<div class="fi"><label>€/m</label><input class="num" type="number" value="' + f.pricePerM.toFixed(2) + '" onchange="updateFabric(' + fi + ',\'pricePerM\',parseFloat(this.value)||0)"></div>';
+    html += '</div>';
+    html += '<div class="fabric-row">';
+    html += '<div class="fi fi-grow"><label>成份</label><input class="comp" value="' + esc(f.composition||'') + '" onchange="updateFabric(' + fi + ',\'composition\',this.value)"></div>';
+    html += '</div>';
+    html += '<div class="fabric-row end">';
+    html += '<div class="fi"><label>损耗 cm/层</label><input class="num" type="number" value="' + (f.lossPerLayer||6) + '" onchange="updateFabric(' + fi + ',\'lossPerLayer\',parseInt(this.value)||6)"></div>';
+    html += '<div class="fi"><label>库存</label><span class="stock" id="stockVal-' + fi + '">' + (parseFloat(f.stock)||0).toFixed(2) + '</span></div>';
+    html += '<div class="fi"><label>入库</label><input class="add" type="number" value="0" id="stockAdd-' + fi + '"></div>';
+    html += '<button class="btn-stock" onclick="addStock(' + fi + ')">入库</button>';
+    html += '<button class="btn-sm danger" onclick="deleteFabric(' + fi + ')" style="margin-left:4px">删除面料</button>';
+    html += '</div>';
+	    html += '<div class="color-section-title">🎨 色卡颜色</div>';
+    html += '<div class="color-grid" id="cg-' + fi + '">';
+    (f.colors||[]).forEach(function(c, ci) {
+      var hex = c.hex || '#eee';
+      var borderStyle = (hex === '#f5f5f0' || hex === '#ffffff') ? ';border:1px solid #ddd' : '';
+      var bgStyle = c.img ? 'url(' + escAttr(c.img) + ') center/cover no-repeat' : hex;
+      var lbSrc = c.img ? escAttr(c.img) : hex;
+      html += '<div class="color-entry" data-fabric="' + fi + '" data-color="' + ci + '">';
+      html += '<div class="color-box" style="background:' + bgStyle + borderStyle + '" ondblclick="openLightbox(\'' + lbSrc + '\',\'' + escAttr(c.name) + '\')"></div>';
+      html += '<div class="color-name">' + esc(c.name) + '</div>';
+      html += '<div class="pantone-hex">' + hex + '</div>';
+      html += '<input type="color" class="pantone-picker" value="' + hex + '" onchange="updateColorHex(' + fi + ',' + ci + ',this.value)" title="点击选色">';
+	      html += '<div class="color-actions">';
+	      html += '<button class="del-btn" onclick="deleteColor(' + fi + ',' + ci + ')">✕</button>';
+	      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<button class="color-add-btn" onclick="openAddColor(' + fi + ')">＋ 添加颜色</button>';
+    html += '</div>';
+  });
+  html += '<button class="fabric-add-btn" onclick="addNewFabric()">＋ 添加新面料</button>';
+  html += '<div style="margin-top:8px;font-size:10px;color:#888;background:#faf6ee;padding:6px 10px;border-radius:4px">💡 双击色块全屏放大 · 底部选色器可改色 · 纯色仓库无印花参数</div>';
+  el.innerHTML = html;
+}
+
+function updateFabric(idx, field, val) {
+  var fabrics = SETTINGS.get('fabrics');
+  if (!fabrics || idx >= fabrics.length) return;
+  fabrics[idx][field] = val;
+  SETTINGS.save('fabrics', fabrics);
+}
+
+function addStock(idx) {
+  var fabrics = SETTINGS.get('fabrics');
+  if (!fabrics || idx >= fabrics.length) return;
+  var add = parseInt(document.getElementById('stockAdd-' + idx).value) || 0;
+  if (add <= 0) { alert('请输入正数'); return; }
+  fabrics[idx].stock = (fabrics[idx].stock || 0) + add;
+  SETTINGS.save('fabrics', fabrics);
+  renderWarehouse();
+}
+
+function deleteFabric(idx) {
+  LUNA.showConfirm('确定删除此面料？', function() {
+    var fabrics = SETTINGS.get('fabrics');
+    fabrics.splice(idx, 1);
+    SETTINGS.save('fabrics', fabrics);
+    renderWarehouse();
+  });
+}
+
+function deleteColor(fi, ci) {
+  var fabrics = SETTINGS.get('fabrics');
+  if (!fabrics[fi] || !fabrics[fi].colors) return;
+  fabrics[fi].colors.splice(ci, 1);
+  SETTINGS.save('fabrics', fabrics);
+  if (typeof LUNA !== 'undefined' && LUNA.saveFabrics) LUNA.saveFabrics(fabrics);
+  renderWarehouse();
+}
+
+
+function updateColorName(fi, ci, val) {
+  var fabrics = SETTINGS.get('fabrics');
+  if (!fabrics[fi] || !fabrics[fi].colors) return;
+  var oldName = fabrics[fi].colors[ci].name;
+  fabrics[fi].colors[ci].name = val;
+  localStorage.setItem(SETTINGS.KEYS.fabrics, JSON.stringify(fabrics));
+  // 异步服务端同步
+  var fid = fabrics[fi].id;
+  fetch('/api/fabrics/update-color', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({fabric_id: fid, old_name: oldName, name: val})
+  }).catch(function(){});
+}
+
+function addNewFabric() {
+  var name = prompt('输入新面料名称：');
+  if (!name) return;
+  var price = parseFloat(prompt('输入价格 €/m：', '10')) || 10;
+  var fabrics = SETTINGS.get('fabrics');
+  fabrics.push({id: genId('fabrics'), name: name, pricePerM: price, composition: '', stock: 0, lossPerLayer: 6, colors: []});
+  SETTINGS.save('fabrics', fabrics);
+  renderWarehouse();
+}
+
+// ========== 2. FACTORIES (加工工厂) ==========
+function renderFactories() {
+  var container = document.getElementById('panel-factories');
+  if (!container) return;
+  var factories = SETTINGS.get('factories') || [];
+  var html = '<table class="proc-table">';
+  html += '<tr><th style="min-width:110px">工厂名称</th><th>电话</th><th style="width:55px">人数</th><th style="width:75px">时薪€</th><th style="width:60px">操作</th></tr>';
+  factories.forEach(function(f, i) {
+    html += '<tr>';
+    html += '<td><input value="' + esc(f.name) + '" onchange="updateFactory(' + i + ',\'name\',this.value)"></td>';
+    html += '<td><input value="' + esc(f.phone||'') + '" onchange="updateFactory(' + i + ',\'phone\',this.value)"></td>';
+    html += '<td><input class="num" value="' + (f.workers||'') + '" onchange="updateFactory(' + i + ',\'workers\',parseInt(this.value)||0)"></td>';
+    html += '<td><input class="num" value="' + (f.hourlyRate||'').toFixed(2) + '" onchange="updateFactory(' + i + ',\'hourlyRate\',parseFloat(this.value)||0)"></td>';
+    html += '<td><button class="btn-sm danger" onclick="deleteFactory(' + i + ')">删除</button></td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  html += '<div class="add-row"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 0">';
+  html += '<input placeholder="工厂名称" id="newFactoryName" style="flex:2;min-width:100px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit">';
+  html += '<input placeholder="电话" id="newFactoryPhone" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit">';
+  html += '<input placeholder="人数" id="newFactoryWorkers" style="width:55px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit;text-align:right">';
+  html += '<input placeholder="时薪" id="newFactoryRate" style="width:70px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit;text-align:right">';
+  html += '<button class="btn-sm success" onclick="addFactory()">＋ 添加</button></div></div>';
+  document.getElementById('panel-factories').innerHTML = html;
+}
+
+function updateFactory(idx, field, val) {
+  var data = SETTINGS.get('factories');
+  if (!data || idx >= data.length) return;
+  data[idx][field] = val;
+  SETTINGS.save('factories', data);
+}
+
+function deleteFactory(idx) {
+  LUNA.showConfirm('确定删除此工厂？', function() {
+    var data = SETTINGS.get('factories');
+    data.splice(idx, 1);
+    SETTINGS.save('factories', data);
+    renderFactories();
+  });
+}
+
+function addFactory() {
+  var name = document.getElementById('newFactoryName').value.trim();
+  if (!name) { alert('请输入工厂名称'); return; }
+  var data = SETTINGS.get('factories');
+  data.push({
+    id: genId('factories'),
+    name: name,
+    phone: document.getElementById('newFactoryPhone').value.trim(),
+    workers: parseInt(document.getElementById('newFactoryWorkers').value) || 0,
+    hourlyRate: parseFloat(document.getElementById('newFactoryRate').value) || 0
+  });
+  SETTINGS.save('factories', data);
+  renderFactories();
+}
+
+// ========== 3. PROCACC (工艺辅料) ==========
+function renderProcacc() {
+  var container = document.getElementById('panel-procacc');
+  if (!container) return;
+  var data = SETTINGS.get('procacc') || [];
+  var html = '<table class="proc-table">';
+  html += '<tr><th>名称</th><th>单价 (€)</th><th>操作</th></tr>';
+  data.forEach(function(p, i) {
+    html += '<tr>';
+    html += '<td><input value="' + esc(p.name) + '" onchange="updateProcacc(' + i + ',\'name\',this.value)"></td>';
+    html += '<td><input class="num" type="number" value="' + (p.price||0).toFixed(2) + '" onchange="updateProcacc(' + i + ',\'price\',parseFloat(this.value)||0)"></td>';
+    html += '<td><button class="btn-sm danger" onclick="deleteProcacc(' + i + ')">删除</button></td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  html += '<div class="add-row"><button onclick="addProcacc()">＋ 添加工艺/辅料</button></div>';
+  document.getElementById('panel-procacc').innerHTML = html;
+}
+
+function updateProcacc(idx, field, val) {
+  var data = SETTINGS.get('procacc');
+  if (!data || idx >= data.length) return;
+  data[idx][field] = val;
+  SETTINGS.save('procacc', data);
+}
+
+function deleteProcacc(idx) {
+  LUNA.showConfirm('确定删除？', function() {
+    var data = SETTINGS.get('procacc');
+    data.splice(idx, 1);
+    SETTINGS.save('procacc', data);
+    renderProcacc();
+  });
+}
+
+function addProcacc() {
+  var data = SETTINGS.get('procacc');
+  data.push({id: genId('procacc'), name: '新工艺', price: 0});
+  SETTINGS.save('procacc', data);
+  renderProcacc();
+}
+
+// ========== 4. CATEGORY (分类) ==========
+function renderCategories() {
+  var container = document.getElementById('panel-category');
+  if (!container) return;
+  var data = SETTINGS.get('categories') || [];
+  var html = '<table class="proc-table">';
+  html += '<tr><th>分类名称</th><th>操作</th></tr>';
+  data.forEach(function(c, i) {
+    html += '<tr><td><input value="' + esc(c.name) + '" onchange="updateCategory(' + i + ',this.value)"></td>';
+    html += '<td><button class="btn-sm danger" onclick="deleteCategory(' + i + ')">删除</button></td></tr>';
+  });
+  html += '</table>';
+  html += '<div class="add-row"><button onclick="addCategory()">＋ 添加分类</button></div>';
+  document.getElementById('panel-category').innerHTML = html;
+}
+
+function updateCategory(idx, val) {
+  var data = SETTINGS.get('categories');
+  if (!data || idx >= data.length) return;
+  data[idx].name = val;
+  SETTINGS.save('categories', data);
+}
+
+function deleteCategory(idx) {
+  LUNA.showConfirm('确定删除此分类？', function() {
+    var data = SETTINGS.get('categories');
+    data.splice(idx, 1);
+    SETTINGS.save('categories', data);
+    renderCategories();
+  });
+}
+
+function addCategory() {
+  var data = SETTINGS.get('categories');
+  data.push({id: genId('categories'), name: '新分类'});
+  SETTINGS.save('categories', data);
+  renderCategories();
+}
+
+// ========== 5. GUESTS (客人) — 二级化管理（含详细资料） ==========
+function renderGuests() {
+  var data = SETTINGS.get('guests') || [];
+  var primaries = data.filter(function(g){ return !g.parent_id; });
+  var secondaries = data.filter(function(g){ return g.parent_id; });
+  var html = '<div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">';
+  html += '<span style="font-size:14px;font-weight:600">👤 客人管理</span>';
+  html += '<span style="font-size:11px;color:#999">' + data.length + ' 人</span></div>';
+  html += '<div style="overflow-x:auto"><table class="proc-table" style="min-width:900px">';
+  html += '<tr><th style="width:78px">姓名</th><th style="width:130px">地址</th><th style="width:85px">税号</th><th style="width:85px">店名</th><th style="width:72px">账号</th><th style="width:55px">密码</th><th style="width:34px">启用</th><th style="width:45px">操作</th></tr>';
+  primaries.forEach(function(g, pi) {
+    var realIdx = data.indexOf(g);
+    var en = g.enabled !== false;
+    html += '<tr>';
+    html += '<td><input value="' + esc(g.name) + '" placeholder="姓名" onchange="updateGuest(' + realIdx + ',\'name\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.address||'') + '" placeholder="地址" onchange="updateGuest(' + realIdx + ',\'address\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.tax_id||'') + '" placeholder="税号" onchange="updateGuest(' + realIdx + ',\'tax_id\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.shop_name||'') + '" placeholder="店名" onchange="updateGuest(' + realIdx + ',\'shop_name\',this.value)"></td>';
+    html += '<td><input value="' + esc(g.username) + '" placeholder="账号" onchange="updateGuest(' + realIdx + ',\'username\',this.value)"></td>';
+    html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updateGuest(' + realIdx + ',\'password\',this.value)"></td>';
+    html += '<td><span class="toggle' + (en ? ' on' : '') + '" onclick="toggleGuest(' + realIdx + ')"><span class="knob"></span></span></td>';
+    html += '<td><button class="btn-sm danger" onclick="deletePrimary(' + realIdx + ')">删除</button></td>';
+    html += '</tr>';
+    // Secondary guests under this primary
+    var subs = secondaries.filter(function(s){ return s.parent_id === g.id || s.parent_id === g.username; });
+    subs.forEach(function(s) {
+      var si = data.indexOf(s);
+      var en2 = s.enabled !== false;
+      html += '<tr style="background:#faf8f5">';
+      html += '<td style="padding-left:18px;font-size:11px">↳ <input value="' + esc(s.name) + '" placeholder="姓名" onchange="updateGuest(' + si + ',\'name\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.address||'') + '" placeholder="地址" onchange="updateGuest(' + si + ',\'address\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.tax_id||'') + '" placeholder="税号" onchange="updateGuest(' + si + ',\'tax_id\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.shop_name||'') + '" placeholder="店名" onchange="updateGuest(' + si + ',\'shop_name\',this.value)"></td>';
+      html += '<td><input value="' + esc(s.username) + '" placeholder="账号" onchange="updateGuest(' + si + ',\'username\',this.value)"></td>';
+      html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updateGuest(' + si + ',\'password\',this.value)"></td>';
+      html += '<td><span class="toggle' + (en2 ? ' on' : '') + '" onclick="toggleGuest(' + si + ')"><span class="knob"></span></span></td>';
+      html += '<td><button class="btn-sm danger" onclick="deleteSecondary(' + si + ')">删除</button></td>';
+      html += '</tr>';
+    });
+    // Add secondary button
+    var piEnc = escJs(g.id);
+    html += '<tr style="background:#faf8f5"><td colspan="8" style="padding:4px 0 4px 18px">' +
+      '<button onclick="addSecondary(\'' + piEnc + '\')\" style="font-size:11px;background:none;border:1px dashed #ddd;border-radius:4px;padding:3px 10px;cursor:pointer;color:#999;font-family:inherit">＋ 添加二级客人</button></td></tr>';
+  });
+  html += '</table></div>';
+  html += '<div class="add-row"><button onclick="addGuest()">＋ 添加一级客人</button></div>';
+  html += '<div style="margin-top:8px;font-size:10px;color:#888;background:#faf6ee;padding:6px 10px;border-radius:4px">' +
+    '💡 一级客人可登录账号选款下单。二级客人附属在一级客人下，不能独立登录。</div>';
+  document.getElementById('panel-guests').innerHTML = html;
+}
+
+function updateGuest(idx, field, val) {
+  var data = SETTINGS.get('guests');
+  if (!data || idx >= data.length) return;
+  if (field === 'password' && (!val || val === '******')) return;
+  data[idx][field] = val;
+  SETTINGS.save('guests', data);
+}
+
+function toggleGuest(idx) {
+  var data = SETTINGS.get('guests');
+  if (!data || idx >= data.length) return;
+  data[idx].enabled = !(data[idx].enabled !== false);
+  SETTINGS.save('guests', data);
+  renderGuests();
+}
+
+function addGuest() {
+  var data = SETTINGS.get('guests');
+  data.push({id: genId('guests'), name: '新客人', username: 'guest' + Date.now(), password: '123456', address: '', tax_id: '', shop_name: '', phone: '', enabled: true, parent_id: ''});
+  SETTINGS.save('guests', data);
+  renderGuests();
+}
+
+function addSecondary(parentId) {
+  var data = SETTINGS.get('guests');
+  data.push({id: genId('guests'), name: '新二级', username: 'sub' + Date.now(), password: '', address: '', tax_id: '', shop_name: '', phone: '', enabled: true, parent_id: parentId});
+  SETTINGS.save('guests', data);
+  renderGuests();
+}
+
+function deletePrimary(idx) {
+  LUNA.showConfirm('确认删除此一级客人及其所有二级客人？', function() {
+    var data = SETTINGS.get('guests');
+    if (!data || idx >= data.length) return;
+    var g = data[idx];
+    for (var i = data.length - 1; i >= 0; i--) {
+      if (data[i].parent_id === g.id || data[i].parent_id === g.username) {
+        data.splice(i, 1);
+        if (i < idx) idx--;
+      }
+    }
+    data.splice(idx, 1);
+    SETTINGS.save('guests', data);
+    renderGuests();
+  });
+}
+
+function deleteSecondary(idx) {
+  LUNA.showConfirm('确认删除此二级客人？', function() {
+    var data = SETTINGS.get('guests');
+    if (!data || idx >= data.length) return;
+    data.splice(idx, 1);
+    SETTINGS.save('guests', data);
+    renderGuests();
+  });
+}
+
+// ========== 6. STYLES (款式管理) ==========
+function renderStyles() {
+  var container = document.getElementById('panel-styles');
+  if (!container) return;
+  var styles = [];
+  try { styles = LUNA.getStyles(); } catch(e) {}
+  var toggles = SETTINGS.get('styleToggles') || {};
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  html += '<span style="font-size:13px;font-weight:600;color:#1a1a1a">📋 全部款式 <span style="color:#999;font-weight:400">(' + styles.length + '款)</span></span>';
+  html += '<a href="style-manage.html" style="padding:6px 14px;background:#c9a96e;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit">＋ 添加款式</a>';
+  html += '</div>';
+  if (styles.length === 0) {
+    html += '<div class="panel-msg">暂无款式，请先前往款式管理添加款式</div>';
+    document.getElementById('panel-styles').innerHTML = html;
+    return;
+  }
+  html += '<table class="proc-table">';
+  html += '<tr><th>编号</th><th>名称</th><th>分类</th><th>类型</th><th>建议价</th><th style="text-align:center">启用</th><th>操作</th></tr>';
+  styles.forEach(function(s, i) {
+    var code = s.code;
+    var isOn = toggles[code] !== false;
+    var typeClass = (s.type === 'print' || s.type === '印花') ? 'material' : 'work';
+    var typeLabel = (s.type === 'print' || s.type === '印花') ? '印花' : '单色';
+    html += '<tr>';
+    html += '<td><strong style="color:#c9a96e">' + esc(code) + '</strong></td>';
+    html += '<td>' + esc(s.name||'') + '</td>';
+    html += '<td>' + esc(s.category||'') + '</td>';
+    html += '<td><span class="tag ' + typeClass + '">' + typeLabel + '</span></td>';
+    html += '<td>€' + ((s.suggestedPrice||0).toFixed(2)) + '</td>';
+    html += '<td style="text-align:center"><span class="toggle' + (isOn ? ' on' : '') + '" onclick="toggleStyle(\'' + code + '\')"><span class="knob"></span></span></td>';
+    html += '<td><a href="add-style.html?code=' + code + '" style="color:#c9a96e;font-size:11px;text-decoration:none">编辑</a></td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('panel-styles').innerHTML = html;
+}
+
+function toggleStyle(code) {
+  var toggles = SETTINGS.get('styleToggles') || {};
+  toggles[code] = toggles[code] === false ? true : false;
+  SETTINGS.save('styleToggles', toggles);
+  renderStyles();
+}
+
+// ========== 7. EXPORT / BILLING (月结) ==========
+function loadBilling() {
+  var container = document.getElementById('panel-export');
+  if (!container) return;
+  var invoices = [];
+  try { invoices = LUNA.getInvoices(); } catch(e) {}
+  var customerFilter = document.getElementById('exportCustomer') ? document.getElementById('exportCustomer').value : 'all';
+  var monthFilter = document.getElementById('exportMonth') ? document.getElementById('exportMonth').value : 'all';
+
+  // Apply filters
+  var filtered = invoices.filter(function(inv) {
+    if (customerFilter !== 'all' && inv.customer !== customerFilter) return false;
+    if (monthFilter !== 'all') {
+      var invMonth = (inv.shipTime || inv.orderNo || '').substring(0, 7);
+      if (invMonth !== monthFilter) return false;
+    }
+    return true;
+  });
+
+  // Collect unique customers and months for filters
+  var customers = [], months = [];
+  invoices.forEach(function(inv) {
+    if (customers.indexOf(inv.customer) < 0) customers.push(inv.customer);
+    var m = (inv.shipTime || inv.orderNo || '').substring(0, 7);
+    if (m && months.indexOf(m) < 0) months.push(m);
+  });
+  months.sort().reverse();
+
+  // Stats
+  var totalQty = 0, totalAmount = 0;
+  filtered.forEach(function(inv) { totalQty += inv.shippedQty; totalAmount += inv.total; });
+
+  // Filter controls
+  var filterHtml = '<div class="export-card" style="margin-bottom:12px">';
+  filterHtml += '<h3>📊 账单核账管理（按发货时间计算）</h3>';
+  filterHtml += '<p>以下账单基于已发货订单自动生成</p>';
+  filterHtml += '<div class="export-row">';
+  filterHtml += '<div class="field"><label>客人筛选</label><select id="exportCustomer" onchange="loadBilling()">';
+  filterHtml += '<option value="all"' + (customerFilter==='all'?' selected':'') + '>全部客人</option>';
+  customers.forEach(function(c) {
+    filterHtml += '<option value="' + esc(c) + '"' + (customerFilter===c?' selected':'') + '>' + esc(c) + '</option>';
+  });
+  filterHtml += '</select></div>';
+  filterHtml += '<div class="field"><label>月份筛选</label><select id="exportMonth" onchange="loadBilling()">';
+  filterHtml += '<option value="all"' + (monthFilter==='all'?' selected':'') + '>全部月份</option>';
+  months.forEach(function(m) {
+    filterHtml += '<option value="' + m + '"' + (monthFilter===m?' selected':'') + '>' + m + '</option>';
+  });
+  filterHtml += '</select></div>';
+  filterHtml += '<button class="export-btn" onclick="exportExcel()">📥 导出 Excel</button>';
+  filterHtml += '</div></div>';
+
+  // Stats bar
+  filterHtml += '<div style="display:flex;gap:12px;padding:12px 14px;background:#faf9f6;border:1px solid #e8e5e0;border-radius:6px;flex-wrap:wrap;font-size:12px;margin-bottom:8px">';
+  filterHtml += '<span>📄 账单数 <strong>' + filtered.length + '</strong></span>';
+  filterHtml += '<span>📦 发货 <strong>' + totalQty + '</strong> 件</span>';
+  filterHtml += '<span>💰 总金额 <strong style="color:#c9a96e;font-size:15px;">€' + totalAmount.toFixed(2) + '</strong></span>';
+  filterHtml += '</div>';
+
+  // Table
+  if (filtered.length === 0) {
+    filterHtml += '<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">暂无符合条件的账单</div>';
+  } else {
+    filterHtml += '<div style="background:#fff;border:1px solid #e8e5e0;border-radius:6px;overflow-x:auto">';
+    filterHtml += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    filterHtml += '<tr style="background:#faf9f6;"><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">订单号</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">编号</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">客人</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">发货数</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">批发价€</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">总金额€</th><th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">发货时间</th></tr>';
+    filtered.forEach(function(inv) {
+      filterHtml += '<tr><td style="padding:6px 10px;border-bottom:1px solid #f0ede8;font-weight:600;">' + esc(inv.orderNo) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;color:#c9a96e;font-weight:600;">' + esc(inv.code) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;">' + esc(inv.customer) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;">' + inv.shippedQty + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;">' + inv.price.toFixed(2) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;font-weight:600;">' + inv.total.toFixed(2) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:center;font-size:11px;color:#888;">' + (inv.shipTime || '-') + '</td></tr>';
+    });
+    filterHtml += '<tr style="background:#faf9f6;font-weight:700;"><td colspan="3" style="padding:8px 10px;text-align:right;">合计</td><td style="padding:8px 10px;text-align:right;">' + totalQty + '</td><td></td><td style="padding:8px 10px;text-align:right;">€' + totalAmount.toFixed(2) + '</td><td></td></tr>';
+    filterHtml += '</table></div>';
+  }
+  document.getElementById('panel-export').innerHTML = filterHtml;
+}
+
+function exportExcel() {
+  var invoices = [];
+  try { invoices = LUNA.getInvoices(); } catch(e) {}
+  var customerFilter = document.getElementById('exportCustomer') ? document.getElementById('exportCustomer').value : 'all';
+  var monthFilter = document.getElementById('exportMonth') ? document.getElementById('exportMonth').value : 'all';
+  var filtered = invoices.filter(function(inv) {
+    if (customerFilter !== 'all' && inv.customer !== customerFilter) return false;
+    if (monthFilter !== 'all') {
+      var invMonth = (inv.shipTime || inv.orderNo || '').substring(0, 7);
+      if (invMonth !== monthFilter) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) { alert('没有可导出的数据'); return; }
+
+  // Build CSV
+  var BOM = '\uFEFF';
+  var csv = BOM + '订单号,编号,客人,发货数量,批发价€,总金额€,发货时间\n';
+  filtered.forEach(function(inv) {
+    csv += [inv.orderNo, inv.code, inv.customer, inv.shippedQty, inv.price.toFixed(2), inv.total.toFixed(2), inv.shipTime || ''].join(',') + '\n';
+  });
+  var totalQ = 0, totalA = 0;
+  filtered.forEach(function(inv) { totalQ += inv.shippedQty; totalA += inv.total; });
+  csv += '合计,,,' + totalQ + ',' + ',' + totalA.toFixed(2) + ',\n';
+
+  // Download
+  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  var now = new Date();
+  var dateStr = now.getFullYear() + '-' + ('0'+(now.getMonth()+1)).slice(-2) + '-' + ('0'+now.getDate()).slice(-2);
+  link.download = '月结_' + dateStr + '.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ===== UTILITY =====
+function esc(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ===== COLOR MODAL =====
+function showColor2(bg, name) {
+  document.getElementById('bigBox').style.background = bg;
+  document.getElementById('bigBox').style.backgroundSize = 'cover';
+  document.getElementById('bigBox').style.backgroundPosition = 'center';
+  document.getElementById('bigName').textContent = name;
+  document.getElementById('colorModal').classList.add('active');
+}
+function closeColor() { document.getElementById('colorModal').classList.remove('active'); }
+
+// ===== ADD COLOR MODAL (Dual-Mode: Solid / Photo) =====
+var addTargetFabric = null;
+var _qcMode = 'solid';
+var _qcImageData = null;
+var _qcAnchors = [];
+var _qcFile = null;
+var _qcEditMode = false;
+
+// ── Quick color palette management ──
+function getQuickColors() {
+  var raw = localStorage.getItem(SETTINGS.KEYS.quickColors);
+  if (raw) { try { return JSON.parse(raw); } catch(e) {} }
+  var defs = DEFAULTS.quickColors;
+  localStorage.setItem(SETTINGS.KEYS.quickColors, JSON.stringify(defs));
+  return defs;
+}
+function saveQuickColors(arr) {
+  localStorage.setItem(SETTINGS.KEYS.quickColors, JSON.stringify(arr));
+}
+function renderQuickColors() {
+  var container = document.getElementById('quickColorBtns');
+  if (!container) return;
+  var colors = getQuickColors();
+  if (!colors || !colors.length) {
+    container.innerHTML = '<div style="font-size:10px;color:#ccc;padding:4px 0">暂无基础色</div>';
+    return;
+  }
+  var html = '';
+  colors.forEach(function(c, i) {
+    var border = (c.hex === '#ffffff' || c.hex === '#f5f5dc') ? '2px solid #ddd' : '2px solid #ccc';
+    html += '<div style="position:relative;display:flex;flex-direction:column;align-items:center;width:56px">';
+    html += '<button data-name="' + c.name + '" data-hex="' + c.hex + '" style="width:40px;height:40px;border-radius:6px;border:' + border + ';cursor:pointer;background:' + c.hex + '" title="' + c.name + ' ' + c.hex + '"></button>';
+    html += '<span style="font-size:9px;color:#888;padding-top:2px;line-height:1.1;text-align:center;word-break:keep-all;max-width:56px;overflow:hidden;text-overflow:ellipsis">' + c.name + '</span>';
+    if (_qcEditMode) {
+      html += '<button onclick="deleteQuickColor(' + i + ')" style="position:absolute;top:-5px;right:2px;width:16px;height:16px;border-radius:50%;border:none;background:#e05050;color:#fff;font-size:9px;cursor:pointer;line-height:1;padding:0;font-family:inherit">✕</button>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
+  document.getElementById('qcManageBtn').textContent = _qcEditMode ? '✓ 完成' : '⚙ 管理';
+}
+function toggleQuickColorEdit() {
+  _qcEditMode = !_qcEditMode;
+  renderQuickColors();
+  var btn = document.querySelector('#addColorModal .confirm');
+  btn.textContent = _qcEditMode ? '➕ 添加基础色' : '💾 保存颜色';
+}
+function deleteQuickColor(idx) {
+  var colors = getQuickColors();
+  colors.splice(idx, 1);
+  saveQuickColors(colors);
+  renderQuickColors();
+}
+document.getElementById('quickColorBtns').addEventListener('click', function(e) {
+  if (_qcEditMode) return;
+  var btn = e.target.closest ? e.target.closest('button[data-name]') : e.target;
+  if (!btn || !btn.getAttribute('data-name')) return;
+  document.getElementById('quickColorName').value = btn.getAttribute('data-name');
+  if (_qcMode === 'solid') {
+    var hex = btn.getAttribute('data-hex');
+    document.getElementById('solidColorPicker').value = hex;
+    var hsl = hexToHsl(hex);
+    document.getElementById('solidSatSlider').value = hsl.s;
+    document.getElementById('solidBriSlider').value = hsl.l;
+    syncSolidColor();
+  }
+});
+
+// ── HSL / Hex conversion ──
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  var c = (1 - Math.abs(2*l - 1)) * s;
+  var x = c * (1 - Math.abs((h/60)%2 - 1));
+  var m = l - c/2;
+  var r, g, b;
+  if (h < 60) { r=c; g=x; b=0; }
+  else if (h < 120) { r=x; g=c; b=0; }
+  else if (h < 180) { r=0; g=c; b=x; }
+  else if (h < 240) { r=0; g=x; b=c; }
+  else if (h < 300) { r=x; g=0; b=c; }
+  else { r=c; g=0; b=x; }
+  return '#' + [r,g,b].map(function(v){ return Math.round((v+m)*255).toString(16).padStart(2,'0'); }).join('');
+}
+function hexToHsl(hex) {
+  var r = parseInt(hex.slice(1,3),16)/255;
+  var g = parseInt(hex.slice(3,5),16)/255;
+  var b = parseInt(hex.slice(5,7),16)/255;
+  var mx = Math.max(r,g,b), mn = Math.min(r,g,b);
+  var h = 0, s = 0, l = (mx+mn)/2;
+  if (mx !== mn) {
+    var d = mx - mn;
+    s = l > 0.5 ? d/(2-mx-mn) : d/(mx+mn);
+    if (mx===r) h = (g-b)/d + (g<b ? 6 : 0);
+    else if (mx===g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h /= 6;
+  }
+  return {h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100)};
+}
+
+// ── Keyword → base color ──
+function suggestBaseColor(name) {
+  if (!name) return null;
+  var n = name.toLowerCase();
+  var map = [
+    {kw:['红','赤','朱','丹','绯','粉','rose','red','pink'], hex:'#D44A4A'},
+    {kw:['橙','橘','柑','orange'], hex:'#E8923E'},
+    {kw:['黄','金','浅驼','cream','yellow','gold','beige','米'], hex:'#D4B86A'},
+    {kw:['绿','翠','碧','绿灰','green','olive'], hex:'#6B8E5A'},
+    {kw:['蓝','靛','藏','宝蓝','blue','navy'], hex:'#4A6FA5'},
+    {kw:['紫','紫红','violet','purple','lavender'], hex:'#8B6FA5'},
+    {kw:['棕','咖','褐','brown','choco','驼'], hex:'#8B6B4A'},
+    {kw:['灰','grey','gray','silver','花灰'], hex:'#999999'},
+    {kw:['黑','墨','night','black'], hex:'#3A3A3A'},
+    {kw:['白','white','ivory','象牙'], hex:'#E8E4DA'},
+    {kw:['杏','apricot'], hex:'#D4A98A'},
+    {kw:['卡其','khaki'], hex:'#BFA580'}
+  ];
+  for (var mi = 0; mi < map.length; mi++)
+    for (var ki = 0; ki < map[mi].kw.length; ki++)
+      if (n.indexOf(map[mi].kw[ki]) >= 0) return map[mi].hex;
+  return null;
+}
+
+// ── Solid mode: sync preview ──
+function syncSolidColor() {
+  var pickerHex = document.getElementById('solidColorPicker').value;
+  var sat = parseInt(document.getElementById('solidSatSlider').value);
+  var bri = parseInt(document.getElementById('solidBriSlider').value);
+  var hsl = hexToHsl(pickerHex);
+  var adjHex = hslToHex(hsl.h, sat, bri);
+  var swatch = document.getElementById('solidPreviewSwatch');
+  swatch.style.background = adjHex;
+  document.getElementById('solidColorPicker').value = adjHex;
+  document.getElementById('solidHexLabel').textContent = adjHex;
+  document.getElementById('solidSatVal').textContent = sat + '%';
+  document.getElementById('solidBriVal').textContent = bri + '%';
+  swatch.style.color = (bri > 75 || sat < 15) ? '#666' : '#fff';
+  swatch.textContent = adjHex;
+}
+
+function switchQcMode(mode) {
+  _qcMode = mode;
+  document.querySelectorAll('.qc-mode-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.mode===mode); });
+  document.getElementById('qcSolidSection').style.display = mode==='solid' ? 'block' : 'none';
+  document.getElementById('qcPhotoSection').classList.toggle('hidden', mode!=='photo');
+  document.getElementById('addAnchorBtn').style.display = 'none';
+}
+
+function suggestColorFromName() {
+  var name = document.getElementById('quickColorName').value.trim();
+  var hex = suggestBaseColor(name);
+  if (hex && _qcMode === 'solid') {
+    var hsl = hexToHsl(hex);
+    document.getElementById('solidColorPicker').value = hex;
+    document.getElementById('solidSatSlider').value = hsl.s;
+    document.getElementById('solidBriSlider').value = hsl.l;
+    syncSolidColor();
+  }
+}
+
+function openAddColor(fi) {
+  addTargetFabric = fi;
+  _qcMode = 'solid'; _qcImageData = null; _qcAnchors = []; _qcFile = null;
+  document.getElementById('quickColorName').value = '';
+  document.getElementById('solidColorPicker').value = '#b0a99e';
+  document.getElementById('solidSatSlider').value = 100;
+  document.getElementById('solidBriSlider').value = 100;
+  syncSolidColor();
+  document.getElementById('previewImg').style.display = 'none';
+  document.getElementById('previewImg').style.filter = 'none';
+  document.getElementById('dropHint').style.display = 'block';
+  document.getElementById('anchorOverlay').innerHTML = '';
+  document.getElementById('anchorOverlay').classList.remove('active');
+  document.getElementById('addAnchorBtn').style.display = 'none';
+  document.getElementById('brightnessSlider').value = 100;
+  document.getElementById('contrastSlider').value = 100;
+  document.getElementById('hueSlider').value = 0;
+  document.getElementById('dropZone').classList.remove('anchor-cursor');
+  updatePreviewFilterLabels();
+  renderQuickColors();
+  switchQcMode('solid');
+  document.getElementById('addColorModal').classList.add('active');
+  setTimeout(function(){ document.getElementById('dropZone').focus(); }, 100);
+  refreshColorNameDatalist();
+}
+
+function closeAddColor() {
+  document.getElementById('addColorModal').classList.remove('active');
+  addTargetFabric = null;
+}
+
+// ── Paste / Drop / File for photo mode ──
+document.getElementById('dropZone').addEventListener('paste', function(e) {
+  e.preventDefault();
+  var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image')===0) { _qcFile = items[i].getAsFile(); loadQCImage(_qcFile); break; }
+  }
+});
+var dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', function(e) { this.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault(); this.classList.remove('drag-over');
+  var files = e.dataTransfer.files;
+  if (files && files[0]) { _qcFile = files[0]; loadQCImage(files[0]); }
+});
+dropZone.addEventListener('click', function(e) {
+  if (_qcImageData) return;
+  var inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange = function(ev) { if (ev.target.files&&ev.target.files[0]) { _qcFile=ev.target.files[0]; loadQCImage(_qcFile); } };
+  inp.click();
+});
+
+function loadQCImage(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    _qcImageData = e.target.result;
+    var img = document.getElementById('previewImg');
+    img.src = _qcImageData; img.style.display = 'block';
+    img.style.filter = getFilterString();
+    document.getElementById('dropHint').style.display = 'none';
+    document.getElementById('addAnchorBtn').style.display = 'inline-block';
+    document.getElementById('dropZone').classList.add('anchor-cursor');
+    updatePreviewFilter();
+    showToast('✅ 已加载图片');
+  };
+  reader.readAsDataURL(file);
+}
+
+function getFilterString() {
+  return 'brightness(' + (parseInt(document.getElementById('brightnessSlider').value)||100) + '%) contrast(' + (parseInt(document.getElementById('contrastSlider').value)||100) + '%) hue-rotate(' + (parseInt(document.getElementById('hueSlider').value)||0) + 'deg)';
+}
+function updatePreviewFilter() {
+  var img = document.getElementById('previewImg');
+  if (!_qcImageData) return;
+  img.style.filter = getFilterString();
+  updatePreviewFilterLabels();
+}
+function updatePreviewFilterLabels() {
+  document.getElementById('brightnessVal').textContent = document.getElementById('brightnessSlider').value + '%';
+  document.getElementById('contrastVal').textContent = document.getElementById('contrastSlider').value + '%';
+  document.getElementById('hueVal').textContent = document.getElementById('hueSlider').value + '°';
+}
+
+// ── Anchor points on preview ──
+document.getElementById('dropZone').addEventListener('click', function(e) {
+  if (!_qcImageData) return;
+  if (document.getElementById('previewImg').style.display === 'none') return;
+  var rect = this.getBoundingClientRect();
+  var xPct = ((e.clientX-rect.left)/rect.width)*100;
+  var yPct = ((e.clientY-rect.top)/rect.height)*100;
+  var name = prompt('为此处颜色命名:', '');
+  if (!name||!name.trim()) return;
+  _qcAnchors.push({x:xPct, y:yPct, name:name.trim()});
+  renderAnchorOverlay();
+  document.getElementById('anchorInfo').textContent = '已标记 '+_qcAnchors.length+' 个锚点';
+});
+function renderAnchorOverlay() {
+  var overlay = document.getElementById('anchorOverlay');
+  overlay.classList.add('active');
+  overlay.innerHTML = _qcAnchors.map(function(a){ return '<div class="anchor-dot" style="left:'+a.x+'%;top:'+a.y+'%"><span class="lbl">'+esc(a.name)+'</span></div>'; }).join('');
+}
+function addAnchorPoint() { showToast('💡 点击预览图标记锚点颜色'); }
+
+function refreshColorNameDatalist() {
+  var dl = document.getElementById('colorNameDatalist');
+  if (!dl) return;
+  var names = [];
+  (SETTINGS.get('fabrics')||[]).forEach(function(f) { (f.colors||[]).forEach(function(c) { if(c.name&&names.indexOf(c.name)<0) names.push(c.name); }); });
+  dl.innerHTML = names.map(function(n) { return '<option value="'+escAttr(n)+'">'; }).join('');
+}
+
+// ── Save: solid or photo mode ──
+function saveQuickColor() {
+  var name = document.getElementById('quickColorName').value.trim();
+  if (!name) { alert('请输入颜色名称'); return; }
+
+  // Management mode → quick color palette
+  if (_qcEditMode) {
+    var qc = getQuickColors();
+    for (var i=0;i<qc.length;i++) { if (qc[i].name===name) { alert('已存在此名称'); return; } }
+    qc.push({name:name, hex:document.getElementById('solidHexLabel').textContent});
+    saveQuickColors(qc); closeAddColor(); renderQuickColors();
+    return;
+  }
+
+  if (addTargetFabric === null) { alert('未选择面料'); return; }
+  var fabrics = SETTINGS.get('fabrics');
+  if (!fabrics[addTargetFabric]) return;
+  if (!fabrics[addTargetFabric].colors) fabrics[addTargetFabric].colors = [];
+
+  function doSave(hexVal, imgUrl) {
+    var color = {name:name, hex:hexVal};
+    if (imgUrl) color.img = imgUrl;
+    fabrics[addTargetFabric].colors.push(color);
+    SETTINGS.save('fabrics', fabrics);
+    LUNA.addFabricColor(fabrics[addTargetFabric].id, name, hexVal, imgUrl||'', {});
+    closeAddColor();
+    renderWarehouse();
+    showToast('✅ 颜色「'+name+'」已保存');
+  }
+
+  if (_qcMode === 'solid') { doSave(document.getElementById('solidHexLabel').textContent, null); return; }
+
+  if (!_qcImageData) { alert('请先粘贴或拖入图片'); return; }
+  var c = document.createElement('canvas'); c.width=200; c.height=200;
+  var img = new Image();
+  img.onload = function() {
+    var ctx = c.getContext('2d');
+    ctx.filter = getFilterString();
+    ctx.drawImage(img,0,0,200,200);
+    var dataUrl = c.toDataURL('image/jpeg',0.85);
+    var tc = document.createElement('canvas'); tc.width=1; tc.height=1;
+    var tctx = tc.getContext('2d');
+    tctx.drawImage(img,0,0,1,1);
+    var pd = tctx.getImageData(0,0,1,1).data;
+    var hexFallback = '#'+[pd[0],pd[1],pd[2]].map(function(v){return v.toString(16).padStart(2,'0');}).join('');
+    doSave(hexFallback, dataUrl);
+  };
+  img.src = _qcImageData;
+}
+
+// ── Helpers ──
+function escAttr(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g,'&amp;').replace(/'/g,'\\\'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function autoCropSquare(dataUrl, callback) {
+  var img = new Image();
+  img.onload = function() {
+    var size = Math.min(img.width,img.height);
+    var sx = Math.round((img.width-size)/2), sy = Math.round((img.height-size)/2);
+    var c = document.createElement('canvas'); c.width=200; c.height=200;
+    c.getContext('2d').drawImage(img,sx,sy,size,size,0,0,200,200);
+    callback(c.toDataURL('image/jpeg',0.7));
+  };
+  img.src=dataUrl;
+}
+function extractDominantColor(dataUrl, callback) {
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    var c = document.createElement('canvas'); c.width=img.width; c.height=img.height;
+    var ctx = c.getContext('2d'); ctx.drawImage(img,0,0);
+    var d = ctx.getImageData(0,0,img.width,img.height).data, buckets={};
+    for (var i=0;i<d.length;i+=16) { var key=Math.round(d[i]/32)*32+','+Math.round(d[i+1]/32)*32+','+Math.round(d[i+2]/32)*32; buckets[key]=(buckets[key]||0)+1; }
+    var max=0,dk='0,0,0';
+    for (var k in buckets) { if(buckets[k]>max){max=buckets[k];dk=k;} }
+    var p=dk.split(','); callback([parseInt(p[0]),parseInt(p[1]),parseInt(p[2])]);
+  };
+  img.src=dataUrl;
+}
+function rgbToHex(r,g,b) { return '#'+[r,g,b].map(function(v){return Math.round(v).toString(16).padStart(2,'0');}).join(''); }
+function colorNameFromRGB(r,g,b) {
+  var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,h=0;
+  if(d>0){if(mx===r)h=(g-b)/d+(g<b?6:0);else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h=Math.round(h*60);if(h<0)h+=360;}
+  var s=mx>0?d/mx:0,v=mx/255;
+  if(s<0.08){if(v>0.92)return'白色';if(v<0.15)return'黑色';if(v<0.35)return'深灰';if(v<0.55)return'中灰';return'浅灰';}
+  if(h<15||h>=345)return v<0.4?'酒红':(v<0.65?'红色':'浅红');
+  if(h<30)return v<0.5?'棕红':'橙色';
+  if(h<45)return v<0.5?'棕色':'杏色';
+  if(h<70)return v<0.5?'橄榄绿':'米黄';
+  if(h<100)return v<0.4?'墨绿':'黄绿';
+  if(h<150)return v<0.35?'深绿':(v<0.7?'绿色':'浅绿');
+  if(h<190)return v<0.4?'深青':'青色';
+  if(h<210)return v<0.4?'深蓝':'天蓝';
+  if(h<260)return v<0.3?'藏青':(v<0.6?'蓝色':'浅蓝');
+  if(h<290)return v<0.4?'深紫':(v<0.7?'紫色':'浅紫');
+  if(h<330)return v<0.4?'紫红':'粉红';
+  return v<0.5?'酒红':'粉色';
+}
+
+// ===== Lightbox =====
+function openLightbox(src, label) {
+  var media = document.getElementById('lightboxMedia');
+  var isColor = src.indexOf('#') === 0;
+  if (isColor) {
+    media.style.background = src; media.style.width = '60vw'; media.style.height = '60vw';
+    media.style.maxWidth = '400px'; media.style.maxHeight = '400px';
+    media.style.borderRadius = '12px'; media.style.border = '2px solid rgba(255,255,255,.15)'; media.innerHTML = '';
+  } else {
+    media.style.background = 'url('+src+') center/cover no-repeat'; media.style.width = '80vw'; media.style.height = '80vw';
+    media.style.maxWidth = '500px'; media.style.maxHeight = '600px';
+    media.style.borderRadius = '8px'; media.style.border = '2px solid rgba(255,255,255,.1)'; media.innerHTML = '';
+  }
+  document.getElementById('lightboxLabel').textContent = label||'';
+  document.getElementById('lightboxOverlay').classList.add('active');
+}
+function closeLightbox() { document.getElementById('lightboxOverlay').classList.remove('active'); }
+
+function showToast(msg) { var t=document.getElementById('toast'); if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:99999;opacity:0;transition:opacity .3s;pointer-events:none';document.body.appendChild(t);} t.textContent=msg; t.classList.add('show'); t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.classList.remove('show')},300);},2500); }
+
+function updateColorHex(fi, ci, val) {
+  var fabrics = SETTINGS.get('fabrics');
+  if (!fabrics || !fabrics[fi] || !fabrics[fi].colors || !fabrics[fi].colors[ci]) return;
+  fabrics[fi].colors[ci].hex = val;
+  localStorage.setItem(SETTINGS.KEYS.fabrics, JSON.stringify(fabrics));
+  renderWarehouse();
+  // 异步服务端同步
+  var fid = fabrics[fi].id;
+  var cname = fabrics[fi].colors[ci].name;
+  fetch('/api/fabrics/update-color', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({fabric_id: fid, old_name: cname, hex: val})
+  }).catch(function(){});
+}
+
+// ===== SIDE MENU =====
+function toggleMenu() {
+  document.getElementById('sideMenu').classList.toggle('open');
+  document.getElementById('sideOverlay').classList.toggle('active');
+}
+
+// ===== 退出 =====
+function logout() {
+  LUNA.clearUser();
+  window.location.href = 'index.html';
+}
+
+// ===== INIT =====
+try{initSettings();}catch(e){var d3=document.getElementById("debug-info");if(d3){d3.style.display="block";d3.textContent="initSettings ERROR: "+e.message;}}
+// 服务器数据同步后重新渲染
+// 注意：firstLoad 完成时会调用 _syncToLocalStorage() 覆写 localStorage，
+// 因此需要检查并恢复被覆盖的本地修改
+window.addEventListener('luna-data-changed', function() {
+  if (typeof _userData !== 'undefined') {
+    var modKeys = Object.keys(_userData);
+    if (modKeys.length > 0) {
+      modKeys.forEach(function(k) {
+        SETTINGS.save(k, _userData[k]);
+        // 同步更新 LUNA cache（set 会触发 saveFabrics → fireChanged，但 _userData 已清空不会死循环）
+        var fullKey = 'luna_settings_' + k;
+        if (typeof LUNA !== 'undefined' && LUNA.set) {
+          LUNA.set(fullKey, _userData[k]);
+        }
+      });
+      _userData = {};
+    }
+  }
+  setTimeout(renderAll, 50);
+});
+
+// 后备：3 秒后再次检查恢复（防止 app-data-changed 未按预期触发）
+setTimeout(function() {
+  if (typeof _userData !== 'undefined') {
+    var modKeys = Object.keys(_userData);
+    if (modKeys.length > 0) {
+      modKeys.forEach(function(k) {
+        SETTINGS.save(k, _userData[k]);
+        var fullKey = 'luna_settings_' + k;
+        if (typeof LUNA !== 'undefined' && LUNA.set) {
+          LUNA.set(fullKey, _userData[k]);
+        }
+      });
+      _userData = {};
+      renderAll();
+    }
+  }
+}, 3000);
+</script>
+</body>
+</html>

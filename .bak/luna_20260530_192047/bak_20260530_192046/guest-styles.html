@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUNA ATELIER · 款式浏览</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+font-family: 'Inter', -apple-system, sans-serif;
+-webkit-font-smoothing: antialiased;
+background: #F7F6F3;
+color: #1C1C1C;
+line-height: 1.6;
+}
+a { text-decoration: none; color: inherit; }
+/* HEADER */
+.header {
+background: #fff;
+border-bottom: 1px solid #EBE8E3;
+position: sticky; top: 0; z-index: 100;
+}
+.header-inner {
+max-width: 1200px; margin: 0 auto;
+display: flex; align-items: center;
+padding: 0 24px; height: 56px;
+}
+.hamburger {
+width: 24px; height: 24px;
+display: flex; flex-direction: column;
+justify-content: center; gap: 5px;
+cursor: pointer; margin-right: 16px; flex-shrink: 0;
+}
+.hamburger span { display: block; height: 1.5px; background: #1C1C1C; border-radius: 1px; }
+.logo {
+font-family: 'Playfair Display', serif;
+font-size: 15px; letter-spacing: 3.5px;
+color: #1C1C1C; text-transform: uppercase;
+}
+.header-right { display: flex; align-items: center; gap: 18px; margin-left: auto; }
+.admin-link {
+font-size: 11px; color: #C8A56D; font-weight: 500;
+letter-spacing: 0.5px; transition: color .15s;
+}
+.admin-link:hover { color: #a88957; }
+.header-icon { font-size: 17px; color: #999; cursor: pointer; position: relative; display:inline-block; }
+.header-icon:hover { color: #1C1C1C; }
+.cart-badge {
+position: absolute; top: -7px; right: -9px;
+background: #C8A56D; color: #fff;
+font-size: 8px; min-width: 14px; height: 14px;
+border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
+}
+
+/* Side Menu (standardized) */
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;letter-spacing:2px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s;cursor:pointer}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+.side-menu .sm-link.active{background:#f7f4ee;color:#1c1c1c;font-weight:500}
+/* Inline Category Pills */
+.cat-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:0 0 4px}
+.cat-pill{padding:5px 14px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;color:#888;cursor:pointer;transition:all .15s;background:#fff;font-family:inherit}
+.cat-pill:hover{border-color:#C8A56D;color:#C8A56D}
+.cat-pill.active{background:#C8A56D;color:#fff;border-color:#C8A56D}
+/* PRODUCT GRID */
+.page { max-width: 1200px; margin: 0 auto; padding: 24px 24px 60px; }
+.grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+gap: 16px;
+}
+.card {
+background: #fff; border: 1px solid #EBE8E3;
+border-radius: 8px; overflow: hidden;
+transition: box-shadow .25s, transform .25s;
+cursor: pointer;
+}
+.card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.05); transform: translateY(-2px); }
+.card .img-wrap {
+width: 100%; aspect-ratio: 3/4;
+background: #F2F0EC; overflow: hidden;
+display:flex;align-items:center;justify-content:center;font-size:36px;color:#ccc;
+}
+.card .img-wrap img {
+width: 100%; height: 100%; object-fit: contain;
+transition: transform .4s;
+}
+.card:hover .img-wrap img { transform: scale(1.04); }
+.card .info { padding: 10px 12px 12px; }
+.card .info .code {
+font-family: 'Inter', sans-serif;
+font-size: 13px; color: #1C1C1C; font-weight: 600;
+letter-spacing: 0.3px; margin-bottom: 2px;
+}
+.card .info .name {
+font-size: 11px; color: #888; margin-bottom: 2px;
+}
+.card .info .price {
+font-size: 14px; color: #1C1C1C; font-weight: 600;
+}
+.card .info .tag {
+display:inline-block; font-size:8px; padding:1px 5px; border-radius:3px;
+background:#F0EDE8; color:#888; margin-top:4px;
+}
+/* FOOTER */
+.footer {
+border-top: 1px solid #EBE8E3;
+padding: 24px; text-align: center;
+font-size: 11px; color: #B5A58A;
+}
+@media (max-width: 600px) {
+.grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+/* New arrivals horizontal scroll */
+.new-arrivals{margin-bottom:20px}
+.new-arrivals .section-title{font-size:15px;font-weight:600;color:#1C1C1C;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.new-arrivals .section-title .badge{font-size:10px;background:#C8A56D;color:#fff;padding:2px 8px;border-radius:10px;font-weight:500}
+.scroll-row{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
+.scroll-row::-webkit-scrollbar{height:3px}
+.scroll-row::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+.scroll-row::-webkit-scrollbar-track{background:transparent}
+.scroll-card{flex:0 0 130px;scroll-snap-align:start;background:#fff;border:1px solid #EBE8E3;border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow .2s}
+.scroll-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.scroll-card .s-img{width:100%;aspect-ratio:1;background:#F2F0EC;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.scroll-card .s-img img{width:100%;height:100%;object-fit:contain}
+.scroll-card .s-info{padding:6px 8px 8px}
+.scroll-card .s-info .s-code{font-size:11px;font-weight:600;color:#1C1C1C}
+.scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:600;margin-top:2px}
+</style>
+<script src="luna-data.js?v=15"></script>
+</head>
+<body>
+<!-- HEADER -->
+<header class="header">
+<div class="header-inner">
+<div class="hamburger" onclick="toggleMenu()">
+<span></span><span></span><span></span>
+</div>
+<a href="#" class="logo">LUNA ATELIER</a>
+<div class="header-right">
+<span class="header-icon" onclick="document.getElementById('searchInput').focus()">🔍</span>
+<a href="cart.html" class="header-icon">🛒<span class="cart-badge" id="cartBadge">0</span></a>
+</div>
+</div>
+</header>
+<!-- SIDE MENU (standardized) -->
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link active" href="javascript:void(0)" onclick="return filterByCategory('all',this)">👗 全部款式</a>
+    <div id="categoriesContainer"></div>
+    <a class="sm-link" href="add-style.html" id="gs-add-style">➕ 添加款式</a>
+    <a class="sm-link" href="style-manage.html" id="gs-style-manage">📋 款式管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="my-orders.html">📋 我的订单</a>
+    <a class="sm-link" href="orders.html" id="gs-orders-mgmt">📋 订单管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
+    <a class="sm-link" href="login-logs.html">🔍 登录记录</a>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+<!-- PRODUCT GRID -->
+<div class="page">
+<div class="cat-pills" id="catPills"></div>
+<div class="new-arrivals" id="newArrivals">
+  <div class="section-title">✨ 近期新款 <span class="badge" id="newBadge">30天</span></div>
+  <div class="scroll-row" id="newArrivalsRow"></div>
+</div>
+<div class="grid" id="stylesGrid"></div>
+</div>
+<footer class="footer">
+<p>LUNA ATELIER · Prato · Italia</p>
+</footer>
+<script>
+// 获取分类图标
+function getCategoryIcon(cat) {
+const icons = {
+'西装外套':'👔','西装裤':'👖','裙装':'👗','连衣裙':'👗',
+'衬衫':'👚','大衣':'🧥','套装':'📦','水洗':'🔄','印花':'🌸','碎花':'🌸'
+};
+return icons[cat] || '👔';
+}
+// 切换菜单
+function toggleMenu() {
+document.getElementById('sideOverlay').classList.toggle('active');
+document.getElementById('sideMenu').classList.toggle('open');
+}
+// 退出
+function logout() {
+  LUNA.clearUser();
+  window.location.href = 'index.html';
+}
+// 数据
+var allStyles = [];
+var currentFilter = 'all';
+// 渲染网格
+function renderGrid(styles) {
+var container = document.getElementById('stylesGrid');
+if (!styles.length) {
+container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#B5A58A;font-size:14px">暂无款式</div>';
+return;
+}
+container.innerHTML = styles.map(function(s) {
+  var tag = (s.type === 'print') ? '<span class="tag">🌸 印花</span>' : '';
+  var imgHtml = '';
+  if (s.images && s.images.length > 0 && s.images[0]) {
+    var img = s.images[0];
+    if (img.length > 100 || img.indexOf('photos/') === 0 || img.indexOf('data:') === 0 || img.indexOf('http') === 0) {
+      imgHtml = '<img src="' + img + '" alt="">';
+    } else {
+      imgHtml = getCategoryIcon(s.category);
+    }
+  } else {
+    imgHtml = getCategoryIcon(s.category);
+  }
+  return '<div class="card" onclick="window.location.href=\'order-page.html?code=' + s.code + '\'">' +
+  '<div class="img-wrap">' + imgHtml + '</div>' +
+  '<div class="info">' +
+  '<div class="code">ART-' + s.code + '</div>' +
+  '<div class="price">€' + (s.suggestedPrice || '0.00') + '</div>' +
+  tag +
+  '</div></div>';
+}).join('');
+}
+// 按分类筛选
+// render new arrivals (horizontal scroll)
+function renderNewArrivals() {
+  var row = document.getElementById("newArrivalsRow");
+  var section = document.getElementById("newArrivals");
+  if (!row) return;
+  var now = new Date();
+  var cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - 30);
+  var newStyles = allStyles.filter(function(s) {
+    if (!s.created_at) return false;
+    var d = new Date(s.created_at);
+    return d >= cutoff && d <= now;
+  });
+  if (!newStyles.length) { section.style.display = "none"; return; }
+  section.style.display = "";
+  document.getElementById("newBadge").textContent = newStyles.length+"款";
+  row.innerHTML = newStyles.map(function(s) {
+    var img = "";
+    if (s.images && s.images.length > 0 && s.images[0]) {
+      img = '<img src="'+s.images[0]+'" alt="">';
+    } else {
+      img = getCategoryIcon(s.category);
+    }
+    return '<div class="scroll-card" onclick="window.location.href=\'order-page.html?code='+s.code+'\'">' +
+      '<div class="s-img">'+img+'</div>' +
+      '<div class="s-info"><div class="s-code">ART-'+s.code+'</div>' +
+      '<div class="s-price">€'+(s.suggestedPrice||'0.00')+'</div></div></div>';
+  }).join("");
+}
+function filterByCategory(cat, el) {
+currentFilter = cat;
+if (cat === 'all') {
+renderGrid(allStyles);
+} else {
+renderGrid(allStyles.filter(function(s) { return s.category === cat; }));
+}
+document.querySelectorAll('#sideMenu .sm-link[data-category]').forEach(function(a){a.classList.remove('active')});
+document.querySelectorAll('.cat-pill').forEach(function(p){p.classList.remove('active')});
+if (el) {
+  if (el.classList.contains('sm-link') || el.classList.contains('cat-pill')) el.classList.add('active');
+}
+// 只在点击侧边菜单时收起菜单
+if (el && el.classList.contains('sm-link')) {
+  toggleMenu();
+}
+return false;
+}
+// 渲染侧边栏分类
+function renderCategories() {
+var cats = [...new Set(allStyles.map(function(s){return s.category}))].sort();
+// 侧边菜单分类
+var container = document.getElementById('categoriesContainer');
+container.innerHTML = cats.map(function(c) {
+return '<a class="sm-link" href="#" data-category="' + c + '" onclick="return filterByCategory(\'' + c + '\',this)">' + getCategoryIcon(c) + ' ' + c + '</a>';
+}).join('');
+// 内联分类 pills
+var pills = document.getElementById('catPills');
+pills.innerHTML = '<button class="cat-pill active" onclick="filterByCategory(\'all\',this)">全部</button>' +
+cats.map(function(c) {
+return '<button class="cat-pill" onclick="filterByCategory(\'' + c + '\',this)">' + getCategoryIcon(c) + ' ' + c + '</button>';
+}).join('');
+}
+// 更新购物车徽标（兼容新旧两种数据格式）
+function updateCartBadge() {
+var raw = localStorage.getItem('luna_cart_data');
+if (!raw) { document.getElementById('cartBadge').textContent = '0'; return; }
+var cart;
+try { cart = JSON.parse(raw); } catch(e) { cart = []; }
+var count = 0;
+for (var i = 0; i < cart.length; i++) {
+  var item = cart[i];
+  if (item.qty && typeof item.qty === 'object') {
+    for (var s in item.qty) { if (item.qty.hasOwnProperty(s)) count += (item.qty[s] || 0); }
+  } else {
+    count += (item.qtyS||0)+(item.qtyM||0)+(item.qtyL||0)+(item.qtyXL||0);
+    ['XS','2XL','3XL','XXL','UNICA'].forEach(function(sz){
+      var key = 'qty' + sz;
+      if (item[key]) count += item[key];
+    });
+  }
+}
+document.getElementById('cartBadge').textContent = count;
+}
+// 初始化
+function initPage() {
+try {
+var raw = localStorage.getItem('luna_styles_data');
+if (raw) {
+allStyles = JSON.parse(raw);
+}
+} catch(e) {}
+renderGrid(allStyles);
+renderCategories();
+  renderNewArrivals();
+updateCartBadge();
+  // 非管理员隐藏部分菜单
+  var _u = LUNA.getUser();
+  if (!_u || _u.role !== 'admin') {
+    var _el = document.querySelectorAll('#gs-add-style, #gs-style-manage, #gs-orders-mgmt');
+    for (var _i = 0; _i < _el.length; _i++) _el[_i].style.display = 'none';
+  }
+
+}
+if (typeof window !== 'undefined') {
+  var _gsInited = false;
+  var _gsPending = null;
+  window.addEventListener('luna-data-initialized', function() {
+    if (!_gsInited) { _gsInited = true; initPage(); }
+  });
+  window.addEventListener('luna-data-changed', function() {
+    // 已渲染后数据变了，重新加载
+    if (_gsInited) initPage();
+  });
+  // 兜底：5秒后还没有服务器数据就自己初始化
+  setTimeout(function() {
+    if (!_gsInited) { _gsInited = true; initPage(); }
+  }, 5000);
+}
+// 跨标签页同步
+window.addEventListener('storage', function(e) {
+if (e.key === 'luna_styles_data') initPage();
+if (e.key === 'luna_cart_data') updateCartBadge();
+});
+</script>
+</body>
+</html>

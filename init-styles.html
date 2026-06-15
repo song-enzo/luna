@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Init Styles</title></head>
+<body style="font-family:sans-serif;padding:40px">
+<h1>初始化样本款式数据</h1>
+<button onclick="init()" style="padding:12px 24px;font-size:16px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">初始化</button>
+<p id="msg" style="margin-top:20px;color:#666"></p>
+<script src="luna-data.js?v=19"></script>
+<script>LUNA.renderNav();</script>
+<script>
+function init() {
+  var styles = [
+    {
+      code: 'B001',
+      name: '经典单排扣西装外套',
+      category: '西装外套',
+      suggestedPrice: 198,
+      type: 'plain',
+      note: '精选精纺羊毛面料，经典平驳领设计',
+      fabrics: [{ name: '精纺羊毛', code: 'f0' }],
+      images: [],
+      colors: [
+        { name: '黑色', hex: '#1a1a1a' },
+        { name: '驼色', hex: '#c9a96e' },
+        { name: '深灰', hex: '#555555' }
+      ]
+    },
+    {
+      code: 'B002',
+      name: '双排扣戗驳领西装',
+      category: '西装外套',
+      suggestedPrice: 228,
+      type: 'plain',
+      note: '双排扣设计，戗驳领更显气场',
+      fabrics: [{ name: '精纺羊毛', code: 'f0' }],
+      images: [],
+      colors: [
+        { name: '藏青', hex: '#1a2744' },
+        { name: '黑色', hex: '#1a1a1a' }
+      ]
+    },
+    {
+      code: 'P001',
+      name: '高腰直筒西装裤',
+      category: '西装裤',
+      suggestedPrice: 128,
+      type: 'plain',
+      note: '高腰设计，修饰腿型',
+      fabrics: [{ name: '素罗马', code: 'f1' }],
+      images: [],
+      colors: [
+        { name: '黑色', hex: '#1a1a1a' },
+        { name: '白色', hex: '#f5f5f5' },
+        { name: '驼色', hex: '#c9a96e' }
+      ]
+    }
+  ];
+
+  LUNA.saveStyles(styles);
+  document.getElementById('msg').textContent = '✅ 已初始化 ' + styles.length + ' 个样式！请去 guest-styles.html 查看';
+  document.getElementById('msg').style.color = '#27ae60';
+}
+</script>
+</body>
+</html>

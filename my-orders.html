@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<title>我的订单 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
+.header{display:flex;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid #e8e5e0;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 12px 4px 0;text-decoration:none;color:#666}
+.header .logo{font-size:16px;font-weight:700;letter-spacing:1px;text-decoration:none;color:#1a1a1a;margin-right:auto}
+.page{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+.order-card{background:#fff;border:1px solid #e8e5e0;border-radius:6px;padding:16px;margin-bottom:12px}
+.order-card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.order-card .top .id{font-weight:600;font-size:13px}
+.order-card .top .date{font-size:11px;color:#999}
+.order-card .items{margin-bottom:10px}
+.order-card .item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:12px}
+.order-card .item:last-child{border-bottom:none}
+.order-card .item .thumb{width:32px;height:32px;border-radius:4px;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.order-card .item .info{flex:1}
+.order-card .item .info .line1{font-weight:500}
+.order-card .item .info .line2{color:#999;font-size:10px}
+.order-card .total{font-size:14px;font-weight:700;text-align:right;margin-bottom:8px}
+.progress-bar{display:flex;gap:0;margin:10px 0 6px;position:relative}
+.progress-bar .seg{flex:1;height:4px;border-radius:2px;background:#e8e5e0;margin:0 1px}
+.progress-bar .seg.done{background:#c9a96e}
+.progress-bar .seg.active{background:#c9a96e;position:relative}
+.progress-bar .seg.active::after{content:'';position:absolute;right:-2px;top:-2px;width:8px;height:8px;border-radius:50%;background:#c9a96e}
+.steps-label{display:flex;justify-content:space-between;font-size:9px;color:#bbb;margin-bottom:10px;padding:0 2px}
+.steps-label .s{text-align:center;flex:1}
+.steps-label .s.done{color:#c9a96e;font-weight:600}
+.steps-label .s.active{color:#1a1a1a;font-weight:600}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:500}
+.status-badge.confirm{background:#fff3e0;color:#e8a040}
+.status-badge.cutting{background:#e3f0fa;color:#5090c0}
+.status-badge.sewing{background:#eef5e8;color:#709050}
+.status-badge.done{background:#f0f0f0;color:#888}
+.detail-btn{width:100%;padding:10px;border:1px solid #e8e5e0;border-radius:4px;background:#fff;font-size:12px;cursor:pointer;font-family:inherit;color:#666;text-align:center;text-decoration:none;display:block;transition:all .1s}
+.detail-btn:hover{border-color:#c9a96e;color:#c9a96e}
+/* Side Menu */
+.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.side-overlay.active{display:block}
+.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
+.side-menu.open{transform:translateX(0)}
+.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
+.side-menu .sm-header .sm-logo{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;letter-spacing:2px;color:#1a1a1a}
+.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
+.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
+.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
+.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s}
+.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
+.side-menu .sm-link.danger{color:#c44}
+.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
+.hamburger{font-size:22px;cursor:pointer;padding:4px 8px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
+.hamburger:hover{color:#1a1a1a}
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="hamburger" onclick="toggleMenu()">☰</button>
+  <a href="guest-styles.html" class="back">←</a>
+  <span class="logo">📋 我的订单</span>
+</div>
+<div class="page" id="orderPage">
+  <!-- 动态渲染 -->
+</div>
+<!-- Side Menu -->
+<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="side-menu" id="sideMenu">
+  <div class="sm-header">
+    <span class="sm-logo">LUNA ATELIER</span>
+    <button class="sm-close" onclick="toggleMenu()">✕</button>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">款式</div>
+    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
+    <a class="sm-link" href="add-style.html">➕ 添加款式</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">订单</div>
+    <a class="sm-link" href="my-orders.html">📋 我的订单</a>
+    <a class="sm-link" href="orders.html">📋 订单管理</a>
+  </div>
+  <div class="sm-section">
+    <div class="sm-section-title">管理</div>
+    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
+    <a class="sm-link" href="login-logs.html">🔍 登录记录</a>
+    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
+    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
+  </div>
+</div>
+<script src="luna-data.js?v=19"></script>
+<script>LUNA.renderNav();</script>
+<script>
+function toggleMenu() {
+  document.getElementById('sideMenu').classList.toggle('open');
+  document.getElementById('sideOverlay').classList.toggle('active');
+}
+function logout() {
+  LUNA.clearUser();
+  window.location.href = 'index.html';
+}
+function renderOrders() {
+  var user = LUNA.getUser();
+  // 未登录跳转
+  if (!user) {
+    document.getElementById('orderPage').innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">请先登录<br><a href="index.html" style="color:#c9a96e;margin-top:12px;display:inline-block">去登录 →</a></div>';
+    return;
+  }
+
+  var orders = LUNA.getOrders();
+  // 客人只看自己的订单，管理员看全部
+  if (user.role !== 'admin') {
+    var userName = user.name || user.username || '';
+    orders = orders.filter(function(o) {
+      return o.customer === userName;
+    });
+  }
+
+  var html = '';
+  var stepLabels = ['📋 确认', '✂️ 裁剪', '🧵 车缝', '📦 完成'];
+  
+  orders.forEach(function(order) {
+    var sk = LUNA.getOrderStatus(order);
+    var statusIdx = 0;
+    if (sk === 'cutting') statusIdx = 0;
+    else if (sk === 'sewing' || sk === 'pickup') statusIdx = 1;
+    else if (sk === 'shipped') statusIdx = 2;
+
+    var segs = [false, false, false];
+    var labels = ['✂️ 裁剪', '🧵 车缝', '📦 完成'];
+    var actives = [false, false, false];
+
+    if (sk === 'cutting') { segs[0] = true; actives[0] = true; }
+    else if (sk === 'pickup') { segs[0] = true; actives[1] = true; }
+    else if (sk === 'sewing') { segs[0] = true; segs[1] = true; actives[1] = true; }
+    else if (sk === 'shipped') { segs[0] = true; segs[1] = true; actives[2] = true; }
+    else if (sk === 'completed') { segs = [true, true, true]; actives[2] = true; }
+
+    var stepsHtml = '';
+    for (var i = 0; i < 3; i++) {
+      var cls = segs[i] ? 'done' : '';
+      stepsHtml += '<span class="s ' + cls + '">' + (segs[i] ? '✓ ' : '') + labels[i] + '</span>';
+    }
+    
+    var segHtml = '';
+    for (var i = 0; i < 4; i++) {
+      var cls = segs[i] ? 'done' : '';
+      segHtml += '<div class="seg ' + cls + '"></div>';
+    }
+    
+    var itemsHtml = '';
+    order.items.forEach(function(item) {
+      var qtyStr = '';
+      for (var sz in item.qty) {
+        qtyStr += (qtyStr ? ' ' : '') + sz + '×' + item.qty[sz];
+      }
+      itemsHtml += '<div class="item">';
+      itemsHtml += '<div class="thumb">👗</div>';
+      itemsHtml += '<div class="info"><div class="line1">' + item.code + '</div>';
+      itemsHtml += '<div class="line2">' + item.color + ' / ' + qtyStr + '</div></div>';
+      itemsHtml += '<span>×' + (order.cutting_complete ? order.cutting_complete.total_cut : order.total_qty) + '</span>';
+      itemsHtml += '</div>';
+    });
+    
+    var totalPrice = 0;
+    if (order.shipping_complete) {
+      totalPrice = order.shipping_complete.qty * (order.items[0] ? order.items[0].price : 0);
+    }
+    
+    html += '<div class="order-card">';
+    html += '<div class="top"><span class="id">' + order.id + '</span>';
+    html += '<span style="font-size:12px;color:#888;font-weight:500;">共 ' + (order.cutting_complete ? order.cutting_complete.total_cut : order.total_qty) + ' 件</span>';
+    html += '<span class="date">' + order.date + '</span></div>';
+    html += '<div class="items">' + itemsHtml + '</div>';
+    if (totalPrice > 0) html += '<div class="total">€' + totalPrice.toFixed(2) + '</div>';
+    html += '<div class="progress-bar">' + segHtml + '</div>';
+    html += '<div class="steps-label">' + stepsHtml + '</div>';
+    html += '<a href="order-detail.html?id=' + order.id + '" class="detail-btn">查看订单详情</a>';
+    html += '</div>';
+  });
+  
+  html += '<div style="padding:14px 10px;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center">';
+  html += '<span>👤 ' + esc(user.name || user.username || '客人') + (user.role === 'admin' ? ' · 管理员' : '') + '</span>';
+  html += '<span>' + orders.length + ' 笔订单</span></div>';
+
+  document.getElementById('orderPage').innerHTML = html || '<div style="text-align:center;padding:40px;color:#aaa;">暂无订单</div>';
+}
+
+function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+renderOrders();
+</script>
+</body>
+</html>
