@@ -1026,9 +1026,10 @@ document.getElementById('submitOrderBtn').addEventListener('click', function() {
     var orderNote = document.getElementById('orderNoteInput').value.trim();
     var finalNote = orderNote || '';
     // 直接传入备注和二级客人到 checkout
-    var order = LUNA.checkout(customerName, finalNote, subCustomer);
-    if (!order || !order.id) { showToast('❌ 提交失败，请重试'); return; }
-    showToast('❤️ 非常感谢！编号: '+order.id);
+    var orders = LUNA.checkout(customerName, finalNote, subCustomer);
+    if (!orders || !orders.length) { showToast('❌ 提交失败，请重试'); return; }
+    var ids = orders.map(function(o) { return o.id; }).join(', ');
+    showToast('❤️ 非常感谢！编号: '+ids);
     toggleCart();
     setTimeout(function() {
       window.location.href = 'marker.html';

@@ -759,9 +759,9 @@ var LUNA = (function() {
       if (!r.error) _cache.orders = r;
       syncCacheToLocalStorage();
       fireChanged();
-      return result.order;
+      return result.orders || [];
     }
-    return null;
+    return [];
   }
 
   // ==================== 设置数据 ====================

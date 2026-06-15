@@ -278,9 +278,10 @@ document.getElementById('checkoutBtn').addEventListener('click', function() {
 
 function doCheckout() {
   var name = document.getElementById('customerSelect').value;
-  var result = LUNA.checkout(name, '');
-  if (!result || !result.id) { showToast('❌ 提交失败'); return; }
-  showToast('❤️ 订单已提交 — '+result.id);
+  var orders = LUNA.checkout(name, '');
+  if (!orders || !orders.length) { showToast('❌ 提交失败'); return; }
+  var ids = orders.map(function(o) { return o.id; }).join(', ');
+  showToast('❤️ 订单已提交 — '+ids);
   hideCheckout();
   render();
 }

@@ -240,6 +240,20 @@ function renderCard(order) {
   // Total reference
   card += '<div class="total-ref">✂️ 裁剪总数参考: <strong>' + grandCut + '</strong> 件</div>';
 
+  // 号码组成
+  var sizeStr = '';
+  items.forEach(function(item) {
+    var qty = item.qty || {};
+    var parts = [];
+    Object.keys(qty).forEach(function(s) {
+      if (qty[s] > 0) parts.push(s + '×' + qty[s]);
+    });
+    if (parts.length) sizeStr = parts.join(' ');
+  });
+  if (sizeStr) {
+    card += '<div style="font-size:12px;color:#888;padding:0 12px 8px">📏 ' + esc(sizeStr) + '</div>';
+  }
+
   // Received total from all colors
   card += '</div>' + // close oc-body
     '<div class="oc-footer">' +

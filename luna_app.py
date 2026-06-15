@@ -1389,57 +1389,67 @@ def api_checkout():
     rows = db.execute("SELECT * FROM cart_items WHERE session_id=? ORDER BY id", (sid,)).fetchall()
     if not rows:
         return jsonify({'error': 'cart empty'}), 400
-    # Generate order ID
-    from datetime import date
+    from datetime import date, datetime
     today = date.today().isoformat()
-    count = db.execute("SELECT COUNT(*) FROM orders WHERE date=?", (today,)).fetchone()[0]
-    order_id = f'ORD-{today}-{count+1:02d}'
-    items = []
-    total_qty = 0
-    for r in rows:
-        qty = json.loads(r['qty_data'])
-        item_total = sum(qty.values())
-        components = json.loads(r['components_data']) if r['components_data'] else []
-        items.append({
-            'code': r['code'], 'name': r['name'],
-            'color': r['color'], 'fabric': r['fabric'],
-            'price': r['price'], 'qty': qty,
-            'note': r['note'] or '',
-            'components': components,
-            'item_type': r['item_type'] or 'tinta_unita',
-            'stampa_img_url': r['stampa_img_url'] or '',
-            'stampa_code': r['stampa_code'] or ''
-        })
-        total_qty += item_total
-    # Accept customer + note from request body
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
     body = request.get_json(silent=True) or {}
     order_customer = body.get('customer', '')
     customer = order_customer if order_customer else session.get('name', sid)
     order_note = body.get('note', '')
     order_sub_customer = body.get('sub_customer', '')
-    order = {
-        'id': order_id,
-        'customer': customer,
-        'sub_customer': order_sub_customer,
-        'date': today,
-        'items': items,
-        'total_qty': total_qty,
-        'note': order_note,
-        'order_placed': {'completed': 1},
-        'marker_complete': {'completed': 0, 'length': 0, 'hands': 1, 'operator': '', 'time': ''},
-        'cutting_complete': {'completed': 0, 'layers': {}, 'total_cut': 0, 'operator': '', 'time': '', 'checkmarks': {}},
-        'pickup_complete': {'completed': 0, 'factory': '', 'operator': '', 'time': ''},
-        'shipping_complete': {'completed': 0, 'qty': 0, 'operator': '', 'time': ''}
-    }
-    save_single_order(order)
-    # Log the placement
-    from datetime import datetime
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-    log_operation(order_id, 'order_placed', '下单',
-        f'客户: {customer} | 件数: {total_qty}')
+
+    # Group cart items by style code → separate orders
+    groups = {}  # code -> items list
+    for r in rows:
+        code = r['code']
+        if code not in groups: groups[code] = []
+        groups[code].append(r)
+
+    base_count = db.execute("SELECT COUNT(*) FROM orders WHERE date=?", (today,)).fetchone()[0]
+    orders_created = []
+    idx = 0
+    for code, grp in groups.items():
+        idx += 1
+        order_id = f'ORD-{today}-{base_count + idx:02d}'
+        items = []
+        total_qty = 0
+        for r in grp:
+            qty = json.loads(r['qty_data'])
+            item_total = sum(qty.values())
+            components = json.loads(r['components_data']) if r['components_data'] else []
+            items.append({
+                'code': r['code'], 'name': r['name'],
+                'color': r['color'], 'fabric': r['fabric'],
+                'price': r['price'], 'qty': qty,
+                'note': r['note'] or '',
+                'components': components,
+                'item_type': r['item_type'] or 'tinta_unita',
+                'stampa_img_url': r['stampa_img_url'] or '',
+                'stampa_code': r['stampa_code'] or ''
+            })
+            total_qty += item_total
+        order = {
+            'id': order_id,
+            'customer': customer,
+            'sub_customer': order_sub_customer,
+            'date': today,
+            'items': items,
+            'total_qty': total_qty,
+            'note': order_note,
+            'order_placed': {'completed': 1},
+            'marker_complete': {'completed': 0, 'length': 0, 'hands': 1, 'operator': '', 'time': ''},
+            'cutting_complete': {'completed': 0, 'layers': {}, 'total_cut': 0, 'operator': '', 'time': '', 'checkmarks': {}},
+            'pickup_complete': {'completed': 0, 'factory': '', 'operator': '', 'time': ''},
+            'shipping_complete': {'completed': 0, 'qty': 0, 'operator': '', 'time': ''}
+        }
+        save_single_order(order)
+        log_operation(order_id, 'order_placed', '下单',
+            f'客户: {customer} | 款式: {code} | 件数: {total_qty}')
+        orders_created.append(order)
+
     db.execute("DELETE FROM cart_items WHERE session_id=?", (sid,))
     db.commit()
-    return jsonify({'ok': True, 'order': order})
+    return jsonify({'ok': True, 'orders': orders_created})
 
 @app.route('/api/orders/<order_id>/operations', methods=['GET'])
 def api_order_operations(order_id):
