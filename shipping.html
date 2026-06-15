@@ -166,10 +166,26 @@ function renderCard(order) {
   var totalCut = order.cutting_complete ? (order.cutting_complete.total_cut || 0) : (order.total_qty || 0);
   var colorTotals = getColorCuttingTotals(order);
 
+  // 撞色订单聚合显示
+  var isContrast = items.some(function(it) { return it.item_type === 'contrast'; });
+  if (isContrast) {
+    var mainColor = '';
+    for (var ci = 0; ci < items.length; ci++) { if (items[ci].color) { mainColor = items[ci].color; break; } }
+    if (mainColor) {
+      var aggTotal = 0;
+      for (var ct in colorTotals) aggTotal += colorTotals[ct];
+      colorTotals = {};
+      colorTotals[mainColor] = aggTotal || totalCut;
+    }
+  }
+
   // Build color->fabric mapping
   var colorFabrics = {};
   items.forEach(function(item) {
-    if (!colorFabrics[item.color]) colorFabrics[item.color] = item.fabric || '';
+    if (!colorFabrics[item.color]) {
+      var fab = item.fabric || '';
+      colorFabrics[item.color] = (item.item_type === 'contrast') ? (fab.split(/\s*,\s*/)[0] || fab) : fab;
+    }
   });
 
   var colors = Object.keys(colorTotals);
@@ -316,16 +332,18 @@ function showOrderDetail(orderId) {
   if (items.length) {
     html += '<div class="detail-section"><h4>下单明细</h4>';
     items.forEach(function(item) {
+      var dispFabric = item.fabric || '';
+      if (item.item_type === 'contrast') dispFabric = dispFabric.split(/\s*,\s*/)[0] || dispFabric;
       html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin:8px 0 4px">#' + esc(item.code || '') + ' ' + esc(item.name || '') + '</div>' +
         '<table class="detail-table"><thead><tr><th>颜色</th><th>面料</th><th>尺码</th><th>数量</th></tr></thead><tbody>';
       var qty = item.qty || {};
       var sizes = Object.keys(qty);
       if (sizes.length) {
         sizes.forEach(function(s) {
-          html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(item.fabric || '') + '</td><td>' + esc(s) + '</td><td>' + (qty[s] || 0) + '</td></tr>';
+          html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(dispFabric) + '</td><td>' + esc(s) + '</td><td>' + (qty[s] || 0) + '</td></tr>';
         });
       } else {
-        html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(item.fabric || '') + '</td><td>-</td><td>0</td></tr>';
+        html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(dispFabric) + '</td><td>-</td><td>0</td></tr>';
       }
       html += '</tbody></table>';
     });
