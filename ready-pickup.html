@@ -166,6 +166,18 @@ function renderCard(order, factories) {
   var style = (firstCode && LUNA.findStyle) ? LUNA.findStyle(firstCode) : null;
   var totalCut = 0;
   var colorTotals = getColorCuttingTotals(order, true);
+  // 撞色订单：将所有颜色件数聚合到面料1的颜色上显示
+  var isContrast = items.some(function(it) { return it.item_type === 'contrast'; });
+  if (isContrast) {
+    var mainColor = '';
+    for (var ci = 0; ci < items.length; ci++) { if (items[ci].color) { mainColor = items[ci].color; break; } }
+    if (mainColor) {
+      var aggTotal = 0;
+      for (var ct in colorTotals) aggTotal += colorTotals[ct];
+      colorTotals = {};
+      colorTotals[mainColor] = aggTotal || totalCut;
+    }
+  }
   for (var ct in colorTotals) totalCut += colorTotals[ct];
   if (!totalCut) totalCut = order.total_qty || 0;
   var laborCost = (style && style.laborCost) ? style.laborCost : 2.0;
@@ -181,7 +193,13 @@ function renderCard(order, factories) {
   var colorFabrics = {};
   items.forEach(function(item) {
     if (!colorFabrics[item.color]) {
-      colorFabrics[item.color] = item.fabric || '';
+      var fab = item.fabric || '';
+      if (item.item_type === 'contrast') {
+        // 撞色只取面料1的名字，用于色卡查找
+        colorFabrics[item.color] = fab.split(/\s*,\s*/)[0] || fab;
+      } else {
+        colorFabrics[item.color] = fab;
+      }
     }
   });
 

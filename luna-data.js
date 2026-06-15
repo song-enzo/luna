@@ -774,6 +774,7 @@ var LUNA = (function() {
   function saveFabrics(d) {
     _cache.fabrics = d;
     api('/api/data/fabrics', 'POST', d);
+    syncCacheToLocalStorage();
     fireChanged();
   }
 
