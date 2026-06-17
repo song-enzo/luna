@@ -92,7 +92,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
   </div>
 </div>
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
 function toggleMenu() {
@@ -103,6 +103,22 @@ function logout() {
   LUNA.clearUser();
   window.location.href = 'index.html';
 }
+function getFabric1Cut(order) {
+  if (!order.cutting_complete || !order.cutting_complete.fabrics) {
+    return order.cutting_complete ? (order.cutting_complete.total_cut || 0) : 0;
+  }
+  var fabrics = order.cutting_complete.fabrics;
+  var items = order.items || [];
+  var f1 = '';
+  if (items.length > 0) { var ff = items[0].fabric || ''; f1 = ff.split(',')[0].trim(); }
+  var total = 0;
+  for (var fn in fabrics) {
+    if (f1 && fn !== f1 && fn !== '默认面料') continue;
+    for (var cc in (fabrics[fn].colors || {})) { total += fabrics[fn].colors[cc].total || 0; }
+  }
+  return total || order.cutting_complete.total_cut || 0;
+}
+
 function renderOrders() {
   var user = LUNA.getUser();
   // 未登录跳转
@@ -162,7 +178,7 @@ function renderOrders() {
       itemsHtml += '<div class="thumb">👗</div>';
       itemsHtml += '<div class="info"><div class="line1">' + item.code + '</div>';
       itemsHtml += '<div class="line2">' + item.color + ' / ' + qtyStr + '</div></div>';
-      itemsHtml += '<span>×' + (order.cutting_complete ? order.cutting_complete.total_cut : order.total_qty) + '</span>';
+      itemsHtml += '<span>×' + (order.cutting_complete ? getFabric1Cut(order) : order.total_qty) + '</span>';
       itemsHtml += '</div>';
     });
     
@@ -173,7 +189,7 @@ function renderOrders() {
     
     html += '<div class="order-card">';
     html += '<div class="top"><span class="id">' + order.id + '</span>';
-    html += '<span style="font-size:12px;color:#888;font-weight:500;">共 ' + (order.cutting_complete ? order.cutting_complete.total_cut : order.total_qty) + ' 件</span>';
+    html += '<span style="font-size:12px;color:#888;font-weight:500;">共 ' + (order.cutting_complete ? getFabric1Cut(order) : order.total_qty) + ' 件</span>';
     html += '<span class="date">' + order.date + '</span></div>';
     html += '<div class="items">' + itemsHtml + '</div>';
     if (totalPrice > 0) html += '<div class="total">€' + totalPrice.toFixed(2) + '</div>';

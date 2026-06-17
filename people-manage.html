@@ -123,9 +123,10 @@ td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px
   <div class="panel" id="panel-employees"></div>
 </div>
 
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
+(function(){var u=LUNA.getUser();if(!u||u.role!=='admin'){window.location.href='index.html';return;}})();
 // ===== 侧边菜单 =====
 function toggleMenu() {
   document.getElementById('sideMenu').classList.toggle('open');

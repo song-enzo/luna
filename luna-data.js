@@ -296,6 +296,23 @@ var LUNA = (function() {
     fireChanged();
   }
 
+  function saveSingleOrder(order) {
+    var orders = getOrders();
+    for (var i = 0; i < orders.length; i++) {
+      if (orders[i].id === order.id) {
+        orders[i] = order;
+        break;
+      }
+    }
+    _cache.orders = orders;
+    syncCacheToLocalStorage();
+    var res = api('/api/orders', 'POST', order);
+    if (res && res.error) { res = api('/api/orders', 'POST', order); }
+    if (!res || res.error) return null;
+    fireChanged();
+    return order;
+  }
+
   function findOrder(id) {
     ensureInit();
     var orders = _cache.orders || [];
@@ -441,6 +458,13 @@ var LUNA = (function() {
     for (var i = 0; i < orders.length; i++) {
       if (orders[i].id === orderId) {
         var order = orders[i];
+        // 确定主面料（面料1）
+        var fabric1 = '';
+        var orderItems = order.items || [];
+        if (orderItems.length > 0) {
+          var ff = orderItems[0].fabric || '';
+          fabric1 = ff.split(',')[0].trim();
+        }
         // Group by fabric
         var fabrics = {};
         var totalCut = 0;
@@ -455,8 +479,25 @@ var LUNA = (function() {
           if (!fabrics[fName]) {
             fabrics[fName] = { hands: cd.hands || 1, colors: {} };
           }
+          // Carry over pattern length and loss info from cutting page
+          if (cd.patternLen !== undefined) fabrics[fName].patternLen = cd.patternLen;
+          if (cd.lossCm !== undefined) fabrics[fName].lossCm = cd.lossCm;
           fabrics[fName].colors[realColor] = { layers: cd.layers || 1, total: cd.total || 0 };
-          totalCut += cd.total || 0;
+          // total_cut 只统计面料1的数量（实际成衣件数）
+          if (!fabric1 || fName === fabric1 || fName === '默认面料') {
+            totalCut += cd.total || 0;
+          }
+        }
+        // Calculate fabric usage for each fabric
+        for (var fn in fabrics) {
+          var f = fabrics[fn];
+          var fLen = parseFloat(f.patternLen) || 0;
+          var fLoss = parseFloat(f.lossCm) || 6;
+          if (fLen > 0) {
+            var totalLayers = 0;
+            for (var cc in f.colors) totalLayers += f.colors[cc].layers || 0;
+            f.fabricUsage = Math.round((fLen + fLoss / 100) * totalLayers * 100) / 100;
+          }
         }
         order.cutting_complete = {
           completed: 1,
@@ -477,16 +518,15 @@ var LUNA = (function() {
         fireChanged();
 
         // 扣减库存：(纸样长度 + 损耗/层) × 层数
-        var allFabrics = getFabrics();
         var markerFabrics = (order.marker_complete && order.marker_complete.fabrics) || [];
-        var stockChanged = false;
+        var allFabrics = getFabrics();
+        var deductions = [];  // {name, amount}
         for (var fName in fabrics) {
+          if (!fabrics.hasOwnProperty(fName)) continue;
           var patternLen = 0;
-          var hands = 1;
           for (var mi = 0; mi < markerFabrics.length; mi++) {
             if (markerFabrics[mi].name === fName) {
               patternLen = markerFabrics[mi].length || 0;
-              hands = markerFabrics[mi].hands || 1;
               break;
             }
           }
@@ -494,32 +534,48 @@ var LUNA = (function() {
           var fabricTotal = 0;
           var totalLayers = 0;
           for (var c in fabrics[fName].colors) {
+            if (!fabrics[fName].colors.hasOwnProperty(c)) continue;
             totalLayers += fabrics[fName].colors[c].layers || 0;
             fabricTotal += fabrics[fName].colors[c].total || 0;
           }
           var deduction = 0;
           if (patternLen > 0) {
-            // 有纸样数据：(纸样长度 + 损耗) × 层数
             var lossCm = 6;
             for (var fi = 0; fi < allFabrics.length; fi++) {
               if (allFabrics[fi].name === fName) { lossCm = allFabrics[fi].lossPerLayer || 6; break; }
             }
             deduction = (patternLen + (lossCm / 100)) * totalLayers;
           } else if (fabricTotal > 0) {
-            // 无纸样数据时，用默认每件 0.5m 估算（避免漏扣）
             deduction = fabricTotal * 0.5;
           }
           if (deduction > 0) {
-            for (var fi = 0; fi < allFabrics.length; fi++) {
-              if (allFabrics[fi].name === fName) {
-                allFabrics[fi].stock = Math.max(0, (allFabrics[fi].stock || 0) - deduction);
-                stockChanged = true;
-                break;
-              }
-            }
+            deductions.push({name: fName, amount: Math.round(deduction * 100) / 100});
           }
         }
-        if (stockChanged) saveFabrics(allFabrics);
+        // 发送扣减请求给服务端（只更新受影响的面料库存，避免全表替换）
+        if (deductions.length > 0) {
+          var dsr = api('/api/fabrics/deduct-stock', 'POST', {
+            deductions: deductions,
+            order_id: orderId
+          });
+          if (dsr && dsr.ok) {
+            // 同步更新本地缓存
+            (dsr.results || []).forEach(function(r) {
+              if (r.ok) {
+                for (var fi = 0; fi < allFabrics.length; fi++) {
+                  if (allFabrics[fi].name === r.name) {
+                    allFabrics[fi].stock = r.new_stock;
+                    break;
+                  }
+                }
+              }
+            });
+            syncCacheToLocalStorage();
+            fireChanged();
+          } else {
+            console.error('面料库存扣除失败:', dsr);
+          }
+        }
 
         return order;
       }
@@ -544,6 +600,23 @@ var LUNA = (function() {
           delete orders[i].pickup_complete;
           return null;
         }
+        syncCacheToLocalStorage();
+        fireChanged();
+        return orders[i];
+      }
+    }
+    return null;
+  }
+
+  function confirmFactoryReceipt(orderId, qty) {
+    var orders = getOrders();
+    for (var i = 0; i < orders.length; i++) {
+      if (orders[i].id === orderId) {
+        orders[i].pickup_complete = orders[i].pickup_complete || {};
+        orders[i].pickup_complete.factory_received_qty = qty;
+        var res = api('/api/orders', 'POST', orders[i]);
+        if (res && res.error) { res = api('/api/orders', 'POST', orders[i]); }
+        if (!res || res.error) { return null; }
         syncCacheToLocalStorage();
         fireChanged();
         return orders[i];
@@ -1027,10 +1100,10 @@ var LUNA = (function() {
     getEnabledStyles: getEnabledStyles, getStyleCategories: getStyleCategories,
     calcStyleCost: calcStyleCost, calcSuggestedPrice: calcSuggestedPrice,
 
-    getOrders: getOrders, saveOrders: saveOrders, findOrder: findOrder,
+    getOrders: getOrders, saveOrders: saveOrders, saveSingleOrder: saveSingleOrder, findOrder: findOrder,
     deleteOrder: deleteOrder,
     completeMarker: completeMarker, completeCutting: completeCutting,
-    completePickup: completePickup, shipOrder: shipOrder,
+    completePickup: completePickup, confirmFactoryReceipt: confirmFactoryReceipt, shipOrder: shipOrder,
     getPendingMarkerOrders: getPendingMarkerOrders,
     getPendingCuttingOrders: getPendingCuttingOrders,
     getPendingPickupOrders: getPendingPickupOrders,
@@ -1159,7 +1232,9 @@ var LUNA = (function() {
           _cache.cart = _cache.cart.filter(function(it){ return it.name !== '未命名款式'; });
         }
       } catch(e) {}
-      _initialized = true;
+      // 注意：此处故意不设 _initialized = true
+      // 因为后续的 ensureInit() 需要执行 loadAllData() 从服务器拉取最新数据
+      // 如果提前设了 true，getOrders() / findOrder() 等函数读到的将是 localStorage 旧数据
     },
 
     syncFromServer: function(callback) {

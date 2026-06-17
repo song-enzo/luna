@@ -214,7 +214,7 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
   </div>
 </div>
 
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
 LUNA.checkAuth();
@@ -223,6 +223,22 @@ function init() {
   var orders = LUNA.getCuttingOrders ? LUNA.getCuttingOrders() : [];
   renderStats(orders);
   renderCards(orders);
+}
+
+function getFabric1Cut(order) {
+  if (!order.cutting_complete || !order.cutting_complete.fabrics) {
+    return order.cutting_complete ? (order.cutting_complete.total_cut || 0) : 0;
+  }
+  var fabrics = order.cutting_complete.fabrics;
+  var items = order.items || [];
+  var f1 = '';
+  if (items.length > 0) { var ff = items[0].fabric || ''; f1 = ff.split(',')[0].trim(); }
+  var total = 0;
+  for (var fn in fabrics) {
+    if (f1 && fn !== f1 && fn !== '默认面料') continue;
+    for (var cc in (fabrics[fn].colors || {})) { total += fabrics[fn].colors[cc].total || 0; }
+  }
+  return total || order.cutting_complete.total_cut || 0;
 }
 
 function renderStats(orders) {
@@ -235,7 +251,7 @@ function renderStats(orders) {
     if (o.cutting_complete && o.cutting_complete.completed === 1 && o.cutting_complete.time) {
       var t = o.cutting_complete.time;
       var datePart = t.split(' ')[0].replace(/\//g, '-');
-      if (datePart === todayStr) todayDone += o.cutting_complete.total_cut || 0;
+      if (datePart === todayStr) todayDone += getFabric1Cut(o);
     }
   });
   orders.forEach(function(o) { pendingQty += o.total_qty || 0; });
@@ -300,13 +316,14 @@ function renderCard(order) {
     '<div class="card-header">' +
     '<span class="h-order-id">' + esc(order.id) + '</span>' +
     '<span class="h-customer">' + esc(order.customer) + (order.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(order.sub_customer)+')</span>':'') + '</span>' +
-    '<span class="h-total">共 ' + totalQty + ' 件' + ((style && style.edgeNote) ? '<span style="font-size:10px;color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:1px 6px;margin-left:8px">包边: ' + esc(style.edgeNote) + '</span>' : '') + '</span>' +
+    '<span class="h-total">共 ' + totalQty + ' 件</span>' +
     '</div>' +
     '<div class="card-body">';
 
   // Style info
   card += '<div class="style-row">' +
-    '<span class="style-code">#' + esc(firstCode) + '</span>' +
+    '<span class="style-code">ART-' + esc(firstCode) + '</span>' +
+    (style && style.edgeNote ? '<span style="margin-left:auto;color:#d32f2f;font-size:12px;font-weight:600">包边: ' + esc(style.edgeNote) + '</span>' : '') +
     '</div>';
 
   // Process notes (from style)
@@ -571,6 +588,7 @@ function confirmCutting(orderId) {
   // Build per-color cutting data from composite keys
   var colorData = {};
   var totalCut = 0;
+  var uncheckedTotal = 0;
   var uncheckedNames = [];
 
   for (var ck in st.layers) {
@@ -580,10 +598,14 @@ function confirmCutting(orderId) {
     var hands = st.fabricHands[fabricName] || 1;
     var layers = st.layers[ck] || 1;
     var cutTotal = layers * hands;
-    if (!colorData[ck]) colorData[ck] = { fabric: fabricName, hands: hands, layers: layers, total: 0 };
+    if (!st.checks[ck]) {
+      uncheckedTotal += cutTotal;
+      uncheckedNames.push(color + '(' + fabricName + ')');
+      continue;  // 未打勾不入 colorData，不参与库存扣减
+    }
+    if (!colorData[ck]) colorData[ck] = { fabric: fabricName, hands: hands, layers: layers, total: 0, patternLen: st.fabricLen[fabricName] || 0, lossCm: st.lossCm[fabricName] || 6 };
     colorData[ck].total += cutTotal;
     totalCut += cutTotal;
-    if (!st.checks[ck]) uncheckedNames.push(color + '(' + fabricName + ')');
   }
 
   // Checkmarks for colors
@@ -597,16 +619,25 @@ function confirmCutting(orderId) {
   }
 
   var op = document.getElementById('op_' + orderId).value.trim() || 'admin';
+  // 确定主面料（面料1）
+  var items = order.items || [];
+  var fabric1 = '';
+  if (items.length > 0) {
+    var ff = items[0].fabric || '';
+    fabric1 = ff.split(',')[0].trim();
+  }
   var checkedTotal = 0;
   for (var ck in st.checks) { if (st.checks[ck]) {
     var sepIdx = ck.indexOf('\x00');
     var fabricName = sepIdx >= 0 ? ck.substring(0, sepIdx) : '';
     var hands = st.fabricHands[fabricName] || 1;
     var layers = st.layers[ck] || 1;
-    checkedTotal += layers * hands;
+    if (!fabric1 || fabricName === fabric1 || fabricName === '') {
+      checkedTotal += layers * hands;
+    }
   }}
-  var msg = '总裁剪: ' + checkedTotal + '件';
-  if (uncheckedNames.length) msg += '  (其中 ' + (totalCut - checkedTotal) + '件未打勾不计)';
+  var msg = '总裁剪（面料1）: ' + checkedTotal + '件';
+  if (uncheckedNames.length) msg += '  (其中 ' + uncheckedTotal + '件未打勾不计)';
   if (uncheckedNames.length) msg += '\n\n⚠️ 以下颜色未打勾: ' + uncheckedNames.join(', ');
 
   showConfirm(msg + '\n\n确认完成？', function() {

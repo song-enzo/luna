@@ -138,7 +138,7 @@ font-size: 11px; color: #B5A58A;
 .scroll-card .s-info .s-code{font-size:11px;font-weight:600;color:#1C1C1C}
 .scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:600;margin-top:2px}
 </style>
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -225,8 +225,9 @@ return;
 container.innerHTML = styles.map(function(s) {
   var tag = (s.type === 'print') ? '<span class="tag">🌸 印花</span>' : '';
   var imgHtml = '';
-  if (s.images && s.images.length > 0 && s.images[0]) {
-    var img = s.images[0];
+  if (s.images && s.images.length > 0) {
+    var mainIdx = (s.mainPhoto !== undefined && s.mainPhoto < s.images.length) ? s.mainPhoto : 0;
+    var img = s.images[mainIdx];
     if (img.length > 100 || img.indexOf('photos/') === 0 || img.indexOf('data:') === 0 || img.indexOf('http') === 0) {
       imgHtml = '<img src="' + img + '" alt="">';
     } else {
@@ -263,8 +264,9 @@ function renderNewArrivals() {
   document.getElementById("newBadge").textContent = newStyles.length+"款";
   row.innerHTML = newStyles.map(function(s) {
     var img = "";
-    if (s.images && s.images.length > 0 && s.images[0]) {
-      img = '<img src="'+s.images[0]+'" alt="">';
+    if (s.images && s.images.length > 0) {
+      var mIdx2 = (s.mainPhoto !== undefined && s.mainPhoto < s.images.length) ? s.mainPhoto : 0;
+      img = '<img src="'+s.images[mIdx2]+'" alt="">';
     } else {
       img = getCategoryIcon(s.category);
     }

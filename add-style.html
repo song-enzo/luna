@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>添加款式 · LUNA ATELIER</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
@@ -16,26 +17,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .section-title{font-size:12px;font-weight:600;color:#b5a58a;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .section-title .add-action{font-size:11px;color:#c9a96e;cursor:pointer;background:none;border:none;font-family:inherit}
 
-/* Photo Carousel — 手机相册式翻页 */
-.photo-carousel{position:relative;width:100%}
-.photo-carousel .track{width:100%;overflow:hidden;border-radius:6px;aspect-ratio:3/4;background:#f0ede8;position:relative;touch-action:none}
-.photo-carousel .track-inner{display:flex;height:100%;will-change:transform}
-.photo-carousel .slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.photo-carousel .slide img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-.photo-carousel .slide .placeholder{display:flex;flex-direction:column;align-items:center;gap:8px;color:#d5d0c9;font-size:40px}
-.photo-carousel .arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;background:rgba(255,255,255,.85);border:none;border-radius:50%;cursor:pointer;font-size:16px;color:#333;z-index:5;display:flex;align-items:center;justify-content:center;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:all .15s}
-.photo-carousel .arrow:hover{background:#fff}
-.photo-carousel .arrow.prev{left:8px}
-.photo-carousel .arrow.next{right:8px}
-.photo-carousel .dots{display:flex;justify-content:center;gap:5px;padding:10px 0 6px}
-.photo-carousel .dot{width:6px;height:6px;border-radius:50%;background:#ddd;cursor:pointer;transition:all .2s}
-.photo-carousel .dot.active{background:#c9a96e;width:16px;border-radius:4px}
-.photo-carousel .del-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:11px;cursor:pointer;line-height:24px;text-align:center;z-index:10;transition:background .15s}
-.photo-carousel .del-btn:hover{background:rgba(200,0,0,.7)}
-.photo-carousel .main-star{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;line-height:24px;text-align:center;z-index:10;transition:all .15s;font-family:inherit}
-.photo-carousel .main-star:hover{background:rgba(200,170,60,.8)}
-.photo-carousel .main-star.active{background:#c9a96e;color:#fff;box-shadow:0 0 6px rgba(201,169,110,.6)}
-.photo-carousel .counter{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.45);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;z-index:10}
+/* Carousel (Swiper) */
+.carousel-wrap{position:relative;margin:0;border-radius:6px;overflow:hidden;background:#f0ede8}
+.carousel-wrap .swiper-slide{display:flex;align-items:center;justify-content:center;background:#f0ede8}
+.carousel-wrap .swiper{overflow:hidden}
+.carousel-wrap .swiper-wrapper{align-items:center}
+.carousel-wrap .swiper-slide{height:auto;position:relative}
+.carousel-wrap .swiper-slide img{width:100%;height:auto;object-fit:contain;display:block;aspect-ratio:3/4;max-height:65vh}
+.carousel-wrap .swiper-pagination{position:relative;bottom:auto!important;padding:8px 0 4px;line-height:1}
+.carousel-wrap .swiper-pagination-bullet{width:5px;height:5px;background:#ddd;opacity:1;transition:all .2s}
+.carousel-wrap .swiper-pagination-bullet-active{background:#C8A56D;width:14px;border-radius:3px}
+.carousel-wrap .swiper-button-next,.carousel-wrap .swiper-button-prev{color:#fff;background:rgba(0,0,0,.3);width:36px;height:36px;border-radius:50%;transition:all .25s;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.carousel-wrap .swiper-button-next:after,.carousel-wrap .swiper-button-prev:after{font-size:14px;font-weight:700}
+.carousel-wrap .swiper-button-next:hover,.carousel-wrap .swiper-button-prev:hover{background:rgba(200,165,109,.8);transform:scale(1.08)}
+.carousel-wrap .del-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:11px;cursor:pointer;line-height:24px;text-align:center;z-index:10;transition:background .15s}
+.carousel-wrap .del-btn:hover{background:rgba(200,0,0,.7)}
+.carousel-wrap .main-star{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;line-height:24px;text-align:center;z-index:10;transition:all .15s;font-family:inherit}
+.carousel-wrap .main-star:hover{background:rgba(200,170,60,.8)}
+.carousel-wrap .main-star.active{background:#c9a96e;color:#fff;box-shadow:0 0 6px rgba(201,169,110,.6)}
 .top-row{display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:center}
 .upload-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;border:1px solid #ebe8e3;border-radius:4px;background:#faf9f7;cursor:pointer;font-size:13px;color:#888;font-family:inherit;transition:all .15s}
 .upload-btn:hover{border-color:#c9a96e;background:#f7f4ee;color:#1c1c1c}
@@ -77,20 +76,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .btn-save{flex:1;padding:14px;background:#c9a96e;color:#fff;border:none;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
 .btn-cancel{flex:0.4;padding:14px;border:1px solid #ddd;background:#fff;color:#666;border-radius:4px;font-size:14px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none}
 
-.photo-viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column}
-.photo-viewer.active{display:flex}
-.photo-viewer .pv-img{max-width:95vw;max-height:85vh;object-fit:contain;border-radius:2px}
-.photo-viewer .pv-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:18px;cursor:pointer;z-index:10;font-family:inherit}
-.photo-viewer .pv-close:hover{background:rgba(255,255,255,.3)}
-.photo-viewer .pv-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:22px;cursor:pointer;z-index:10;font-family:inherit}
-.photo-viewer .pv-nav:hover{background:rgba(255,255,255,.25)}
-.photo-viewer .pv-prev{left:12px}
-.photo-viewer .pv-next{right:12px}
-.photo-viewer .pv-counter{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.6);font-size:13px}
 .success-message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #c9a96e;border-radius:8px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,.15);z-index:1000;display:none}
 .success-message.show{display:block}
 </style>
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 </head>
 <body>
 <div class="header">
@@ -98,21 +87,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <span class="logo" id="pageTitle">➕ 添加款式</span>
 </div>
 <div class="page">
-  <!-- Photos Section → 翻页轮播 -->
+  <!-- Photos Section → Swiper 翻页轮播 -->
   <div class="section">
     <div class="section-title">📸 款式照片</div>
-    <div class="photo-carousel">
-      <div class="track" id="photoTrack">
-        <div class="track-inner" id="photoTrackInner"></div>
-        <button class="arrow prev" onclick="photoPrev()" style="display:none">‹</button>
-        <button class="arrow next" onclick="photoNext()" style="display:none">›</button>
+    <div class="carousel-wrap" id="carouselWrap">
+      <div class="swiper" id="carouselSwiper">
+        <div class="swiper-wrapper" id="carouselTrack"></div>
+        <div class="swiper-pagination" id="carouselDots"></div>
       </div>
-      <div class="dots" id="photoDots"></div>
-      <div class="counter" id="photoCounter" style="display:none">0/0</div>
-      <div class="top-row">
-        <label for="photoInput" class="upload-btn">📷 上传照片</label>
-        <label for="cameraInput" class="upload-btn" style="margin-left:6px">📸 拍照</label>
-      </div>
+      <div class="swiper-button-prev"></div>
+      <div class="swiper-button-next"></div>
+      <div class="carousel-counter" id="carouselCounter">0/0</div>
+    </div>
+    <div class="top-row">
+      <label for="photoInput" class="upload-btn">📷 上传照片</label>
+      <label for="cameraInput" class="upload-btn" style="margin-left:6px">📸 拍照</label>
     </div>
     <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
     <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
@@ -183,13 +172,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </div>
 
 <!-- Full-Screen Photo Viewer -->
-<div class="photo-viewer" id="photoViewer" onclick="closeViewer()">
-  <button class="pv-close" onclick="event.stopPropagation();closeViewer()">✕</button>
-  <button class="pv-nav pv-prev" onclick="event.stopPropagation();viewerPrev()">‹</button>
-  <img class="pv-img" id="pvImage" src="" alt="">
-  <button class="pv-nav pv-next" onclick="event.stopPropagation();viewerNext()">›</button>
-  <div class="pv-counter" id="pvCounter"></div>
-</div>
+
 
 <!-- Success Message -->
 <div class="success-message" id="successMessage">
@@ -200,72 +183,66 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </div>
 
 <script>
-// ===== 手机相册式翻页 Carousel =====
+// ====== Carousel（Swiper 无限循环滑动）======
 var _photoList = [];     // actual images
-var _photoIdx = 0;       // current index
 var _mainPhotoIdx = 0;   // 主图索引
 
 function renderCarousel() {
-  var inner = document.getElementById('photoTrackInner');
-  var dots = document.getElementById('photoDots');
-  var counter = document.getElementById('photoCounter');
-  var prevBtn = document.querySelector('.photo-carousel .arrow.prev');
-  var nextBtn = document.querySelector('.photo-carousel .arrow.next');
-  if (!inner) return;
+  var wrap = document.getElementById('carouselWrap');
+  var track = document.getElementById('carouselTrack');
+  var counter = document.getElementById('carouselCounter');
+  var total = _photoList.length;
 
-  var hasPhotos = _photoList.length > 0;
-  prevBtn.style.display = hasPhotos ? 'flex' : 'none';
-  nextBtn.style.display = hasPhotos ? 'flex' : 'none';
-  counter.style.display = hasPhotos ? 'block' : 'none';
-
-  if (!hasPhotos) {
-    inner.innerHTML = '<div class="slide"><div class="placeholder"><span>📷</span><span style="font-size:12px;color:#bbb">暂无照片</span></div></div>';
-    dots.innerHTML = '';
+  if (!total) {
+    track.innerHTML = '<div class="swiper-slide"><div style="padding:80px 0;color:#d5d0c9;font-size:14px">暂无图片</div></div>';
     counter.textContent = '0/0';
-    _photoIdx = 0;
     return;
   }
 
-  // Build all slides
+  if (typeof Swiper === 'undefined') {
+    if (!renderCarousel._retry) renderCarousel._retry = 0;
+    renderCarousel._retry++;
+    if (renderCarousel._retry < 20) { setTimeout(renderCarousel, 200); }
+    return;
+  }
+
   var html = '';
-  for (var i = 0; i < _photoList.length; i++) {
-    html += '<div class="slide" onclick="openViewer(' + i + ')">' +
-      '<img src="' + _photoList[i] + '" alt="">' +
+  for (var i = 0; i < total; i++) {
+    var _u = _photoList[i];
+    if (_u === null) {
+      html += '<div class="swiper-slide" style="position:relative;align-items:center;justify-content:center"><div style="color:#d5d0c9;font-size:14px">上传中…</div></div>';
+      continue;
+    }
+    html += '<div class="swiper-slide" style="position:relative">' +
+      '<img src="' + _u + '" alt="" loading="lazy" />' +
       '<button class="del-btn" onclick="event.stopPropagation();deletePhoto(' + i + ')">✕</button>' +
       '<button class="main-star' + (i === _mainPhotoIdx ? ' active' : '') + '" onclick="event.stopPropagation();setMainPhoto(' + i + ')">' + (i === _mainPhotoIdx ? '★' : '☆') + '</button>' +
       '</div>';
   }
-  inner.innerHTML = html;
-  inner.style.transition = 'none';
-  inner.style.transform = 'translateX(-' + (_photoIdx * 100) + '%)';
+  track.innerHTML = html;
 
-  // Dots
-  dots.innerHTML = '';
-  for (var di = 0; di < _photoList.length; di++) {
-    var d = document.createElement('span');
-    d.className = 'dot' + (di === _photoIdx ? ' active' : '');
-    d.onclick = (function(idx) { return function() { goTo(idx); }; })(di);
-    dots.appendChild(d);
-  }
-  counter.textContent = (_photoIdx + 1) + '/' + _photoList.length;
+  if (wrap._swiper) { wrap._swiper.destroy(true, true); wrap._swiper = null; }
+
+  wrap._swiper = new Swiper('#carouselSwiper', {
+    loop: true,
+    speed: 400,
+    grabCursor: true,
+    slidesPerView: 1,
+    loopedSlides: Math.min(total, 4),
+    pagination: {
+      el: '#carouselDots',
+      clickable: true,
+    },
+    navigation: {
+      nextEl: '.swiper-button-next',
+      prevEl: '.swiper-button-prev',
+    },
+    on: {
+      init: function() { counter.textContent = '1/' + total; },
+      slideChange: function() { counter.textContent = (this.realIndex + 1) + '/' + total; }
+    }
+  });
 }
-
-function goTo(idx) {
-  if (_photoList.length === 0) return;
-  // 无限循环
-  idx = ((idx % _photoList.length) + _photoList.length) % _photoList.length;
-  _photoIdx = idx;
-  var inner = document.getElementById('photoTrackInner');
-  inner.style.transition = 'transform .35s cubic-bezier(.25,.46,.45,.94)';
-  inner.style.transform = 'translateX(-' + (idx * 100) + '%)';
-  // Update dots + counter
-  var dots = document.querySelectorAll('#photoDots .dot');
-  dots.forEach(function(d, i) { d.classList.toggle('active', i === idx); });
-  document.getElementById('photoCounter').textContent = (idx + 1) + '/' + _photoList.length;
-}
-
-function photoNext() { goTo(_photoIdx + 1); }
-function photoPrev() { goTo(_photoIdx - 1); }
 
 function setMainPhoto(idx) {
   _mainPhotoIdx = idx;
@@ -276,165 +253,72 @@ function deletePhoto(index) {
   _photoList.splice(index, 1);
   if (_mainPhotoIdx >= _photoList.length) _mainPhotoIdx = Math.max(0, _photoList.length - 1);
   else if (index < _mainPhotoIdx) _mainPhotoIdx--;
-  if (_photoIdx >= _photoList.length && _photoList.length > 0) _photoIdx = _photoList.length - 1;
   renderCarousel();
 }
 
-// ===== Full-screen photo viewer =====
-var _viewerIdx = 0;
-function openViewer(idx) {
-  if (_photoList.length === 0) return;
-  _viewerIdx = idx;
-  document.getElementById("pvImage").src = _photoList[idx];
-  document.getElementById("photoViewer").classList.add("active");
-  document.getElementById("pvCounter").textContent = (idx+1) + "/" + _photoList.length;
-}
-function closeViewer() {
-  document.getElementById("photoViewer").classList.remove("active");
-}
-function viewerPrev() {
-  var n = _photoList.length;
-  if (n === 0) return;
-  _viewerIdx = Math.max(0, _viewerIdx - 1);
-  document.getElementById("pvImage").src = _photoList[_viewerIdx];
-  document.getElementById("pvCounter").textContent = (_viewerIdx+1) + "/" + n;
-}
-function viewerNext() {
-  var n = _photoList.length;
-  if (n === 0) return;
-  _viewerIdx = Math.min(n-1, _viewerIdx + 1);
-  document.getElementById("pvImage").src = _photoList[_viewerIdx];
-  document.getElementById("pvCounter").textContent = (_viewerIdx+1) + "/" + n;
-}
-
-// ===== Touch swipe =====
-(function() {
-  var track = document.getElementById('photoTrack');
-  if (!track) return;
-  var sx = 0, swiping = false, moving = false;
-
-  track.addEventListener('touchstart', function(e) {
-    if (e.touches.length !== 1 || _photoList.length === 0) return;
-    sx = e.touches[0].clientX;
-    swiping = false;
-    moving = false;
-  }, {passive: true});
-
-  track.addEventListener('touchmove', function(e) {
-    if (e.touches.length !== 1 || _photoList.length === 0) return;
-    var dx = e.touches[0].clientX - sx;
-    if (!swiping && Math.abs(dx) > 8) swiping = true;
-    if (swiping) {
-      e.preventDefault();
-      moving = true;
-      var inner = document.getElementById('photoTrackInner');
-      inner.style.transition = 'none';
-      inner.style.transform = 'translateX(calc(-' + (_photoIdx * 100) + '% + ' + dx + 'px))';
-    }
-  }, {passive: false});
-
-  track.addEventListener('touchend', function(e) {
-    if (!swiping || _photoList.length === 0) { swiping = false; return; }
-    swiping = false;
-    if (!moving) return;
-    moving = false;
-    var dx = e.changedTouches[0].clientX - sx;
-    var ratio = dx / track.offsetWidth;
-    if (Math.abs(ratio) > 0.18) {
-      goTo(_photoIdx + (ratio < 0 ? 1 : -1));
-    } else {
-      // Snap back
-      var inner = document.getElementById('photoTrackInner');
-      inner.style.transition = 'transform .3s cubic-bezier(.25,.46,.45,.94)';
-      inner.style.transform = 'translateX(-' + (_photoIdx * 100) + '%)';
-    }
-  }, {passive: true});
-})();
-
 // ===== Photo Upload =====
-function compressImage(file, maxWidth, maxHeight, quality, callback) {
-  if (!file.type.startsWith('image/')) { callback(null); return; }
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var img = new Image();
-    img.onload = function() {
-      var w = img.width, h = img.height;
-      if (w > maxWidth || h > maxHeight) {
-        var ratio = Math.min(maxWidth / w, maxHeight / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
-      }
-      var canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      callback(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = function() { callback(null); };
-    img.src = e.target.result;
-  };
-  reader.onerror = function() { callback(null); };
-  reader.readAsDataURL(file);
-}
-
 function handlePhotoUpload(input) {
   var files = input.files;
   if (!files || files.length === 0) return;
   for (var i = 0; i < files.length; i++) {
     (function(file) {
-      compressToMaxSize(file, 800, function(compressed) {
-        if (compressed) {
-          // 先显示在轮播（data URL 预览）
-          _photoList.push(compressed);
+      // 用固定下标占位，XHR 永远是最终写入者
+      var idx = _photoList.length;
+      _photoList.push(null);
+
+      // 1. 低清预览（仅当 XHR 还没写入时才生效）
+      compressPreview(file, function(previewUrl) {
+        if (previewUrl && _photoList[idx] === null) {
+          _photoList[idx] = previewUrl;
           renderCarousel();
-          goTo(_photoList.length - 1);
-          // 后台上传到服务器，完成后替换为路径（避免 localStorage 存 data URL 过大）
-          uploadPhoto(compressed, function(path) {
-            var idx = _photoList.indexOf(compressed);
-            if (idx >= 0) _photoList[idx] = path;
-          });
+          var _cw = document.getElementById('carouselWrap');
+          if (_cw._swiper) _cw._swiper.slideToLoop(idx, 0);
         }
       });
+
+      // 2. 上传原始文件到服务器 — 这是最终权威路径
+      var fd = new FormData();
+      fd.append('file', file);
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload', true);
+      xhr.withCredentials = true;
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try { var r = JSON.parse(xhr.responseText); if (r.ok && r.path) {
+            _photoList[idx] = r.path;
+            renderCarousel();
+            return;
+          }} catch(e) {}
+        }
+        // 上传失败：移除该项
+        if (_photoList[idx] !== undefined) {
+          _photoList.splice(idx, 1);
+          if (_mainPhotoIdx >= _photoList.length) _mainPhotoIdx = Math.max(0, _photoList.length - 1);
+          renderCarousel();
+        }
+      };
+      xhr.onerror = function() {
+        if (_photoList[idx] !== undefined) {
+          _photoList.splice(idx, 1);
+          if (_mainPhotoIdx >= _photoList.length) _mainPhotoIdx = Math.max(0, _photoList.length - 1);
+          renderCarousel();
+        }
+      };
+      xhr.send(fd);
     })(files[i]);
   }
   input.value = '';
 }
 
-function uploadPhoto(dataUrl, callback) {
-  // data URL → Blob → FormData → /api/upload
-  var parts = dataUrl.split(',');
-  var mimeMatch = parts[0].match(/:(.*?);/);
-  if (!mimeMatch) { if (callback) callback(dataUrl); return; }
-  var mime = mimeMatch[1];
-  var raw = atob(parts[1]);
-  var ab = new ArrayBuffer(raw.length);
-  var ia = new Uint8Array(ab);
-  for (var i = 0; i < raw.length; i++) ia[i] = raw.charCodeAt(i);
-  var blob = new Blob([ab], {type: mime});
-  var fd = new FormData();
-  fd.append('file', blob, 'photo.jpg');
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/upload', true);
-  xhr.withCredentials = true;
-  xhr.onload = function() {
-    if (xhr.status === 200) {
-      try { var r = JSON.parse(xhr.responseText); if (r.ok && r.path) { callback(r.path); return; } } catch(e) {}
-    }
-    // 上传失败时保留 data URL
-    if (callback) callback(dataUrl);
-  };
-  xhr.onerror = function() { if (callback) callback(dataUrl); };
-  xhr.send(fd);
-}
-
-// 压缩到指定 KB 以内（自动调质量）
-function compressToMaxSize(file, maxKB, callback) {
+// 压缩到 200KB 以内仅用于即时预览（不用于上传）
+function compressPreview(file, callback) {
   var reader = new FileReader();
   reader.onload = function(e) {
     var img = new Image();
     img.onload = function() {
       var w = img.width, h = img.height;
-      var maxDim = 1200;
+      // 预览图最大宽高 800px
+      var maxDim = 800;
       if (w > maxDim || h > maxDim) {
         var ratio = Math.min(maxDim / w, maxDim / h);
         w = Math.round(w * ratio);
@@ -444,17 +328,13 @@ function compressToMaxSize(file, maxKB, callback) {
       canvas.width = w; canvas.height = h;
       var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      // 从高质量开始逐步降低直到满足大小
-      function tryQuality(q) {
-        var url = canvas.toDataURL('image/jpeg', q);
-        var sizeKB = Math.round(url.length * 3 / 4 / 1024);
-        if (sizeKB <= maxKB || q <= 0.3) {
-          callback(url);
-        } else {
-          tryQuality(Math.max(0.3, q - 0.1));
-        }
+      var url = canvas.toDataURL('image/jpeg', 0.6);
+      var sizeKB = Math.round(url.length * 3 / 4 / 1024);
+      // 如果还是超过 500KB 就继续降质量
+      if (sizeKB > 500) {
+        url = canvas.toDataURL('image/jpeg', 0.3);
       }
-      tryQuality(0.85);
+      callback(url);
     };
     img.onerror = function() { callback(null); };
     img.src = e.target.result;
@@ -562,9 +442,8 @@ document.addEventListener('DOMContentLoaded', function() {
           // Images
           if (style.images && style.images.length > 0) {
             _photoList = style.images.slice();
-            _mainPhotoIdx = (style.mainPhoto !== undefined && style.mainPhoto < _photoList.length) ? style.mainPhoto : 0;
+            _mainPhotoIdx = (style.mainPhoto !== undefined && style.mainPhoto < _photoList.length) ? Number(style.mainPhoto) : 0;
             renderCarousel();
-            if (_photoList.length > 0) goTo(0);
           }
         }
       }
@@ -595,6 +474,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (cameraInput) cameraInput.addEventListener('change', function() { handlePhotoUpload(this); });
 
   calculateCosts();
+
+  // 所有输入框点击自动全选（点击清零）
+  document.querySelectorAll('input, textarea').forEach(function(el) {
+    el.addEventListener('focus', function() { this.select(); });
+  });
 });
 
 // ===== Fabric rows =====
@@ -776,7 +660,7 @@ function saveStyle() {
     ironCost: numVal('ironCost'),
     edgeNote: val('edgeNote'),
     processingNote: val('processingNote'),
-    images: _photoList,
+    images: _photoList.filter(function(x){return x !== null;}),
     mainPhoto: _mainPhotoIdx,
     totalCost: parseFloat(textVal('totalCost').replace('€','')) || 0,
     suggestedPrice: parseFloat(textVal('suggestedPrice').replace('€','')) || 0,
@@ -843,6 +727,31 @@ function saveStyle() {
   // 同步设置数据
   try { if (typeof LUNA !== 'undefined' && LUNA.syncAllToServer) LUNA.syncAllToServer(); } catch(e) {}
 
+  // 保存后从服务器重新加载，保证 localStorage 里的图片路径是 WebP
+  try {
+    var rxhr = new XMLHttpRequest();
+    rxhr.open('GET', '/api/styles/' + encodeURIComponent(styleData.code), true);
+    rxhr.withCredentials = true;
+    rxhr.onload = function() {
+      if (rxhr.status === 200) {
+        try {
+          var sv = JSON.parse(rxhr.responseText);
+          if (sv && sv.images) {
+            var st = localStorage.getItem('luna_styles_data');
+            if (st) {
+              var al = JSON.parse(st);
+              for (var si = 0; si < al.length; si++) {
+                if (al[si].code === styleData.code) { al[si].images = sv.images; break; }
+              }
+              localStorage.setItem('luna_styles_data', JSON.stringify(al));
+            }
+          }
+        } catch(e) {}
+      }
+    };
+    rxhr.send();
+  } catch(e) {}
+
   var successEl = $id('successMessage');
   if (successEl) successEl.classList.add('show');
   setTimeout(function(){
@@ -867,6 +776,7 @@ document.getElementById('laborCost').addEventListener('input', calculateCosts);
 document.getElementById('ironCost').addEventListener('input', calculateCosts);
 document.getElementById('markupRate').addEventListener('input', calculateCosts);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
 <script>LUNA.renderNav();</script>
 </body>
 </html>

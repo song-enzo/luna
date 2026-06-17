@@ -18,11 +18,11 @@ Tailoring business web app. Flask + SQLite backend, single-file HTML with inline
 ## Common Commands
 
 ```bash
-# Start server
-/opt/data/luna/.venv/bin/python /opt/data/luna/luna_app.py
+# Start server (use /usr/local/bin/python3 — system Python with Pillow)
+/usr/local/bin/python3 /opt/data/luna/luna_app.py
 
 # Restart server (kill old first)
-fuser -k 8766/tcp; sleep 2; nohup /opt/data/luna/.venv/bin/python /opt/data/luna/luna_app.py &>/tmp/luna_server.log &
+kill $(lsof -ti :8766) 2>/dev/null; sleep 2; nohup /usr/local/bin/python3 /opt/data/luna/luna_app.py &>/tmp/luna_server.log &
 
 # Check server status
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8766/

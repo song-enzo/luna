@@ -5,17 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>LUNA ATELIER — Order Detail</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 <link rel="stylesheet" href="styles.css">
 <style>
 .order-hero { width: 100%; aspect-ratio: 3/4; background: var(--bg-warm); position: relative; overflow: hidden; }
-.carousel-track { display: flex; height: 100%; will-change: transform; }
-.carousel-track img, .carousel-track .slide-ph { flex: 0 0 100%; width: 100%; height: 100%; object-fit: cover; display:flex;align-items:center;justify-content:center;font-size:64px;color:rgba(0,0,0,0.1); }
-.carousel-track.dragging { transition: none !important; cursor: grabbing; }
-.carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; background: rgba(255,255,255,0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; z-index: 2; border:none; color:#333; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
-.carousel-nav:hover { background:#fff; }
-.carousel-dots { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index:2; }
-.carousel-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.5); transition: all 0.3s; cursor:pointer; }
-.carousel-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
+.carousel-wrap .swiper-slide{display:flex;align-items:center;justify-content:center;background:#f0ede8;height:auto}
+.carousel-wrap .swiper-slide img{width:100%;height:auto;object-fit:contain;display:block;aspect-ratio:3/4;max-height:65vh}
+.carousel-wrap .swiper-pagination{position:relative;bottom:auto!important;padding:8px 0 4px;line-height:1}
+.carousel-wrap .swiper-pagination-bullet{width:5px;height:5px;background:#ddd;opacity:1;transition:all .2s}
+.carousel-wrap .swiper-pagination-bullet-active{background:#C8A56D;width:14px;border-radius:3px}
+.carousel-wrap .swiper-button-next,.carousel-wrap .swiper-button-prev{color:#fff;background:rgba(0,0,0,.3);width:36px;height:36px;border-radius:50%;transition:all .25s;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.carousel-wrap .swiper-button-next:after,.carousel-wrap .swiper-button-prev:after{font-size:14px;font-weight:700}
+.carousel-wrap .swiper-button-next:hover,.carousel-wrap .swiper-button-prev:hover{background:rgba(200,165,109,.8);transform:scale(1.08)}
+.carousel-counter{position:absolute;bottom:36px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:5;font-weight:500;letter-spacing:.5px}
+.edit-inline input,.edit-inline textarea{width:100%;padding:6px 8px;border:1px solid #d0cbc4;border-radius:4px;font-family:inherit;font-size:13px;margin-top:4px;box-sizing:border-box}
+.edit-inline textarea{resize:vertical;min-height:52px}
+.edit-inline .edit-actions{display:flex;gap:6px;margin-top:6px}
+.edit-btn{background:none;border:none;color:var(--gold);cursor:pointer;font-size:12px;padding:2px 6px;text-decoration:underline}
+.edit-btn:hover{color:#a8893d}
+.save-btn{background:var(--gold);color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit}
+.save-btn:hover{opacity:.9}
+.cancel-btn{background:#eee;color:#666;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit}
+.cancel-btn:hover{background:#ddd}
 .order-info-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; margin: 8px 0; }
 .info-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--cream); }
 .info-row:last-child { border-bottom: none; }
@@ -26,6 +37,17 @@
 .data-table td { padding: 10px 8px; border-bottom: 1px solid var(--cream); }
 .amount-display { text-align: right; font-size: 16px; font-weight: 600; color: var(--dark); margin-top: 20px; }
 .gold-card { border: 1.5px dashed var(--gold-light); background: var(--cream); }
+.fabric-matrix-wrap{overflow-x:auto;margin:10px 0;border:1px solid var(--border);border-radius:6px}
+.fabric-matrix{width:100%;border-collapse:collapse;font-size:13px;min-width:400px}
+.fabric-matrix thead th{background:var(--cream);padding:8px 10px;text-align:center;font-weight:600;color:var(--text);font-size:12px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.03em}
+.fabric-matrix tbody td{padding:7px 10px;text-align:center;border-bottom:1px solid var(--border)}
+.fabric-matrix tbody tr:last-child td{border-bottom:none}
+.fabric-matrix tbody tr:hover{background:var(--cream)}
+.matrix-color{font-weight:600;display:flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap}
+.matrix-dot{display:inline-block;width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0;background-size:cover;background-position:center;cursor:pointer}
+.matrix-dot:hover{transform:scale(1.3)}
+.matrix-qty{font-family:'SF Mono',Monaco,'Cascadia Code',monospace;font-weight:700;font-size:14px;color:var(--text)}
+.matrix-estimate{font-size:12px;color:var(--text-muted)}
 </style>
 </head>
 <body>
@@ -34,188 +56,308 @@
   <span class="logo">LUNA <span>A</span></span>
 </header>
 <main class="container page-enter" style="padding-top:24px;padding-bottom:48px">
-  <div class="order-hero" id="orderHero">
-    <div class="carousel-track" id="heroTrack"></div>
-    <button class="carousel-nav" id="prevBtn" style="left:12px">‹</button>
-    <button class="carousel-nav" id="nextBtn" style="right:12px">›</button>
-    <div class="carousel-dots" id="heroDots"></div>
+  <div class="carousel-wrap" id="orderHero" style="position:relative;margin:0;border-radius:0">
+    <div class="swiper" id="carouselSwiper">
+      <div class="swiper-wrapper" id="heroTrack"></div>
+      <div class="swiper-pagination" id="heroDots"></div>
+    </div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
     <div class="carousel-counter" id="heroCounter"></div>
   </div>
   <div id="orderContent"></div>
 </main>
-<script src="luna-data.js?v=19"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
 var order, carouselState = null;
 
 function init() {
   var id = new URLSearchParams(location.search).get('id');
+  if (!id) {
+    document.getElementById('orderContent').innerHTML = '<div style="text-align:center;padding:40px;color:#999">缺少订单编号 (URL 中没有 ?id=...)</div>';
+    return;
+  }
   order = LUNA.findOrder(id);
-  if (!order) { alert('订单不存在'); history.back(); return; }
+  if (!order) {
+    // 可能数据还没加载完成，重试一次
+    setTimeout(function() {
+      order = LUNA.findOrder(id);
+      if (order) { renderHero(); renderContent(); }
+      else { document.getElementById('orderContent').innerHTML = '<div style="text-align:center;padding:40px;color:#999">未找到订单 ' + esc(id) + '</div>'; }
+    }, 200);
+    return;
+  }
   renderHero();
   renderContent();
 }
 
-// ====== 轮播（支持拖拽滑动）=======
+// ====== Carousel（Swiper 无限循环滑动）======
 function renderHero() {
+  var wrap = document.getElementById('orderHero');
   var track = document.getElementById('heroTrack');
+  var counter = document.getElementById('heroCounter');
+
+  // Collect images from the first style
   var firstStyle = order.items && order.items.length ? LUNA.findStyle(order.items[0].code) : null;
   var imgs = (firstStyle && firstStyle.images) || [];
-  var total = imgs.length || 1;
+  var total = imgs.length || 0;
+
+  if (!total) {
+    track.innerHTML = '<div class="swiper-slide"><div style="padding:80px 0;color:#d5d0c9;font-size:14px">暂无图片</div></div>';
+    counter.textContent = '';
+    return;
+  }
+  if (typeof Swiper === 'undefined') { if (!renderHero._retry) renderHero._retry = 0; renderHero._retry++; if (renderHero._retry < 20) { setTimeout(renderHero, 200); } return; }
 
   var html = '';
   for (var i = 0; i < total; i++) {
-    if (imgs[i]) {
-      html += '<img src="'+imgs[i]+'" alt="">';
-    } else {
-      var bgColors = ['#f5f1eb','#efe9e0','#faf5ee'];
-      html += '<div class="slide-ph" style="background:'+bgColors[i%3]+'">◇</div>';
-    }
+    html += '<div class="swiper-slide"><img src="'+esc(imgs[i])+'" alt="" loading="lazy" data-idx="'+i+'" /></div>';
   }
   track.innerHTML = html;
 
-  if (total <= 1) {
-    document.getElementById('prevBtn').style.display = 'none';
-    document.getElementById('nextBtn').style.display = 'none';
-    return;
-  }
+  if (wrap._swiper) { wrap._swiper.destroy(true, true); wrap._swiper = null; }
 
-  // Dots
-  var dotsHtml = '';
-  for (var di = 0; di < total; di++)
-    dotsHtml += '<span class="carousel-dot' + (di===0?' active':'') + '" data-idx="'+di+'"></span>';
-  document.getElementById('heroDots').innerHTML = dotsHtml;
-  document.getElementById('heroCounter').textContent = '1/' + total;
-
-  carouselState = { idx: 0, total: total };
-
-  var wrap = document.getElementById('orderHero');
-  var getW = function() { return wrap.clientWidth; };
-  var startX = 0, baseTx = 0, dragTx = 0;
-  var isDragging = false;
-  var velHistory = [];
-
-  function go(targetIdx, animate) {
-    if (targetIdx < 0) targetIdx = total - 1;
-    if (targetIdx >= total) targetIdx = 0;
-    carouselState.idx = targetIdx;
-    track.style.transition = animate ? 'transform .5s cubic-bezier(.25,.46,.45,.94)' : 'none';
-    track.style.transform = 'translateX(-' + (targetIdx * getW()) + 'px)';
-    updateDots(targetIdx);
-    document.getElementById('heroCounter').textContent = (targetIdx + 1) + '/' + total;
-  }
-
-  function getX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
-  function onStart(e) {
-    isDragging = true;
-    startX = getX(e);
-    baseTx = -carouselState.idx * getW();
-    velHistory = [];
-    track.style.transition = 'none';
-    track.style.transform = 'translateX(' + baseTx + 'px)';
-    track.classList.add('dragging');
-  }
-  function onMove(e) {
-    if (!isDragging) return;
-    var cx = getX(e), dx = cx - startX;
-    dragTx = baseTx + dx;
-    track.style.transform = 'translateX(' + dragTx + 'px)';
-    velHistory.push({ x: cx, t: Date.now() });
-    if (velHistory.length > 6) velHistory.shift();
-  }
-  function onEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    track.classList.remove('dragging');
-    var w = getW(), dx = dragTx - baseTx, velocity = 0;
-    if (velHistory.length >= 3) {
-      var first = velHistory[0], last = velHistory[velHistory.length - 1];
-      var dt = last.t - first.t;
-      if (dt > 0) velocity = (last.x - first.x) / dt;
+  wrap._swiper = new Swiper('#carouselSwiper', {
+    loop: true,
+    speed: 400,
+    grabCursor: true,
+    slidesPerView: 1,
+    loopedSlides: Math.min(total, 4),
+    pagination: { el: '#heroDots', clickable: true },
+    navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+    on: {
+      init: function() { counter.textContent = '1/' + total; },
+      slideChange: function() { counter.textContent = (this.realIndex + 1) + '/' + total; }
     }
-    var target = carouselState.idx;
-    if (Math.abs(dx) > w * 0.2 || Math.abs(velocity) > 0.5) {
-      if (dx < -w * 0.2 || velocity < -0.5) target = carouselState.idx + 1;
-      else if (dx > w * 0.2 || velocity > 0.5) target = carouselState.idx - 1;
-    }
-    go(target, true);
-  }
-
-  // Touch events
-  wrap.addEventListener('touchstart', onStart, { passive: true });
-  wrap.addEventListener('touchmove', onMove, { passive: true });
-  wrap.addEventListener('touchend', onEnd);
-  wrap.addEventListener('touchcancel', onEnd);
-
-  // Mouse events
-  var mouseDown = false;
-  wrap.addEventListener('mousedown', function(e) { if (e.button === 0) { mouseDown = true; onStart(e); }});
-  document.addEventListener('mousemove', function(e) { if (mouseDown) { e.preventDefault(); onMove(e); }});
-  document.addEventListener('mouseup', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
-  document.addEventListener('mouseleave', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
-
-  // Button nav
-  document.getElementById('prevBtn').addEventListener('click', function() { go(carouselState.idx - 1, true); });
-  document.getElementById('nextBtn').addEventListener('click', function() { go(carouselState.idx + 1, true); });
-
-  // Dot nav
-  document.querySelectorAll('#heroDots .carousel-dot').forEach(function(dot) {
-    dot.addEventListener('click', function() { go(parseInt(this.dataset.idx), true); });
   });
-
-  go(0, false);
 }
 
-function updateDots(idx) {
-  document.querySelectorAll('#heroDots .carousel-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+// ====== 订单内容（矩阵显示 + 裁剪详情）======
+function getColorStyle(fabricName, colorName) {
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+        if (cols[ci].hex) return 'background:' + cols[ci].hex;
+      }
+    }
+  }
+  return 'background:#ccc';
 }
 
-// ====== 订单内容 ======
+// Size alias: support both old (3XL) and new (XXXL) naming
+function szAlias(qty, sz) {
+  var v = qty[sz] || 0;
+  if (v === 0 && sz === 'XXXL') v = qty['3XL'] || 0;
+  if (v === 0 && sz === '3XL') v = qty['XXXL'] || 0;
+  if (v === 0 && sz === '2XL') v = qty['XXL'] || 0;
+  if (v === 0 && sz === 'XXL') v = qty['2XL'] || 0;
+  return v;
+}
+
 function renderContent() {
   var statusKey = LUNA.getOrderStatus(order);
   var sn = {confirmed:'待确认',cutting:'裁剪中',pickup:'待拿货',sewing:'车缝中',shipped:'已发货',completed:'已完成'}[statusKey]||statusKey;
-
+  var items = order.items || [];
+  var orderKeys = ['XS','S','M','L','XL','2XL','XXXL'];
   var html = '';
 
-  // Info
-  html += '<div class="order-info-card"><div class="info-row"><span class="info-label">单号</span><span class="info-value" style="color:var(--gold);font-weight:600">'+order.id+'</span></div>' +
+  // ── Info card ──
+  html += '<div class="order-info-card"><div class="info-row"><span class="info-label">单号</span><span class="info-value" style="color:var(--gold);font-weight:600">'+esc(order.id)+'</span></div>' +
     '<div class="info-row"><span class="info-label">客户</span><span class="info-value">'+esc(order.customer)+'</span></div>' +
     (order.sub_customer?'<div class="info-row"><span class="info-label">二级客人</span><span class="info-value">'+esc(order.sub_customer)+'</span></div>':'') +
-    '<div class="info-row"><span class="info-label">日期</span><span class="info-value">'+order.date+'</span></div>' +
+    '<div class="info-row"><span class="info-label">日期</span><span class="info-value">'+esc(order.date)+'</span></div>' +
     '<div class="info-row"><span class="info-label">状态</span><span class="badge badge-'+statusKey+'">'+sn+'</span></div>' +
     (order.note?'<div class="info-row"><span class="info-label">备注</span><span class="info-value">'+esc(order.note)+'</span></div>':'') +
   '</div>';
 
-  // Items table
-  html += '<div class="order-info-card"><h4 style="margin-bottom:12px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">订单明细</h4>' +
-    '<table class="data-table"><tr><th>款式</th><th>颜色</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>合计</th></tr>';
-  var grandTotal = 0;
-  order.items.forEach(function(item) {
-    var itemTotal = 0;
-    ['S','M','L','XL'].forEach(function(sz){itemTotal+=item.qty?item.qty[sz]||0:0;});
-    grandTotal += itemTotal;
-    html += '<tr><td>ART-' + esc(item.code) + '</td><td>'+esc(item.color)+'</td><td>'+(item.qty?item.qty.S||0:0)+'</td><td>'+(item.qty?item.qty.M||0:0)+'</td><td>'+(item.qty?item.qty.L||0:0)+'</td><td>'+(item.qty?item.qty.XL||0:0)+'</td><td style="font-weight:600">'+itemTotal+'</td></tr>';
+  // ── 订单明细（矩阵显示）──
+  // Group items by fabric
+  var fabricGroups = {};
+  items.forEach(function(item) {
+    var fabricNames = (item.fabric || '默认面料').split(/\s*,\s*/);
+    fabricNames.forEach(function(fName) {
+      if (!fabricGroups[fName]) fabricGroups[fName] = [];
+      fabricGroups[fName].push(item);
+    });
   });
-  html += '<tr><td colspan="6" style="text-align:right;font-weight:600">合计</td><td>'+grandTotal+' 件</td></tr></table></div>';
+  var fabricNames = Object.keys(fabricGroups);
 
-  // Cutting record
+  html += '<div class="order-info-card"><h4 style="margin-bottom:12px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">订单明细</h4>';
+  var grandTotal = 0;
+
+  fabricNames.forEach(function(fName) {
+    var group = fabricGroups[fName];
+    var colorSizes = {};
+    var colorTotals = {};
+    group.forEach(function(item) {
+      var color = item.color || '默认';
+      if (!colorSizes[color]) colorSizes[color] = {};
+      if (!colorTotals[color]) colorTotals[color] = 0;
+      var qty = item.qty || {};
+      orderKeys.forEach(function(sz) {
+        var v = szAlias(qty, sz);
+        if (v > 0) {
+          colorSizes[color][sz] = (colorSizes[color][sz] || 0) + v;
+          colorTotals[color] += v;
+        }
+      });
+    });
+    var colorNames = Object.keys(colorSizes);
+
+    // Active sizes (ones with any qty)
+    var activeSizes = [];
+    orderKeys.forEach(function(sz) {
+      var has = false;
+      colorNames.forEach(function(c) { if (colorSizes[c] && colorSizes[c][sz]) has = true; });
+      if (has) activeSizes.push(sz);
+    });
+
+    if (fabricNames.length > 1) {
+      html += '<div style="margin:10px 0 6px;font-size:13px;font-weight:600;color:var(--gold)">面料: ' + esc(fName) + '</div>';
+    }
+    html += '<div class="fabric-matrix-wrap"><table class="fabric-matrix"><thead><tr><th>颜色</th>';
+    activeSizes.forEach(function(sz) { html += '<th>' + sz + '</th>'; });
+    html += '<th>小计</th></tr></thead><tbody>';
+
+    colorNames.forEach(function(c) {
+      var sizes = colorSizes[c] || {};
+      html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '"></span>' + esc(c) + '</div></td>';
+      activeSizes.forEach(function(sz) {
+        var v = sizes[sz] || 0;
+        html += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
+      });
+      html += '<td><span class="matrix-qty" style="color:var(--gold)">' + (colorTotals[c] || 0) + '</span></td></tr>';
+      grandTotal += colorTotals[c] || 0;
+    });
+    html += '</tbody></table></div>';
+  });
+
+  html += '<div style="text-align:right;margin-top:10px;font-weight:600;font-size:14px">合计: <span style="color:var(--gold)">' + grandTotal + '</span> 件</div></div>';
+
+  // ── 裁剪记录（面料详情 + 纸样长度 + 手数 + 层数 + 用料）──
   if (order.cutting_complete && order.cutting_complete.completed) {
     var cut = order.cutting_complete;
-    html += '<div class="order-info-card gold-card"><h4 style="margin-bottom:12px;color:var(--gold)">✂ 裁剪记录</h4>' +
-      '<div class="info-row"><span class="info-label">状态</span><span class="info-value" style="color:var(--success)">✅ 已完成</span></div>' +
-      '<div class="info-row"><span class="info-label">数量</span><span class="info-value">'+(cut.total_cut||0)+'件</span></div>' +
-      '<div class="info-row"><span class="info-label">时间</span><span class="info-value">'+cut.time+'</span></div>' +
-      '<div class="info-row"><span class="info-label">操作人</span><span class="info-value">'+cut.operator+'</span></div></div>';
+    var fabrics = cut.fabrics || {};
+    html += '<div class="order-info-card gold-card"><h4 style="margin-bottom:12px;color:var(--gold)">✂ 裁剪记录</h4>';
+
+    Object.keys(fabrics).forEach(function(fName) {
+      var fab = fabrics[fName];
+      var patternLen = fab.patternLen || '';
+      var lossCm = fab.lossCm || '';
+      var hands = fab.hands || 1;
+      var usage = fab.fabricUsage || 0;
+      var fabColors = fab.colors || {};
+
+      html += '<div style="margin:10px 0 6px;font-size:13px;font-weight:600;color:var(--gold)">面料: ' + esc(fName) + '</div>';
+
+      if (patternLen || hands || lossCm || usage) {
+        html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.6">' +
+          (patternLen ? '纸样长度: <b>' + parseFloat(patternLen).toFixed(2) + 'm</b>' : '') +
+          (hands ? ' | ' + hands + '手' : '') +
+          (lossCm ? ' | 损耗: ' + lossCm + 'cm/层' : '') +
+          (usage > 0 ? ' | 总用料: <b style="color:#d32f2f">' + usage.toFixed(2) + 'm</b>' : '') +
+          '</div>';
+      }
+
+      // Compute ordered qty per color for this fabric (for comparison)
+      var orderedQty = {};
+      items.forEach(function(item) {
+        var belongs = false;
+        if (item.item_type === 'contrast' && item.components) {
+          for (var ci = 0; ci < item.components.length; ci++) {
+            if (item.components[ci].part === fName) { belongs = true; break; }
+          }
+        } else if ((item.fabric || '默认面料').split(/\s*,\s*/).indexOf(fName) >= 0) {
+          belongs = true;
+        }
+        if (belongs) {
+          var color = item.color || '默认';
+          var qty = item.qty || {};
+          var total = 0;
+          Object.keys(qty).forEach(function(s) { total += qty[s] || 0; });
+          orderedQty[color] = (orderedQty[color] || 0) + total;
+        }
+      });
+
+      var colorList = Object.keys(fabColors);
+      if (colorList.length) {
+        html += '<div class="fabric-matrix-wrap"><table class="fabric-matrix"><thead><tr><th>颜色</th><th>下单件数</th><th>层数</th><th>裁剪件数</th><th>用料(m)</th></tr></thead><tbody>';
+        colorList.forEach(function(c) {
+          var d = fabColors[c] || {};
+          var layers = d.layers || 0;
+          var cutTotal = d.total || 0;
+          var ordTotal = orderedQty[c] || 0;
+          var perUsage = 0;
+          if (patternLen && layers > 0) {
+            var lossM = (parseFloat(lossCm) || 6) / 100;
+            perUsage = Math.round((parseFloat(patternLen) + lossM) * layers * 100) / 100;
+          }
+          html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '"></span>' + esc(c) + '</div></td>' +
+            '<td>' + ordTotal + '</td>' +
+            '<td>' + (layers > 0 ? layers : '—') + '</td>' +
+            '<td><span class="matrix-qty">' + (cutTotal > 0 ? cutTotal : '—') + '</span></td>' +
+            '<td class="matrix-estimate">' + (perUsage > 0 ? perUsage.toFixed(2) : '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+    });
+
+    // 各面料合计
+    var grandCutFab = 0;
+    var itemsList = order.items || [];
+    var f1 = '';
+    if (itemsList.length > 0) { var ft = itemsList[0].fabric || ''; f1 = ft.split(',')[0].trim(); }
+    for (var fn in fabrics) {
+      if (f1 && fn !== f1 && fn !== '默认面料') continue;
+      for (var cc in (fabrics[fn].colors || {})) { grandCutFab += fabrics[fn].colors[cc].total || 0; }
+    }
+    if (!grandCutFab) grandCutFab = cut.total_cut || 0;
+    html += '<div class="info-row" style="margin-top:8px"><span class="info-label">时间</span><span class="info-value">' + cut.time + '</span></div>' +
+      '<div class="info-row"><span class="info-label">操作人</span><span class="info-value">' + (cut.operator || '') + '</span></div>' +
+      '<div style="text-align:right;margin-top:8px;font-weight:600;font-size:14px;color:var(--gold)">成衣裁剪合计: ' + grandCutFab + ' 件</div></div>';
   }
 
-  // Shipping record
+  // ── 车缝外发 ──
+  var pickup = order.pickup_complete;
+  if (pickup && pickup.completed) {
+    html += '<div class="order-info-card gold-card"><h4 style="margin-bottom:12px;color:#8B6914">🧵 车缝外发</h4>' +
+      '<div class="info-row"><span class="info-label">工厂</span><span class="info-value">' + esc(pickup.factory || '') + '</span></div>' +
+      (pickup.factory_price ? '<div class="info-row"><span class="info-label">工价</span><span class="info-value">€' + parseFloat(pickup.factory_price).toFixed(2) + '/件</span></div>' : '') +
+      (pickup.factory_received_qty !== undefined && pickup.factory_received_qty !== null && pickup.factory_received_qty !== '' ?
+        '<div class="info-row"><span class="info-label">工厂收货</span><span class="info-value">' + pickup.factory_received_qty + ' 件<button class="edit-btn" onclick="showEdit(\'factory\')" style="margin-left:6px">✏️ 修正</button></span></div>' : '') +
+      '<div class="info-row"><span class="info-label">经办人</span><span class="info-value">' + esc(pickup.operator || '') + '</span></div>' +
+      '<div class="info-row"><span class="info-label">发料时间</span><span class="info-value">' + (pickup.time || '') + '</span></div>' +
+      '<div id="editFactorySection" class="edit-inline" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">✏️ 修正工厂收货</div>' +
+      '<div style="font-size:12px;color:#666;margin-bottom:4px">当前: <b>' + (pickup.factory_received_qty || 0) + '</b> 件</div>' +
+      '<input type="number" id="editFactoryQty" value="' + (pickup.factory_received_qty || 0) + '" min="0" style="width:100%;padding:6px 8px;border:1px solid #d0cbc4;border-radius:4px;font-size:13px;box-sizing:border-box">' +
+      '<textarea id="editFactoryReason" placeholder="修改原因（必填）" style="width:100%;padding:6px 8px;border:1px solid #d0cbc4;border-radius:4px;font-size:13px;margin-top:4px;resize:vertical;min-height:52px;box-sizing:border-box"></textarea>' +
+      '<div style="display:flex;gap:6px;margin-top:6px">' +
+      '<button class="save-btn" onclick="confirmEdit(\'factory\')">保存</button>' +
+      '<button class="cancel-btn" onclick="hideEdit(\'factory\')">取消</button></div></div></div>';
+  }
+
+  // ── 发货记录 ──
   if (order.shipping_complete && order.shipping_complete.completed) {
     var ship = order.shipping_complete;
     html += '<div class="order-info-card gold-card"><h4 style="margin-bottom:12px;color:var(--success)">📦 发货记录</h4>' +
       '<div class="info-row"><span class="info-label">状态</span><span class="info-value" style="color:var(--success)">✅ 已发货</span></div>' +
-      '<div class="info-row"><span class="info-label">数量</span><span class="info-value">'+ship.qty+'件</span></div>' +
+      '<div class="info-row"><span class="info-label">数量</span><span class="info-value">'+ship.qty+'件<button class="edit-btn" onclick="showEdit(\'shipping\')" style="margin-left:6px">✏️ 修正</button></span></div>' +
       '<div class="info-row"><span class="info-label">时间</span><span class="info-value">'+ship.time+'</span></div>' +
-      '<div class="info-row"><span class="info-label">操作人</span><span class="info-value">'+ship.operator+'</span></div></div>';
+      '<div class="info-row"><span class="info-label">操作人</span><span class="info-value">'+ship.operator+'</span></div>' +
+      '<div id="editShippingSection" class="edit-inline" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">✏️ 修正发货数量</div>' +
+      '<div style="font-size:12px;color:#666;margin-bottom:4px">当前: <b>' + (ship.qty || 0) + '</b> 件</div>' +
+      '<input type="number" id="editShippingQty" value="' + (ship.qty || 0) + '" min="0" style="width:100%;padding:6px 8px;border:1px solid #d0cbc4;border-radius:4px;font-size:13px;box-sizing:border-box">' +
+      '<textarea id="editShippingReason" placeholder="修改原因（必填）" style="width:100%;padding:6px 8px;border:1px solid #d0cbc4;border-radius:4px;font-size:13px;margin-top:4px;resize:vertical;min-height:52px;box-sizing:border-box"></textarea>' +
+      '<div style="display:flex;gap:6px;margin-top:6px">' +
+      '<button class="save-btn" onclick="confirmEdit(\'shipping\')">保存</button>' +
+      '<button class="cancel-btn" onclick="hideEdit(\'shipping\')">取消</button></div></div></div>';
   }
 
   var total = order.shipping_complete ? LUNA.calcShipSubtotal(order) : LUNA.calcSubtotal(order);
@@ -224,8 +366,68 @@ function renderContent() {
   document.getElementById('orderContent').innerHTML = html;
 }
 
+// ====== 数据修正（工厂收货 / 发货数量）======
+function showEdit(type) {
+  var sec = document.getElementById('edit' + type.charAt(0).toUpperCase() + type.slice(1) + 'Section');
+  if (sec) sec.style.display = 'block';
+}
+function hideEdit(type) {
+  var sec = document.getElementById('edit' + type.charAt(0).toUpperCase() + type.slice(1) + 'Section');
+  if (sec) sec.style.display = 'none';
+}
+function confirmEdit(type) {
+  var reasonEl = document.getElementById('edit' + type.charAt(0).toUpperCase() + type.slice(1) + 'Reason');
+  var reason = (reasonEl.value || '').trim();
+  if (!reason) { alert('请填写修改原因'); reasonEl.focus(); return; }
+  var qtyEl = document.getElementById('edit' + type.charAt(0).toUpperCase() + type.slice(1) + 'Qty');
+  var newQty = parseInt(qtyEl.value);
+  if (isNaN(newQty) || newQty < 0) { alert('请输入有效数量'); qtyEl.focus(); return; }
+
+  var oldQty;
+  if (type === 'factory') oldQty = order.pickup_complete.factory_received_qty;
+  else oldQty = order.shipping_complete.qty;
+
+  if (newQty === oldQty) { hideEdit(type); return; }
+
+  if (!confirm('确认将 ' + (type === 'factory' ? '工厂收货' : '发货数量') + ' 从 ' + oldQty + ' 修正为 ' + newQty + ' 件？\n此操作将记录到订单备注。')) return;
+
+  // Apply changes
+  if (type === 'factory') order.pickup_complete.factory_received_qty = newQty;
+  else order.shipping_complete.qty = newQty;
+
+  // Append remark to order note
+  var now = new Date();
+  var ts = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+  var remark = '[修正 ' + ts + '] ' + (type === 'factory' ? '工厂收货' : '发货数量') + ': ' + oldQty + '→' + newQty + '，原因: ' + reason;
+  order.note = (order.note || '') + (order.note ? '\n' : '') + remark;
+
+  // Save to server via LUNA data layer
+  var saved = LUNA.saveSingleOrder(order);
+  if (!saved) { alert('保存失败，请重试'); return; }
+  alert('✅ 修正已保存');
+  location.reload();
+}
+
 function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-init();
+
+// 等服务器数据加载完再渲染
+function onDataReady() { init(); }
+
+// 页面加载后直接初始化，不依赖 CustomEvent（避免时序问题）
+if (typeof window !== 'undefined') {
+  var _initDone = false;
+  function safeInit() {
+    if (_initDone) return;
+    _initDone = true;
+    try { init(); } catch(e) { document.getElementById('orderContent').innerHTML = '<div style="text-align:center;padding:40px;color:red">初始化错误: ' + esc(e.message) + '</div>'; }
+  }
+  // 方式1: 通过 luna-data-initialized 事件（原有机制）
+  window.addEventListener('luna-data-initialized', safeInit);
+  // 方式2: 直接调用（luna-data.js 已同步加载完毕，ensureInit 会同步加载数据）
+  safeInit();
+  // 方式3: 5秒后备
+  setTimeout(function() { if (!_initDone) safeInit(); }, 5000);
+}
 </script>
 </body>
 </html>

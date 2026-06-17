@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>LUNA ATELIER · 下单</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:100px}
@@ -15,19 +17,20 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .header .cart-icon{background:none;border:none;font-size:18px;cursor:pointer;position:relative;padding:4px;color:#999}
 .header .cart-badge{position:absolute;top:-2px;right:-6px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff}
 .pdp-wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
-/* Carousel */
-.carousel-wrap{position:relative;margin:12px 0;overflow:hidden;border-radius:8px;background:#f0ede8}
-.carousel-track{display:flex;will-change:transform}
-.carousel-slide{flex:0 0 100%;aspect-ratio:3/4;background:#f0ede8;display:flex;align-items:center;justify-content:center;font-size:32px;color:#d5d0c9;flex-direction:column;gap:4px}
-.carousel-slide img{width:100%;height:100%;object-fit:cover;display:block}
-.carousel-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.85);border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,.08);color:#333}
-.carousel-arrow.prev{left:10px}.carousel-arrow.next{right:10px}
-.carousel-dots{display:flex;justify-content:center;gap:4px;padding:8px 0 4px}
-.carousel-dot{width:5px;height:5px;border-radius:50%;background:#ddd;cursor:pointer;transition:all .2s}
-.carousel-dot.active{background:#C8A56D;width:14px;border-radius:3px}
-.carousel-counter{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:5;font-weight:500;letter-spacing:.5px}
-.carousel-track.dragging{transition:none!important;cursor:grab}
-.carousel-slide{cursor:pointer}
+/* Carousel (Swiper) */
+.carousel-wrap{position:relative;margin:12px 0;border-radius:8px;overflow:hidden;background:#f0ede8}
+.carousel-wrap .swiper-slide{display:flex;align-items:center;justify-content:center;background:#f0ede8}
+.carousel-wrap .swiper{overflow:hidden}
+.carousel-wrap .swiper-wrapper{align-items:center}
+.carousel-wrap .swiper-slide{height:auto}
+.carousel-wrap .swiper-slide img{width:100%;height:auto;object-fit:contain;display:block;aspect-ratio:3/4;max-height:65vh;cursor:zoom-in}
+.carousel-wrap .swiper-pagination{position:relative;bottom:auto!important;padding:8px 0 4px;line-height:1}
+.carousel-wrap .swiper-pagination-bullet{width:5px;height:5px;background:#ddd;opacity:1;transition:all .2s}
+.carousel-wrap .swiper-pagination-bullet-active{background:#C8A56D;width:14px;border-radius:3px}
+.carousel-wrap .swiper-button-next,.carousel-wrap .swiper-button-prev{color:#fff;background:rgba(0,0,0,.3);width:36px;height:36px;border-radius:50%;transition:all .25s;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.carousel-wrap .swiper-button-next:after,.carousel-wrap .swiper-button-prev:after{font-size:14px;font-weight:700}
+.carousel-wrap .swiper-button-next:hover,.carousel-wrap .swiper-button-prev:hover{background:rgba(200,165,109,.8);transform:scale(1.08)}
+.carousel-counter{position:absolute;bottom:36px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:5;font-weight:500;letter-spacing:.5px}
 /* Product Info */
 .product-info{padding:16px 0 8px}
 .product-code-line{display:flex;align-items:baseline;justify-content:space-between;margin-top:2px}
@@ -164,7 +167,10 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .solid-picker-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .solid-picker-row label{font-size:11px;color:#666;min-width:50px;font-weight:500}
 .solid-picker-row input[type=color]{width:40px;height:34px;border:1px solid #ddd;border-radius:4px;padding:2px;cursor:pointer;background:#fff}
-.solid-picker-row .hex-label{font-size:12px;color:#999;font-family:monospace;margin-left:4px;min-width:70px}
+.solid-picker-row .hex-label,.solid-picker-row .hex-input{font-size:12px;color:#999;font-family:monospace;margin-left:4px;min-width:70px}
+.solid-picker-row .hex-input{border:1px solid #e0dcd5;border-radius:4px;padding:3px 6px;background:#fff;color:#333;outline:none;width:85px}
+.solid-picker-row .hex-input:focus{border-color:#C8A56D}
+.solid-picker-row .hex-input.error{border-color:#e44;background:#fff5f5}
 .solid-slider-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .solid-slider-row label{font-size:11px;color:#666;min-width:50px;font-weight:500}
 .solid-slider-row input[type=range]{flex:1;accent-color:#C8A56D;height:4px}
@@ -272,10 +278,12 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 <div class="pdp-wrap">
   <!-- Carousel -->
   <div class="carousel-wrap" id="carouselWrap">
-    <div class="carousel-track" id="carouselTrack"></div>
-    <button class="carousel-arrow prev" id="prevBtn">‹</button>
-    <button class="carousel-arrow next" id="nextBtn">›</button>
-    <div class="carousel-dots" id="carouselDots"></div>
+    <div class="swiper" id="carouselSwiper">
+      <div class="swiper-wrapper" id="carouselTrack"></div>
+      <div class="swiper-pagination" id="carouselDots"></div>
+    </div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
     <div class="carousel-counter" id="carouselCounter"></div>
   </div>
   <!-- Info -->
@@ -312,7 +320,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
         <div id="stampaSizeMatrix"></div>
       </div>
     </div>
-    <button class="qadd-btn" id="quickAddBtn" onclick="openQuickColor()">➕ 快捷添加颜色（粘贴/拖入截图）</button>
+    <button class="qadd-btn" id="quickAddBtn" onclick="openQuickColor()" style="display:none">➕ 快捷添加颜色（粘贴/拖入截图）</button>
     <div class="order-note">
       <textarea id="orderNoteInput" placeholder="订单备注（选填）：袖长改短2cm、内衬换颜色…" rows="2"></textarea>
     </div>
@@ -335,7 +343,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
     <div style="font-size:10px;color:#999;margin-top:6px">&#x2139; UNICA = 均码，与其他码数互斥选择</div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
       <span style="font-size:13px;color:#666">数量</span>
-      <select class="qty-select" id="qtySelect"></select>
+      <input type="number" class="qty-select" id="qtyInput" value="0" min="0" onclick="this.select()" oninput="updateAddBtn()" style="width:70px">
     </div>
     <button class="add-btn" id="addToCartBtn" disabled>🛒 加入购物车 <span class="sub" id="addSub">— 先选择颜色</span></button>
   </div>
@@ -358,7 +366,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
         <div class="solid-picker-row">
           <label>选色</label>
           <input type="color" id="solidColorPicker" value="#b0a99e" oninput="syncSolidColor()" onpointerdown="document.getElementById('quickColorName').blur()">
-          <span class="hex-label" id="solidHexLabel">#b0a99e</span>
+          <input class="hex-input" id="solidHexInput" value="#b0a99e" oninput="onHexInput()" maxlength="7">
         </div>
       </div>
       <div class="solid-slider-row">
@@ -422,7 +430,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 <!-- Color Card Lightbox -->
 <div class="color-lightbox" id="colorLightbox" onclick="if(event.target===this)closeColorLightbox()">
   <button class="cl-close" onclick="closeColorLightbox()">✕</button>
-  <img class="cl-img" id="clImage" alt="">
+  <img class="cl-img" id="clImage" alt="" onclick="closeColorLightbox()">
   <div class="cl-name" id="clName"></div>
 </div>
 <!-- Floating cart -->
@@ -441,7 +449,9 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
     <button class="submit-btn" id="submitOrderBtn" disabled>📋 下单 <span class="sub" id="submitSub">(购物车为空)</span></button>
   </div>
 </div>
-<script src="luna-data.js?v=23"></script>
+<script src="luna-data.js?v=38"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js" defer></script>
 <script>LUNA.renderNav();</script>
 <script>
 var style, selectedColor = '';
@@ -487,122 +497,108 @@ function init() {
 
   // Auto-detect stampa mode from style.type
   if (style && style.type === 'stampa') {
-    document.getElementById('fabricColors').style.display = 'none';
-    document.getElementById('quickAddBtn').style.display = 'none';
     document.getElementById('contrastToggle').style.display = 'none';
     document.getElementById('stampaArea').style.display = 'block';
-    document.getElementById('modeLabel').textContent = '① 选择花版';
+    document.getElementById('modeLabel').textContent = '① 选择底色 + 花版';
     loadHistoryStampe();
   } else {
     document.getElementById('stampaArea').style.display = 'none';
   }
 }
 
-// ====== Carousel ======
+// ====== Carousel（Swiper 无限循环滑动 + Fancybox 点击放大）======
 function renderCarousel() {
-  var imgs = style.images || [];
+  var wrap = document.getElementById('carouselWrap');
   var track = document.getElementById('carouselTrack');
-  var total = imgs.length || 1;
+  var counter = document.getElementById('carouselCounter');
+
+  // Collect all images: style images + fabric 1 color images
+  var imgSet = {}, allImgs = [];
+  if (style.images) style.images.forEach(function(u) { if (u && !imgSet[u]) { imgSet[u] = true; allImgs.push(u); } });
+  if (style.fabrics && style.fabrics.length) {
+    var allFabrics = LUNA.getFabrics();
+    var mainFab = style.fabrics[0];
+    if (mainFab) {
+      for (var fi = 0; fi < allFabrics.length; fi++) {
+        if (allFabrics[fi].name === mainFab.name || allFabrics[fi].id === mainFab.id) {
+          (allFabrics[fi].colors || []).forEach(function(c) {
+            var url = c.img || c.img_path || '';
+            if (url && !imgSet[url]) { imgSet[url] = true; allImgs.push(url); }
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  var total = allImgs.length;
+  if (!total) {
+    track.innerHTML = '<div class="swiper-slide"><div style="padding:80px 0;color:#d5d0c9;font-size:14px">暂无图片</div></div>';
+    counter.textContent = '';
+    return;
+  }
+  // Safety: wait for Swiper to load if deferred script is still pending
+  if (typeof Swiper === 'undefined') { if (!renderCarousel._retry) renderCarousel._retry = 0; renderCarousel._retry++; if (renderCarousel._retry < 20) { setTimeout(renderCarousel, 200); } return; }
+
+  // Build Swiper slides — no <a> tag (prevents mobile Chrome URL preview)
   var html = '';
   for (var i = 0; i < total; i++) {
-    if (imgs[i]) { html += '<div class="carousel-slide"><img src="'+imgs[i]+'" alt=""></div>'; }
-    else { var bg = ['#f5f1eb','#efe9e0','#faf5ee']; html += '<div class="carousel-slide" style="background:'+bg[i%3]+'">◇<br><span style="font-size:11px;color:#bbb">暂无图片</span></div>'; }
+    html += '<div class="swiper-slide"><img src="'+esc(allImgs[i])+'" alt="" loading="lazy" data-idx="'+i+'" onerror="this.style.background=\'#f0ede8\';this.style.minHeight=\'200px\'" /></div>';
   }
   track.innerHTML = html;
-  if (total <= 1) { document.getElementById('prevBtn').style.display='none'; document.getElementById('nextBtn').style.display='none'; document.getElementById('carouselDots').innerHTML=''; return; }
 
-  // Build dots
-  var dotsHtml = '';
-  for (var di = 0; di < total; di++) { dotsHtml += '<span class="carousel-dot'+(di===0?' active':'')+'" data-idx="'+di+'"></span>'; }
-  document.getElementById('carouselDots').innerHTML = dotsHtml;
+  // Destroy previous Swiper instance if any
+  if (wrap._swiper) { wrap._swiper.destroy(true, true); wrap._swiper = null; }
 
-  carouselState = { idx: 0, total: total };
-
-  var wrap = document.getElementById('carouselWrap');
-  var getW = function() { return wrap.clientWidth; };
-  var startX = 0, baseTx = 0, dragTx = 0;
-  var isDragging = false, wasDragged = false;
-  var velHistory = [];
-
-  function go(targetIdx, animate) {
-    if (targetIdx < 0) targetIdx = total - 1;
-    if (targetIdx >= total) targetIdx = 0;
-    carouselState.idx = targetIdx;
-    track.style.transition = animate ? 'transform .5s cubic-bezier(.25,.46,.45,.94)' : 'none';
-    track.style.transform = 'translateX(-' + (targetIdx * getW()) + 'px)';
-    updateDots(targetIdx);
-    document.getElementById('carouselCounter').textContent = (targetIdx + 1) + '/' + total;
-  }
-
-  function getX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
-  function onStart(e) {
-    isDragging = true; wasDragged = false;
-    startX = getX(e);
-    baseTx = -carouselState.idx * getW();
-    velHistory = [];
-    track.style.transition = 'none';
-    track.style.transform = 'translateX(' + baseTx + 'px)';
-    track.classList.add('dragging');
-  }
-  function onMove(e) {
-    if (!isDragging) return;
-    var cx = getX(e), dx = cx - startX;
-    dragTx = baseTx + dx;
-    track.style.transform = 'translateX(' + dragTx + 'px)';
-    if (Math.abs(dx) > 5) wasDragged = true;
-    velHistory.push({ x: cx, t: Date.now() });
-    if (velHistory.length > 6) velHistory.shift();
-  }
-  function onEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    track.classList.remove('dragging');
-    var w = getW(), dx = dragTx - baseTx, velocity = 0;
-    if (velHistory.length >= 3) {
-      var first = velHistory[0], last = velHistory[velHistory.length - 1];
-      var dt = last.t - first.t;
-      if (dt > 0) velocity = (last.x - first.x) / dt;
+  // Init Swiper
+  wrap._swiper = new Swiper('#carouselSwiper', {
+    loop: true,
+    speed: 400,
+    grabCursor: true,
+    slidesPerView: 1,
+    loopedSlides: Math.min(total, 4),
+    pagination: {
+      el: '#carouselDots',
+      clickable: true,
+    },
+    navigation: {
+      nextEl: '.swiper-button-next',
+      prevEl: '.swiper-button-prev',
+    },
+    on: {
+      init: function() { counter.textContent = '1/' + total; },
+      slideChange: function() { counter.textContent = (this.realIndex + 1) + '/' + total; }
     }
-    var target = carouselState.idx;
-    if (Math.abs(dx) > w * 0.2 || Math.abs(velocity) > 0.5) {
-      if (dx < -w * 0.2 || velocity < -0.5) target = carouselState.idx + 1;
-      else if (dx > w * 0.2 || velocity > 0.5) target = carouselState.idx - 1;
-    }
-    go(target, true);
-  }
-
-  wrap.addEventListener('touchstart', onStart, { passive: true });
-  wrap.addEventListener('touchmove', onMove, { passive: true });
-  wrap.addEventListener('touchend', onEnd);
-  wrap.addEventListener('touchcancel', onEnd);
-
-  var mouseDown = false;
-  wrap.addEventListener('mousedown', function(e) { if (e.button === 0) { mouseDown = true; onStart(e); }});
-  document.addEventListener('mousemove', function(e) { if (mouseDown) { e.preventDefault(); onMove(e); }});
-  document.addEventListener('mouseup', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
-  document.addEventListener('mouseleave', function() { if (mouseDown) { mouseDown = false; onEnd(); }});
-
-  document.getElementById('prevBtn').onclick = function() { go(carouselState.idx - 1, true); };
-  document.getElementById('nextBtn').onclick = function() { go(carouselState.idx + 1, true); };
-
-  document.querySelectorAll('.carousel-dot').forEach(function(dot) {
-    dot.addEventListener('click', function() { go(parseInt(this.dataset.idx), true); });
   });
 
-  track.querySelectorAll('.carousel-slide').forEach(function(slide) {
-    var img = slide.querySelector('img');
-    if (img) {
-      img.addEventListener('click', function(e) {
-        if (wasDragged) return;
-        // 图片点击放大已移除
+  // Click on image → Fancybox zoom (programmatic, no <a> tag, no URL preview)
+  if (window.Fancybox) {
+    track.addEventListener('click', function(e) {
+      var img = e.target.closest('.swiper-slide img');
+      if (!img || img.src === undefined) return;
+      var idx = parseInt(img.getAttribute('data-idx')) || 0;
+      var sources = [];
+      for (var si = 0; si < total; si++) sources.push({ src: allImgs[si] });
+      Fancybox.show(sources, {
+        dragToClose: true,
+        Image: { zoom: true },
+        showClass: false,
+        hideClass: false,
+        closeButton: false,
+        startIndex: idx,
+        on: {
+          "Carousel.selectSlide": function(fb, carousel, slide) {
+            var href = slide.src;
+            track.querySelectorAll('.swiper-slide img').forEach(function(el, i) {
+              if (el.src === href || el.src.split('?')[0] === href.split('?')[0]) {
+                if (wrap._swiper && wrap._swiper.slideToLoop) wrap._swiper.slideToLoop(i, 0);
+              }
+            });
+          }
+        }
       });
-    }
-  });
-
-  go(0, false);
-}
-function updateDots(idx) {
-  document.querySelectorAll('.carousel-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+    });
+  }
 }
 
 // ====== Product Info ======
@@ -656,11 +652,14 @@ function renderColors() {
   allColors.forEach(function(c) {
     var isSel = (selectedColor === c.name);
     var bgStyle = c.img ? '' : 'background:'+(c.hex||'#ccc');
-    var imgTag = c.img ? '<img src="'+esc(c.img)+'" alt="">' : '';
+    var imgTag = c.img ? '<img src="'+esc(c.img)+'" alt="" onerror="this.style.display=\'none\'">' : '';
     html += '<div class="color-card'+(isSel?' selected':'')+'" onclick="selectColorCard(this,\''+escJs(c.name)+'\')">'+
       '<div class="swatch-area" style="'+bgStyle+'"'+(c.img?' onclick="event.stopPropagation();openColorLightbox(\''+escJs(c.img)+'\',\''+escJs(c.name)+'\')"':'')+'>'+imgTag+'</div>'+
       '<div class="color-label">'+esc(c.name)+'</div></div>';
   });
+  html += '<div class="color-card" onclick="openQuickColor()" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1.5px dashed #C8A56D;background:#faf6ee;min-height:0">'+
+    '<div class="swatch-area" style="background:transparent;display:flex;align-items:center;justify-content:center;font-size:28px;color:#1C1C1C;font-weight:300;border:none">+</div>'+
+    '<div class="color-label" style="color:#1C1C1C;font-weight:600;border:none">添加颜色</div></div>';
   html += '</div>';
   container.innerHTML = html;
 
@@ -711,19 +710,16 @@ function showSelectedColor(name) {
 
 // ====== Sizes (multi-select, UNICA exclusive) ======
 function renderSizes() {
-  var sizes = ['UNICA','XS','S','M','L','XL','2XL','3XL'];
+  var sizes = ['UNICA','XS','S','M','L','XL','2XL','XXXL'];
   var btnsEl = document.getElementById('sizeBtns');
   var html = '';
   sizes.forEach(function(sz){
     html += '<button class="size-btn" onclick="toggleSizeBtn(this,\''+sz+'\')">'+sz+'</button>';
   });
   btnsEl.innerHTML = html;
-  // Qty dropdown
-  var qtySel = document.getElementById('qtySelect');
-  var qhtml = '';
-  for (var qi = 1; qi <= 50; qi++) qhtml += '<option value="'+qi+'">'+qi+'</option>';
-  qtySel.innerHTML = qhtml;
-  qtySel.value = '1';
+  // Qty number input
+  var qtyInp = document.getElementById('qtyInput');
+  if (qtyInp) qtyInp.value = '0';
 }
 function toggleSizeBtn(btn, sz) {
   if (btn.classList.contains('selected')) {
@@ -745,7 +741,7 @@ function toggleSizeBtn(btn, sz) {
 }
 function getSelectedSizes() {
   var result = {};
-  var qty = parseInt(document.getElementById('qtySelect').value) || 1;
+  var qty = parseInt(document.getElementById('qtyInput').value) || 0;
   document.querySelectorAll('.size-btn.selected').forEach(function(btn){
     result[btn.textContent] = qty;
   });
@@ -782,6 +778,7 @@ function updateAddBtn() {
   }
   // Stampa mode auto-detection (from style.type)
   if (style && style.type === 'stampa') {
+    if (!selectedColor) { btn.disabled = true; sub.textContent = '— 请先选择底色'; return; }
     if (!_selectedStampa) { btn.disabled = true; sub.textContent = '— 请先选择花版'; return; }
     var stotal = 0;
     if (_selectedStampa.qty) {
@@ -789,7 +786,7 @@ function updateAddBtn() {
     }
     if (stotal === 0) { btn.disabled = true; sub.textContent = '— 请填写花版数量'; return; }
     btn.disabled = false;
-    sub.textContent = '— ' + _selectedStampa.code + ' · ' + stotal + '件';
+    sub.textContent = '— ' + selectedColor + ' · ' + _selectedStampa.code + ' · ' + stotal + '件';
     return;
   }
   if (!selectedColor) { btn.disabled = true; sub.textContent = '— 先选择颜色'; return; }
@@ -820,12 +817,11 @@ document.getElementById('addToCartBtn').addEventListener('click', function() {
     if (stotal === 0) { showToast('⚠️ 请填写花版数量'); return; }
     var sfabric = (style.fabrics && style.fabrics.length) ? style.fabrics.map(function(f){return f.name;}).join(', ') : '';
     var sprice = style.suggestedPrice || 0;
-    LUNA.addToCart(style.code, style.name, '', sqty, sprice, sfabric, '',
+    LUNA.addToCart(style.code, style.name, selectedColor, sqty, sprice, sfabric, '',
       [], 'stampa', _selectedStampa.img_url, _selectedStampa.code);
     updateCartBadge(); renderCart();
     showToast('✅ 花版已加入购物车');
     document.getElementById('orderNoteInput').value = '';
-    toggleCart();
     return;
   }
 
@@ -854,8 +850,6 @@ document.getElementById('addToCartBtn').addEventListener('click', function() {
     renderCart();
     showToast('✅ 撞色搭配已加入购物车');
     document.getElementById('orderNoteInput').value = '';
-    toggleCart();
-    return;
   }
 
   // Original single-color flow
@@ -870,9 +864,7 @@ document.getElementById('addToCartBtn').addEventListener('click', function() {
   renderCart();
   showToast('✅ 已加入购物车');
   document.getElementById('orderNoteInput').value='';
-  toggleCart();
 });
-
 // ====== Floating Cart ======
 function toggleCart() {
   var modal = document.getElementById('cartModal');
@@ -1049,6 +1041,7 @@ function escJs(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function openColorLightbox(imgSrc, colorName) {
   if (!imgSrc) return;
   document.getElementById('clImage').src = imgSrc;
+  document.getElementById('clImage').onerror = function(){ this.style.background='#f0ede8'; this.alt='×'; };
   document.getElementById('clName').textContent = colorName || '';
   document.getElementById('colorLightbox').classList.add('show');
 }
@@ -1131,6 +1124,24 @@ function suggestBaseColor(name) {
   return null;
 }
 
+// ── Direct hex input ──
+function onHexInput() {
+  var inp = document.getElementById('solidHexInput');
+  var raw = inp.value.trim();
+  // Auto-prepend # if missing
+  if (/^[0-9a-fA-F]{6}$/.test(raw)) { raw = '#' + raw; inp.value = raw; }
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) {
+    inp.classList.remove('error');
+    document.getElementById('solidColorPicker').value = raw;
+    var hsl = hexToHsl(raw);
+    document.getElementById('solidSatSlider').value = hsl.s;
+    document.getElementById('solidBriSlider').value = hsl.l;
+    syncSolidColor();
+  } else {
+    inp.classList.add('error');
+  }
+}
+
 // ── Solid Mode: color picker + sliders → live preview ──
 function syncSolidColor() {
   var pickerHex = document.getElementById('solidColorPicker').value;
@@ -1141,7 +1152,7 @@ function syncSolidColor() {
   var swatch = document.getElementById('solidPreviewSwatch');
   swatch.style.background = adjHex;
   document.getElementById('solidColorPicker').value = adjHex;
-  document.getElementById('solidHexLabel').textContent = adjHex;
+  document.getElementById('solidHexInput').value = adjHex;
   document.getElementById('solidSatVal').textContent = sat + '%';
   document.getElementById('solidBriVal').textContent = bri + '%';
   swatch.style.color = (bri > 75 || sat < 15) ? '#666' : '#fff';
@@ -1348,7 +1359,7 @@ function saveQuickColor() {
 
   // ── SOLID MODE: save as hex color swatch ──
   if (_qcMode === 'solid') {
-    var hexColor = document.getElementById('solidHexLabel').textContent;
+    var hexColor = document.getElementById('solidHexInput').value;
     var body = {
       style_code: style.code,
       color_name: name,
@@ -1368,9 +1379,6 @@ function saveQuickColor() {
         if (document.getElementById('contrastModeInput') && document.getElementById('contrastModeInput').checked) {
           renderContrastWalls();
         }
-        LUNA.getFabrics();
-        var r2 = LUNA.api('/api/data/fabrics');
-        if (r2 && !r2.error) LUNA.saveFabrics(r2);
       } else {
         throw new Error(result.error || '保存失败');
       }
@@ -1541,7 +1549,7 @@ function renderSingleWall(fabricIdx, part) {
     var isSel = (c.name === selectedName);
     var bgStyle = c.img ? '' : 'background:' + (c.hex || '#ccc');
     var imgTag = c.img
-      ? '<img src="' + esc(c.img) + '" alt="">'
+      ? '<img src="' + esc(c.img) + '" alt="" onerror="this.style.display=\'none\'">'
       : '';
     html += '<div class="color-card' + (isSel ? ' selected' : '') + '" onclick="selectContrastColor(this,' + fabricIdx + ',\'' + escJs(c.name) + '\')">' +
       '<div class="swatch-area" style="' + bgStyle + '"' + (c.img ? ' onclick="event.stopPropagation();openColorLightbox(\'' + escJs(c.img) + '\',\'' + escJs(c.name) + '\')"' : '') + '>' + imgTag + '</div>' +
@@ -1590,7 +1598,7 @@ function loadHistoryStampe() {
       data.forEach(function(s){
         var isSel = _selectedStampa && _selectedStampa.code === s.code;
         html += '<div class="stampa-card'+(isSel?' selected':'')+'" onclick="selectStampa(\''+escJs(s.code)+'\',\''+escJs(s.img_url)+'\')">'+
-          '<img class="stampa-img" src="'+esc(s.img_url)+'" alt="'+esc(s.code)+'" loading="lazy">'+
+          '<img class="stampa-img" src="'+esc(s.img_url)+'" alt="'+esc(s.code)+'" loading="lazy" onerror="this.style.background=\'#f0ede8\';this.alt=\'×\'">'+
           '<div class="stampa-label">'+esc(s.code)+'</div></div>';
       });
       grid.innerHTML = html;
@@ -1608,6 +1616,7 @@ function selectStampa(code, img_url) {
   var panel = document.getElementById('selStampa');
   panel.classList.add('active');
   document.getElementById('ssThumb').src = img_url;
+  document.getElementById('ssThumb').onerror = function(){ this.style.background='#f0ede8'; this.alt='×'; };
   document.getElementById('ssName').textContent = code;
   document.getElementById('ssCode').textContent = '花版编号: ' + code;
   renderStampaSizes();

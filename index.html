@@ -51,7 +51,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
   <a href="guest-styles.html" class="guest-btn">👤 客人入口（直接浏览款式）</a>
 </div>
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 <script>
 document.getElementById('loginBtn').addEventListener('click', function(e) {
   var user = document.getElementById('username').value.trim();
@@ -80,7 +80,7 @@ document.addEventListener('keydown', function(e) {
 
 // 已登录直接跳转
 var _exUser = LUNA.getUser();
-if (_exUser) {
+if (_exUser && _exUser.role) {
   window.location.href = _exUser.role === 'admin' ? 'dashboard.html' : 'guest-styles.html';
 }
 </script>

@@ -122,9 +122,10 @@ a{text-decoration:none;color:inherit}
 
 <div class="toast" id="toast"></div>
 
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
+(function(){var u=LUNA.getUser();if(!u||u.role!=='admin'){window.location.href='index.html';return;}})();
 var SETTINGS = {
   KEYS: { styleToggles: 'luna_settings_style_toggles' },
   get: function(key) {

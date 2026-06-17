@@ -63,6 +63,20 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit
 .matrix-color{font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .matrix-dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0}
 .matrix-qty{font-weight:700;font-size:14px;color:var(--text)}
+.matrix-dot{cursor:pointer}
+/* Color Enlarge Overlay */
+.color-enlarge-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center}
+.color-enlarge-overlay.show{display:flex}
+.color-enlarge-box{background:#fff;border-radius:10px;padding:16px;text-align:center;max-width:340px;width:85vw;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.color-enlarge-box .ce-img{width:100%;aspect-ratio:1;border-radius:6px;background:#f0ede8;background-size:contain;background-position:center;background-repeat:no-repeat;margin-bottom:10px}
+.color-enlarge-box .ce-name{font-size:16px;font-weight:600;color:#1C1C1C}
+/* Style Photo Overlay */
+.style-photo-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;align-items:center;justify-content:center;padding:20px}
+.style-photo-overlay.show{display:flex}
+.style-photo-box{background:#fff;border-radius:10px;padding:20px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;text-align:center}
+.style-photo-box img{width:100%;border-radius:6px;margin-bottom:12px;display:block}
+.style-photo-box .sp-title{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--text)}
+.style-photo-box .sp-close{display:inline-block;margin-top:4px;padding:8px 28px;border:none;border-radius:6px;background:var(--gold);color:#fff;font-size:14px;cursor:pointer}
 @media(max-width:640px){.form-row{flex-direction:column;align-items:stretch}.form-row label{min-width:auto}}
 </style>
 </head>
@@ -86,7 +100,20 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="luna-data.js?v=19"></script>
+<!-- Color Enlarge Overlay -->
+<div class="color-enlarge-overlay" id="colorEnlargeOverlay" onclick="closeColorEnlarge(event)">
+  <div class="color-enlarge-box">
+    <div class="ce-img" id="ceImg"></div>
+    <div class="ce-name" id="ceName"></div>
+  </div>
+</div>
+
+<!-- Style Photo Overlay -->
+<div class="style-photo-overlay" id="stylePhotoOverlay" onclick="closeStylePhotos(event)">
+  <div class="style-photo-box" id="stylePhotoContent"></div>
+</div>
+
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
 LUNA.checkAuth();
@@ -158,7 +185,15 @@ function getColorCuttingTotals(order, onlyChecked) {
   var fabrics = order.cutting_complete && order.cutting_complete.fabrics;
   var checkmarks = (order.cutting_complete && order.cutting_complete.checkmarks) || {};
   if (fabrics) {
+    // 计数只按面料 1 的数量（一件衣服可以有多种面料）
+    var items = order.items || [];
+    var fabric1 = '';
+    if (items.length > 0) {
+      var firstFabric = items[0].fabric || '';
+      fabric1 = firstFabric.split(',')[0].trim();
+    }
     for (var fName in fabrics) {
+      if (fabric1 && fName !== fabric1) continue; // 只取面料 1
       var colors = fabrics[fName].colors || {};
       for (var color in colors) {
         if (onlyChecked && !checkmarks[color]) continue;
@@ -175,6 +210,69 @@ function getColorCuttingTotals(order, onlyChecked) {
     });
   }
   return totals;
+}
+
+function getColorVisual(fabricName, colorName) {
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    if (allFabrics[fi].name === fabricName) {
+      var cols = allFabrics[fi].colors || [];
+      for (var ci = 0; ci < cols.length; ci++) {
+        if (cols[ci].name === colorName) {
+          if (cols[ci].img) return cols[ci].img;
+          return cols[ci].hex || '#ccc';
+        }
+      }
+    }
+  }
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return cols[ci].img;
+        return cols[ci].hex || '#ccc';
+      }
+    }
+  }
+  return '#ccc';
+}
+
+function openColorEnlarge(name, fabricName) {
+  var visual = getColorVisual(fabricName, name);
+  var isImg = visual.indexOf('http')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+  var el = document.getElementById('ceImg');
+  var nameEl = document.getElementById('ceName');
+  nameEl.textContent = name;
+  if (isImg) {
+    el.style.backgroundImage = 'url(' + esc(visual) + ')';
+    el.style.backgroundColor = 'transparent';
+  } else {
+    el.style.backgroundImage = 'none';
+    el.style.backgroundColor = visual;
+  }
+  document.getElementById('colorEnlargeOverlay').classList.add('show');
+}
+
+function closeColorEnlarge(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('colorEnlargeOverlay').classList.remove('show');
+}
+
+function showStylePhotos(code) {
+  var s = LUNA.findStyle ? LUNA.findStyle(code) : null;
+  if (!s || !s.images || !s.images.length) { toast('没有款式照片'); return; }
+  var html = '<div class="sp-title">ART-' + esc(code) + '</div>';
+  s.images.forEach(function(img) {
+    if (img) html += '<img src="' + esc(img) + '" alt="' + esc(code) + '" onerror="this.style.display=\'none\'">';
+  });
+  html += '<button class="sp-close" onclick="closeStylePhotos()">关闭</button>';
+  document.getElementById('stylePhotoContent').innerHTML = html;
+  document.getElementById('stylePhotoOverlay').classList.add('show');
+}
+
+function closeStylePhotos(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('stylePhotoOverlay').classList.remove('show');
 }
 
 function renderCard(order, factories) {
@@ -196,24 +294,7 @@ function renderCard(order, factories) {
     });
   });
 
-  // 撞色订单：将所有颜色聚合到面料1的颜色上显示
-  var isContrast = items.some(function(it) { return it.item_type === 'contrast'; });
-  if (isContrast) {
-    var mainColor = '';
-    for (var ci = 0; ci < items.length; ci++) { if (items[ci].color) { mainColor = items[ci].color; break; } }
-    if (mainColor) {
-      var aggTotal = 0;
-      for (var ct in colorTotals) aggTotal += colorTotals[ct];
-      colorTotals = {};
-      colorTotals[mainColor] = aggTotal || totalCut;
-      var aggSizes = {};
-      for (var sc in colorSizes) {
-        for (var ssk in colorSizes[sc]) aggSizes[ssk] = (aggSizes[ssk] || 0) + colorSizes[sc][ssk];
-      }
-      colorSizes = {};
-      colorSizes[mainColor] = aggSizes;
-    }
-  }
+  // 撞色订单：保留各颜色独立显示
   for (var ct in colorTotals) totalCut += colorTotals[ct];
   if (!totalCut) totalCut = order.total_qty || 0;
   var laborCost = (style && style.laborCost) ? style.laborCost : 2.0;
@@ -241,7 +322,7 @@ function renderCard(order, factories) {
   var card = '<div class="order-card" id="card_' + escJs(order.id) + '">' +
     '<div class="oc-header">' +
     '<div style="display:flex;align-items:center;gap:10px">' +
-    '<span style="font-size:13px;font-weight:600;color:var(--gold)">ART-' + esc(firstCode) + '</span>' +
+    '<span style="font-size:13px;font-weight:600;color:var(--gold);cursor:pointer" onclick="showStylePhotos(\'' + escJs(firstCode) + '\')">ART-' + esc(firstCode) + '</span>' +
     '<span class="oc-customer">' + esc(order.customer) + (order.sub_customer?' <span style="color:#999;font-size:11px">('+esc(order.sub_customer)+')</span>':'') + '</span>' +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:12px">' +
@@ -263,34 +344,38 @@ function renderCard(order, factories) {
   var sizeOrder = { 'XS':0,'S':1,'M':2,'L':3,'XL':4,'XXL':5,'2XL':6,'3XL':7,'4XL':8 };
   allSizes.sort(function(a,b) { return (sizeOrder[a]||99) - (sizeOrder[b]||99); });
   allSizes.forEach(function(s) { card += '<th>' + esc(s) + '</th>'; });
-  card += '<th>合计</th></tr></thead><tbody>';
+  card += '<th>合计</th><th>裁剪</th></tr></thead><tbody>';
 
   var colorKeys = Object.keys(colorTotals);
   if (colorKeys.length > 0) {
     colorKeys.forEach(function(color) {
       var fabric = colorFabrics[color] || '';
       var sizes = colorSizes[color] || {};
+      var orderTotal = 0;
+      Object.keys(sizes).forEach(function(s) { orderTotal += sizes[s] || 0; });
       card += '<tr>' +
-        '<td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fabric, color) + '"></span>' + esc(color) + '</div></td>';
+        '<td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fabric, color) + '" onclick="openColorEnlarge(\'' + escJs(color) + '\',\'' + escJs(fabric) + '\')" title="点击放大"></span>' + esc(color) + '</div></td>';
       allSizes.forEach(function(s) {
         var v = sizes[s] || 0;
         card += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
       });
-      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + colorTotals[color] + '</span></td></tr>';
+      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + orderTotal + '</span></td>' +
+        '<td><span class="matrix-qty" style="color:var(--text-muted)">' + colorTotals[color] + '</span></td></tr>';
     });
   } else {
     items.forEach(function(item) {
       var c = item.color || '';
       var fabric = item.fabric || '';
       var qty = item.qty || {};
-      card += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fabric, c) + '"></span>' + esc(c) + '</div></td>';
+      card += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fabric, c) + '" onclick="openColorEnlarge(\'' + escJs(c) + '\',\'' + escJs(fabric) + '\')" title="点击放大"></span>' + esc(c) + '</div></td>';
       allSizes.forEach(function(s) {
         var v = qty[s] || 0;
         card += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
       });
       var totalQty = 0;
       Object.keys(qty).forEach(function(s) { totalQty += qty[s] || 0; });
-      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + totalQty + '</span></td></tr>';
+      card += '<td><span class="matrix-qty" style="color:var(--gold)">' + totalQty + '</span></td>' +
+        '<td><span style="color:#ccc">—</span></td></tr>';
     });
   }
 

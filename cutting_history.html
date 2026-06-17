@@ -8,30 +8,53 @@
 <link rel="stylesheet" href="styles.css">
 <style>
 .detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:5000;overflow-y:auto}
-.detail-box{background:#fff;max-width:700px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.detail-box{background:#fff;max-width:800px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2)}
 .detail-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--cream);border-bottom:1px solid var(--border)}
 .detail-header h3{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--text)}
 .detail-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);padding:0 4px}
 .detail-close:hover{color:var(--text)}
-.detail-body{padding:20px}
+.detail-body{padding:20px;font-family:'Inter','SimHei','黑体',sans-serif}
 .detail-section{margin-bottom:20px}
 .detail-section h4{font-size:12px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.detail-row{display:flex;padding:4px 0;font-size:13px}
+.detail-row{display:flex;padding:4px 0;font-size:14px;font-family:'Inter','SimHei','黑体',sans-serif}
 .detail-label{color:var(--text-muted);min-width:80px;flex-shrink:0}
 .detail-value{color:var(--text);font-weight:500}
 .detail-table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
-.detail-table thead th{background:var(--cream);padding:6px 8px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;border-bottom:1px solid var(--border)}
-.detail-table tbody td{padding:6px 8px;border-bottom:1px solid var(--border)}
-.detail-table tbody td:last-child{text-align:right}
-.order-card{cursor:pointer}
+.detail-table thead th{background:var(--cream);padding:6px 8px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;border-bottom:1px solid var(--border)}
+.detail-table tbody td{padding:6px 8px;text-align:center;border-bottom:1px solid var(--border)}
 .order-card:hover{border-color:var(--gold)}
+.text-up{color:#d32f2f;font-weight:600}
+.text-down{color:#28a745;font-weight:600}
+/* Card styles - normal fonts */
+.order-card{padding:12px 16px;cursor:pointer;font-family:'Inter','SimHei','黑体',sans-serif}
+.order-card:hover{border-color:var(--gold)}
+.card-row1{font-size:13px;color:var(--gold);font-weight:600;margin-bottom:4px}
+.card-row2{display:flex;align-items:center;gap:10px;margin-bottom:2px;flex-wrap:wrap}
+.card-row3{font-size:14px;color:var(--text-muted)}
+.style-code{font-size:13px;font-weight:500;color:var(--text);margin-right:0}
+.style-num{font-size:15px;font-weight:700;color:var(--text)}
+.customer-name{font-size:15px;color:#666;font-weight:500}
+.cut-total{font-size:15px;font-weight:700;color:var(--gold)}
+/* Matrix styles (like marker page) */
+.fabric-matrix-wrap{overflow-x:auto;margin:10px 0;border:1px solid var(--border);border-radius:6px}
+.fabric-matrix{width:100%;border-collapse:collapse;font-size:13px;min-width:400px}
+.fabric-matrix thead th{background:var(--cream);padding:8px 10px;text-align:center;font-weight:600;color:var(--text);font-size:12px;border-bottom:1px solid var(--border);letter-spacing:0.03em}
+.fabric-matrix tbody td{padding:7px 10px;text-align:center;border-bottom:1px solid var(--border)}
+.fabric-matrix tbody tr:last-child td{border-bottom:none}
+.fabric-matrix tbody tr:hover{background:var(--cream)}
+.matrix-color{font-weight:600;display:flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap}
+.matrix-dot{display:inline-block;width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0;background-size:cover;background-position:center}
+.matrix-qty{font-family:'SF Mono',Monaco,'Cascadia Code',monospace;font-weight:700;font-size:14px;color:var(--text)}
+.fabric-header{background:var(--cream);padding:10px 14px;border-radius:6px;margin:10px 0 8px;font-size:13px}
+.fabric-header .fab-name{font-weight:700;color:var(--gold)}
+.fabric-header .fab-info{color:var(--text-muted);font-size:12px}
 </style>
 </head>
 <body>
 <header class="luna-header"><button class="header-btn" onclick="history.back()">←</button><span class="logo">LUNA <span>A</span></span><span style="font-size:15px;font-weight:500">裁剪历史</span></header>
 <main class="container page-enter" style="padding-top:24px;padding-bottom:48px">
   <div class="section-header"><h2 class="section-title">裁剪历史</h2></div>
-  <div class="form-group" style="max-width:300px"><input class="form-input" type="text" id="filterSearch" placeholder="搜索订单编号或客人名字..." oninput="render()"></div>
+  <div class="form-group" style="max-width:300px"><input class="form-input" type="text" id="filterSearch" placeholder="搜索订单编号/款式编号/客人名字..." oninput="render()"></div>
   <div class="order-list" id="historyList"></div>
 </main>
 
@@ -45,19 +68,72 @@
   </div>
 </div>
 
-<script src="luna-data.js?v=19"></script>
+<script src="luna-data.js?v=26"></script>
 <script>LUNA.renderNav();</script>
 <script>
 LUNA.checkAuth();
+
+function getFabric1Total(order) {
+  var items = order.items || [];
+  var fabricsData = (order.cutting_complete && order.cutting_complete.fabrics) || {};
+  // 从订单 items 取面料 1
+  var fabric1 = '';
+  if (items.length > 0) {
+    var firstFab = items[0].fabric || '';
+    fabric1 = firstFab.split(',')[0].trim();
+  }
+  // 如果取不到或 fabrics 里没有，改取第一块面料
+  var fNames = Object.keys(fabricsData);
+  if (!fabric1 || !fabricsData[fabric1]) {
+    fabric1 = fNames.length > 0 ? fNames[0] : '';
+  }
+  var total = 0;
+  if (fabric1 && fabricsData[fabric1] && fabricsData[fabric1].colors) {
+    var cols = fabricsData[fabric1].colors;
+    for (var c in cols) { total += cols[c].total || 0; }
+  }
+  return { fabric1: fabric1, total: total, fabricsData: fabricsData };
+}
+
+function getColorStyle(fabricName, colorName) {
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    if (allFabrics[fi].name === fabricName) {
+      var cols = allFabrics[fi].colors || [];
+      for (var ci = 0; ci < cols.length; ci++) {
+        if (cols[ci].name === colorName) {
+          if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+          return 'background:' + (cols[ci].hex || '#ccc');
+        }
+      }
+    }
+  }
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName) {
+        if (cols[ci].img) return 'background-image:url(' + esc(cols[ci].img) + ');background-size:cover';
+        return 'background:' + (cols[ci].hex || '#ccc');
+      }
+    }
+  }
+  return 'background:#ccc';
+}
 
 function render() {
   var orders = LUNA.getOrders().filter(function(o){ return o.cutting_complete; });
   var search = document.getElementById('filterSearch').value.trim().toLowerCase();
   if (search) {
     orders = orders.filter(function(o){
-      return o.id.toLowerCase().indexOf(search) >= 0 ||
-             (o.customer||'').toLowerCase().indexOf(search) >= 0 ||
-             (o.sub_customer||'').toLowerCase().indexOf(search) >= 0;
+      if (o.id.toLowerCase().indexOf(search) >= 0) return true;
+      if ((o.customer||'').toLowerCase().indexOf(search) >= 0) return true;
+      if ((o.sub_customer||'').toLowerCase().indexOf(search) >= 0) return true;
+      var items = o.items || [];
+      for (var ii = 0; ii < items.length; ii++) {
+        if ((items[ii].code||'').toLowerCase().indexOf(search) >= 0) return true;
+        if ((items[ii].name||'').toLowerCase().indexOf(search) >= 0) return true;
+      }
+      return false;
     });
   }
   orders = orders.slice().reverse();
@@ -69,19 +145,40 @@ function render() {
   orders.forEach(function(o) {
     var cutting = o.cutting_complete;
     var code = (o.items && o.items.length) ? o.items[0].code : '';
+    var f1Info = getFabric1Total(o);
+    var totalCut = f1Info.total || 0;
     h += '<div class="order-card" onclick="showCuttingDetail(\'' + escJs(o.id) + '\')">' +
-      '<div class="order-card-header">' +
-      '<div><div class="order-id">' + o.id + '</div><div class="order-customer">' +
-        (code ? '<span style="color:var(--gold);font-size:12px;font-weight:600;margin-right:8px">ART-' + esc(code) + '</span>' : '') +
-        esc(o.customer) + (o.sub_customer ? ' <span style="color:#999;font-size:10px">(二级: ' + esc(o.sub_customer) + ')</span>' : '') +
-      '</div></div>' +
-      '<span class="badge badge-sewing">已裁剪</span></div>' +
-      '<div class="order-meta">' +
-      '<span>📦 ' + (cutting.total_cut || cutting.qty || 0) + '件</span>' +
-      '<span>🕐 ' + cutting.time + '</span>' +
-      '<span>👤 ' + cutting.operator + '</span></div></div>';
+      '<div class="card-row1">' + o.id + '</div>' +
+      '<div class="card-row2">' +
+        (code ? '<span class="style-code">ART-</span><span class="style-num">' + esc(code) + '</span>' : '') +
+        '<span class="customer-name">' + esc(o.customer) + (o.sub_customer ? ' / ' + esc(o.sub_customer) : '') + '</span>' +
+        '<span class="cut-total">裁 ' + totalCut + '件</span>' +
+      '</div>' +
+      '<div class="card-row3">🕐 ' + (cutting.time || '') + '</div></div>';
   });
   document.getElementById('historyList').innerHTML = h;
+}
+
+function getItemColor(item, fabricName) {
+  if (item.item_type === 'contrast' && item.components) {
+    for (var ci = 0; ci < item.components.length; ci++) {
+      if (item.components[ci].part === fabricName) return item.components[ci].color;
+    }
+  }
+  return item.color || '默认';
+}
+
+function getOrderedQtyMap(order) {
+  var items = order.items || [];
+  var map = {};
+  items.forEach(function(item) {
+    var color = item.color || '';
+    var qty = item.qty || {};
+    var total = 0;
+    Object.keys(qty).forEach(function(s) { total += qty[s] || 0; });
+    map[color] = (map[color] || 0) + total;
+  });
+  return map;
 }
 
 function showCuttingDetail(orderId) {
@@ -96,75 +193,169 @@ function showCuttingDetail(orderId) {
 
   var html = '';
 
-  // Order info
-  html += '<div class="detail-section"><h4>订单信息</h4>' +
+  // ── 订单详情 ──
+  html += '<div class="detail-section"><h4>订单详情</h4>' +
     '<div class="detail-row"><span class="detail-label">订单号</span><span class="detail-value">' + esc(order.id) + '</span></div>' +
-    '<div class="detail-row"><span class="detail-label">客户</span><span class="detail-value">' + esc(order.customer) + '</span></div>' +
-    (order.sub_customer ? '<div class="detail-row"><span class="detail-label">二级客人</span><span class="detail-value">' + esc(order.sub_customer) + '</span></div>' : '') +
+    '<div class="detail-row"><span class="detail-label">客户</span><span class="detail-value">' + esc(order.customer) + (order.sub_customer ? ' / ' + esc(order.sub_customer) : '') + '</span></div>' +
     '<div class="detail-row"><span class="detail-label">日期</span><span class="detail-value">' + (order.date || '') + '</span></div>' +
     (order.note ? '<div class="detail-row"><span class="detail-label">备注</span><span class="detail-value">' + esc(order.note) + '</span></div>' : '') +
     '</div>';
 
-  // Cutting summary
-  html += '<div class="detail-section"><h4>裁剪概要</h4>' +
-    '<div class="detail-row"><span class="detail-label">裁剪总数</span><span class="detail-value">' + (cutting.total_cut || 0) + ' 件</span></div>' +
-    (cutting.time ? '<div class="detail-row"><span class="detail-label">裁剪时间</span><span class="detail-value">' + cutting.time + '</span></div>' : '') +
-    (cutting.operator ? '<div class="detail-row"><span class="detail-label">裁剪师</span><span class="detail-value">' + esc(cutting.operator) + '</span></div>' : '') +
-    '</div>';
-
-  // Original order items
+  // ── 订单明细（矩阵显示） ──
   var items = order.items || [];
+  var fabrics = cutting.fabrics || {};
   if (items.length) {
-    html += '<div class="detail-section"><h4>下单数量</h4>';
+    html += '<div class="detail-section"><h4>订单明细</h4>';
+
+    // Group items by fabric
+    var fabricGroups = {};
     items.forEach(function(item) {
-      html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin:8px 0 4px">ART-' + esc(item.code || '') + ' ' + esc(item.name || '') + '</div>' +
-        '<table class="detail-table"><thead><tr><th>颜色</th><th>面料</th><th>尺码</th><th>数量</th></tr></thead><tbody>';
-      var qty = item.qty || {};
-      var sizes = Object.keys(qty);
-      if (sizes.length) {
-        sizes.forEach(function(s) {
-          html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(item.fabric || '') + '</td><td>' + esc(s) + '</td><td>' + (qty[s] || 0) + '</td></tr>';
-        });
-      } else {
-        html += '<tr><td>' + esc(item.color || '') + '</td><td>' + esc(item.fabric || '') + '</td><td>-</td><td>0</td></tr>';
-      }
-      html += '</tbody></table>';
+      var fabricNames = (item.fabric || '默认面料').split(/\s*,\s*/);
+      fabricNames.forEach(function(fName) {
+        if (!fabricGroups[fName]) fabricGroups[fName] = [];
+        fabricGroups[fName].push(item);
+      });
     });
+
+    var orderKeys = ['XS','S','M','L','XL','2XL','3XL','UNICA'];
+
+          Object.keys(fabricGroups).forEach(function(fName) {
+      var group = fabricGroups[fName];
+
+      // Gather cutting data for this fabric
+      var fab = fabrics[fName];
+      var fabHands = 1;
+      var fabPatternLen = '';
+      var fabLossCm = '';
+      var fabUsage = 0;
+      var fabColors = {};
+      if (fab) {
+        fabHands = fab.hands || 1;
+        fabPatternLen = fab.patternLen || '';
+        fabLossCm = fab.lossCm || '';
+        fabColors = fab.colors || {};
+        fabUsage = fab.fabricUsage || 0;
+        // Fallback: calculate for old data not yet stored with fabricUsage
+        if (fabUsage === 0 && fabPatternLen) {
+          var totalLayers = 0;
+          for (var cc in fabColors) totalLayers += fabColors[cc].layers || 0;
+          var loss = parseFloat(fabLossCm) || 6;
+          fabUsage = Math.round((parseFloat(fabPatternLen) + loss / 100) * totalLayers * 100) / 100;
+        }
+      }
+
+      // Fabric header (name + info + total usage)
+      html += '<div class="fabric-header" style="margin-top:4px">' +
+        '<span class="fab-name">' + esc(fName) + '</span>' +
+        ' <span class="fab-info">' +
+        (fabPatternLen ? '| 纸样长度 ' + parseFloat(fabPatternLen).toFixed(2) + 'm' : '') +
+        ' | ' + fabHands + '手' +
+        (fabLossCm ? ' | 损耗 ' + fabLossCm + 'cm/层' : '') +
+        (fabUsage > 0 ? ' | 总用料: <b style="color:#d32f2f">' + fabUsage.toFixed(2) + 'm</b>' : '') +
+        '</span></div>';
+
+      // Build ordered color x size data
+      var colorSizes = {};
+      var colorTotals = {};
+      group.forEach(function(item) {
+        var color = getItemColor(item, fName);
+        if (!colorSizes[color]) colorSizes[color] = {};
+        if (!colorTotals[color]) colorTotals[color] = 0;
+        var qty = item.qty || {};
+        orderKeys.forEach(function(sz) {
+          var v = qty[sz] || 0;
+          if (v > 0) {
+            colorSizes[color][sz] = (colorSizes[color][sz] || 0) + v;
+            colorTotals[color] += v;
+          }
+        });
+      });
+
+      var colorNames = Object.keys(colorSizes);
+
+      // Active sizes from ordered data
+      var activeSizes = [];
+      orderKeys.forEach(function(sz) {
+        var hasQty = false;
+        colorNames.forEach(function(c) { if (colorSizes[c] && colorSizes[c][sz]) hasQty = true; });
+        if (hasQty) activeSizes.push(sz);
+      });
+
+      // Combined table: color | sizes | order subtotal | layers | cut qty | usage(m)
+      html += '<div class="fabric-matrix-wrap"><table class="fabric-matrix"><thead><tr>' +
+        '<th>颜色</th>';
+      activeSizes.forEach(function(sz) { html += '<th>' + sz + '</th>'; });
+      html += '<th>下单小计</th><th>层数</th><th>裁剪件数</th><th>用料(m)</th></tr></thead><tbody>';
+
+      colorNames.forEach(function(c) {
+        var sizes = colorSizes[c] || {};
+        var cutData = fabColors[c] || {};
+        var layers = cutData.layers || 0;
+        var cutTotal = cutData.total || 0;
+        // Per-color fabric usage: (patternLen + loss) * layers
+        var perUsage = 0;
+        if (fabPatternLen && layers > 0) {
+          var lossM = (parseFloat(fabLossCm) || 6) / 100;
+          perUsage = Math.round((parseFloat(fabPatternLen) + lossM) * layers * 100) / 100;
+        }
+
+        html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '"></span>' + esc(c) + '</div></td>';
+        activeSizes.forEach(function(sz) {
+          var v = sizes[sz] || 0;
+          html += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
+        });
+        html += '<td><span class="matrix-qty" style="color:var(--gold)">' + colorTotals[c] + '</span></td>';
+        html += '<td>' + (layers > 0 ? layers : '—') + '</td>';
+        html += '<td><span class="matrix-qty">' + (cutTotal > 0 ? cutTotal : '—') + '</span></td>';
+        html += '<td class="matrix-estimate">' + (perUsage > 0 ? perUsage.toFixed(2) : '—') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+
     html += '</div>';
   }
 
-  // Cutting details — unified matrix table
-  var fabrics = cutting.fabrics || {};
-  html += '<div class="detail-section"><h4>实际裁剪数据（矩阵表）</h4>';
-  var fNames = Object.keys(fabrics);
-  if (fNames.length) {
-    html += '<table class="detail-table"><thead><tr><th>面料</th><th>颜色</th><th>层数</th><th>总件数</th><th>唛架长(m)</th><th>损耗(cm)</th><th>预估用料(m)</th></tr></thead><tbody>';
-    fNames.forEach(function(fName) {
-      var fab = fabrics[fName];
-      var cols = fab.colors || {};
-      var colNames = Object.keys(cols);
-      if (colNames.length) {
-        colNames.forEach(function(col, ci) {
-          var cd = cols[col];
-          html += '<tr>' +
-            (ci === 0 ? '<td rowspan="' + colNames.length + '" style="font-weight:600;color:var(--gold)">' + esc(fName) + '</td>' : '') +
-            '<td>' + esc(col) + '</td>' +
-            '<td>' + (cd.layers || 0) + '</td>' +
-            '<td>' + (cd.total || 0) + '</td>' +
-            '<td>' + (fab.patternLen ? parseFloat(fab.patternLen).toFixed(2) : '-') + '</td>' +
-            '<td>' + (fab.lossCm || '-') + '</td>' +
-            '<td>' + (cd.estMeters ? parseFloat(cd.estMeters).toFixed(2) : '-') + '</td>' +
-            '</tr>';
-        });
-      } else {
-        html += '<tr><td>' + esc(fName) + '</td><td colspan="6" style="color:#999">无颜色数据</td></tr>';
-      }
-    });
-    html += '</tbody></table>';
-  } else {
-    html += '<div style="color:#999;font-size:13px">无详细裁剪数据</div>';
+  // ── 裁剪信息汇总 ──
+  var f1Info = getFabric1Total(order);
+  html += '<div class="detail-section"><h4>裁剪信息</h4>' +
+    '<div style="display:flex;gap:16px;font-size:13px;padding:8px 0 12px;flex-wrap:wrap">' +
+    '<span>裁剪总数: <b style="color:var(--gold)">' + (order.total_qty || f1Info.total || 0) + '件</b></span>' +
+    (f1Info.fabric1 ? '<span>面料1 (' + esc(f1Info.fabric1) + '): <b>' + f1Info.total + '件</b></span>' : '') +
+    (cutting.operator ? '<span>裁剪师: ' + esc(cutting.operator) + '</span>' : '') +
+    (cutting.time ? '<span>时间: ' + cutting.time + '</span>' : '') +
+    '</div></div>';
+
+  // ── 裁剪 vs 下单对比（仅面料 1） ──
+  if (f1Info.fabric1 && fabrics[f1Info.fabric1]) {
+    var orderedQty = getOrderedQtyMap(order);
+    var f1Colors = fabrics[f1Info.fabric1].colors || {};
+    var colorNames = Object.keys(f1Colors);
+    if (colorNames.length) {
+      html += '<div class="detail-section"><h4>裁剪 vs 下单对比（仅 ' + esc(f1Info.fabric1) + '）</h4>' +
+        '<table class="detail-table"><thead><tr><th>颜色</th><th>裁剪件数</th><th>下单件数</th><th>差异</th></tr></thead><tbody>';
+      var totalDiff = 0;
+      var totalCut = 0;
+      var totalOrdered = 0;
+      colorNames.forEach(function(col) {
+        var cutQty = f1Colors[col].total || 0;
+        var ordQty = orderedQty[col] || 0;
+        var diff = cutQty - ordQty;
+        totalCut += cutQty;
+        totalOrdered += ordQty;
+        totalDiff += diff;
+        html += '<tr>' +
+          '<td>' + esc(col) + '</td>' +
+          '<td style="font-weight:600">' + cutQty + '</td>' +
+          '<td>' + ordQty + '</td>' +
+          '<td class="' + (diff > 0 ? 'text-up' : (diff < 0 ? 'text-down' : '')) + '">' + (diff > 0 ? '+' : '') + diff + '</td>' +
+          '</tr>';
+      });
+      html += '<tr style="border-top:2px solid var(--gold);font-weight:700">' +
+        '<td>合计</td><td>' + totalCut + '</td><td>' + totalOrdered + '</td>' +
+        '<td class="' + (totalDiff > 0 ? 'text-up' : (totalDiff < 0 ? 'text-down' : '')) + '">' + (totalDiff > 0 ? '+' : '') + totalDiff + '</td></tr>';
+      html += '</tbody></table></div>';
+    }
   }
-  html += '</div>';
 
   document.getElementById('detailBody').innerHTML = html;
   document.getElementById('detailOverlay').style.display = 'block';

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """LUNA ATELIER — Flask + SQLite 后端"""
 import json, os, sqlite3, uuid, re, base64, mimetypes
+from PIL import Image, ImageOps
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask import Flask, request, session, jsonify, send_from_directory, g
@@ -17,8 +18,51 @@ os.makedirs(PHOTO_DIR, exist_ok=True)
 SYSTEM_CONFIG = {
     'brand_name': 'Diana Moda',
     'brand_prefix': 'dm',
-    'port': 8767
+    'port': 8766
 }
+
+# ── Image processing utility ──
+
+def process_uploaded_image(file_storage, folder=None):
+    """
+    大厂级图片处理工具函数
+    功能：纠正EXIF旋转、保留PNG透明度、method=6 WebP 输出大小两套
+    参数 file_storage: 文件对象（Flask request.files 或 BytesIO）
+    返回 dict: {big_img, thumb_img} 相对路径
+    """
+    from PIL import Image, ImageOps
+    image = Image.open(file_storage)
+    image = ImageOps.exif_transpose(image)
+
+    has_alpha = image.mode in ('RGBA', 'LA') or (image.mode == 'P' and 'transparency' in image.info)
+    save_mode = 'RGBA' if has_alpha else 'RGB'
+
+    save_dir = folder or PHOTO_DIR
+    os.makedirs(save_dir, exist_ok=True)
+    base_name = uuid.uuid4().hex
+
+    big_image = image.copy()
+    if big_image.width > 2200:
+        ratio = 2200.0 / float(big_image.width)
+        new_height = int(big_image.height * ratio)
+        big_image = big_image.resize((2200, new_height), Image.Resampling.LANCZOS)
+    big_filename = f'big_{base_name}.webp'
+    big_path = os.path.join(save_dir, big_filename)
+    big_image.convert(save_mode).save(big_path, 'WEBP', quality=85, method=6, lossless=False)
+
+    thumb_image = image.copy()
+    if thumb_image.width > 500:
+        ratio = 500.0 / float(thumb_image.width)
+        new_height = int(thumb_image.height * ratio)
+        thumb_image = thumb_image.resize((500, new_height), Image.Resampling.LANCZOS)
+    thumb_filename = f'thumb_{base_name}.webp'
+    thumb_path = os.path.join(save_dir, thumb_filename)
+    thumb_image.convert(save_mode).save(thumb_path, 'WEBP', quality=75, method=6)
+
+    return {
+        'big_img': f'photos/{big_filename}',
+        'thumb_img': f'photos/{thumb_filename}'
+    }
 
 # ── Database helpers ──
 
@@ -244,6 +288,12 @@ def init_db():
     except:
         db.execute("ALTER TABLE fabric_colors ADD COLUMN anchor_x REAL DEFAULT 0")
         db.execute("ALTER TABLE fabric_colors ADD COLUMN anchor_y REAL DEFAULT 0")
+        db.commit()
+    # Migration: add fabric column to cutting_layers for multi-fabric orders
+    try:
+        db.execute("SELECT fabric FROM cutting_layers LIMIT 1")
+    except:
+        db.execute("ALTER TABLE cutting_layers ADD COLUMN fabric TEXT DEFAULT ''")
         db.commit()
     # Migration: add components_data to order_items
     try:
@@ -601,15 +651,27 @@ def save_single_order(order):
              item.get('stampa_img_url', ''),
              item.get('stampa_code', ''))
         )
-    # Cutting layers
+    # Cutting layers — prefer fabrics structure (new format), fall back to layers
     db.execute("DELETE FROM cutting_layers WHERE order_id=?", (o['id'],))
-    cl = o.get('cutting_complete',{}).get('layers',{})
-    if isinstance(cl, dict) and len(cl) > 0:
-        for color, data in cl.items():
-            db.execute(
-                "INSERT INTO cutting_layers (order_id, color, layers, total) VALUES (?,?,?,?)",
-                (o['id'], color, data.get('layers',1), data.get('total',0))
-            )
+    cc = o.get('cutting_complete', {})
+    fabrics_dict = cc.get('fabrics', {})
+    if isinstance(fabrics_dict, dict) and len(fabrics_dict) > 0:
+        for fName, fData in fabrics_dict.items():
+            fHands = fData.get('hands', 1)
+            colors = fData.get('colors', {})
+            for color, cData in colors.items():
+                db.execute(
+                    "INSERT INTO cutting_layers (order_id, fabric, color, layers, total) VALUES (?,?,?,?,?)",
+                    (o['id'], fName, color, cData.get('layers', 1), cData.get('total', 0))
+                )
+    else:
+        cl = cc.get('layers', {})
+        if isinstance(cl, dict) and len(cl) > 0:
+            for color, data in cl.items():
+                db.execute(
+                    "INSERT INTO cutting_layers (order_id, fabric, color, layers, total) VALUES (?,?,?,?,?)",
+                    (o['id'], '', color, data.get('layers',1), data.get('total',0))
+                )
     # Cutting checkmarks
     db.execute("DELETE FROM cutting_checkmarks WHERE order_id=?", (o['id'],))
     ck = o.get('cutting_complete',{}).get('checkmarks',{})
@@ -637,7 +699,30 @@ def save_single_order(order):
                 step_data = o.get(step_key, {})
                 if 'length' in step_data: detail_parts.append(f'长度: {step_data["length"]}m')
                 if 'hands' in step_data: detail_parts.append(f'手数: {step_data["hands"]}')
-                if 'total_cut' in step_data: detail_parts.append(f'裁剪: {step_data["total_cut"]}件')
+                if 'total_cut' in step_data:
+                    # Compute fabric-1 only count from fabrics if available
+                    cut_total = step_data['total_cut']
+                    cc_fabrics = step_data.get('fabrics', {})
+                    if isinstance(cc_fabrics, dict) and cc_fabrics:
+                        f_names = list(cc_fabrics.keys())
+                        f1 = f_names[0] if f_names else ''
+                        f1_total = 0
+                        f_data = cc_fabrics.get(f1, {})
+                        for c_data in f_data.get('colors', {}).values():
+                            if isinstance(c_data, dict):
+                                f1_total += c_data.get('total', 0) or 0
+                        if f1_total:
+                            cut_total = f1_total
+                    detail_parts.append(f'裁剪: {cut_total}件')
+                # Add per-fabric breakdown for cutting step
+                if step_key == 'cutting_complete':
+                    cc_fabrics = step_data.get('fabrics', {})
+                    if isinstance(cc_fabrics, dict):
+                        for fName, fData in cc_fabrics.items():
+                            cols = fData.get('colors', {}) if isinstance(fData, dict) else {}
+                            for cName, cData in cols.items():
+                                if isinstance(cData, dict):
+                                    detail_parts.append(f'{fName}/{cName}: {cData.get("layers",0)}层x{cData.get("total",0)}件')
                 if 'factory' in step_data and step_data['factory']: detail_parts.append(f'工厂: {step_data["factory"]}')
                 if 'qty' in step_data: detail_parts.append(f'数量: {step_data["qty"]}件')
                 if 'operator' in step_data and step_data['operator']: detail_parts.append(f'操作: {step_data["operator"]}')
@@ -701,11 +786,18 @@ def read_order(order_id):
         result['items'].append(idict)
     # Cutting layers
     layers = db.execute("SELECT * FROM cutting_layers WHERE order_id=?", (order_id,)).fetchall()
-    for l in layers:
-        ld = dict(l)
-        result['cutting_complete']['layers'][ld['color']] = {
-            'layers': ld['layers'], 'total': ld['total']
-        }
+    if layers:
+        if 'layers' not in result['cutting_complete']:
+            result['cutting_complete']['layers'] = {}
+        for l in layers:
+            ld = dict(l)
+            key = ld['color']
+            fab = ld.get('fabric', '')
+            if fab:
+                key = fab + '\x00' + key
+            result['cutting_complete']['layers'][key] = {
+                'layers': ld['layers'], 'total': ld['total']
+            }
     # Checkmarks
     cks = db.execute("SELECT * FROM cutting_checkmarks WHERE order_id=?", (order_id,)).fetchall()
     for ck in cks:
@@ -731,7 +823,7 @@ def save_single_style(style):
          s.get('type','solid'), s.get('laborCost',0), s.get('ironCost',0),
          s.get('edgeNote',''), s.get('processingNote',''),
          s.get('totalCost',0) or 0, s.get('suggestedPrice',0) or 0,
-         s.get('createdAt',''), 1, s.get('mainPhoto','')))
+         s.get('createdAt',''), 1, int(s.get('mainPhoto', 0) or 0)))
     # Fabrics
     db.execute("DELETE FROM style_fabrics WHERE style_code=?", (s['code'],))
     for f in s.get('fabrics', []):
@@ -753,22 +845,17 @@ def save_single_style(style):
     db.execute("DELETE FROM style_images WHERE style_code=?", (s['code'],))
     for i, img in enumerate(s.get('images', [])):
         if img.startswith('data:'):
-            # Decode base64 data URL and save as file
             try:
-                import re, uuid
+                from io import BytesIO
                 meta_match = re.match(r'data:image/(\w+);base64,(.+)', img)
                 if meta_match:
-                    ext = meta_match.group(1)
-                    if ext == 'jpeg': ext = 'jpg'
                     b64_data = meta_match.group(2)
                     file_data = base64.b64decode(b64_data)
-                    filename = 'style_{}_{}.{}'.format(s['code'], uuid.uuid4().hex[:8], ext)
-                    filepath = os.path.join(PHOTO_DIR, filename)
-                    with open(filepath, 'wb') as f:
-                        f.write(file_data)
+                    buf = BytesIO(file_data)
+                    result = process_uploaded_image(buf)
                     db.execute(
                         "INSERT INTO style_images (style_code, file_path, sort_order) VALUES (?,?,?)",
-                        (s['code'], 'photos/' + filename, i)
+                        (s['code'], result['big_img'], i)
                     )
             except Exception as e:
                 print('Error saving image for style {}: {}'.format(s['code'], e))
@@ -797,7 +884,7 @@ def read_style(code):
         'totalCost': d['total_cost'],
         'suggestedPrice': d['suggested_price'],
         'createdAt': d['created_at'],
-        'mainPhoto': d['main_photo'],
+        'mainPhoto': int(d['main_photo']) if d['main_photo'] != '' else 0,
         'fabrics': [],
         'accessories': [],
         'images': []
@@ -919,7 +1006,7 @@ def api_data_get(key):
     elif key == 'orders':
         return jsonify(read_all_orders())
     elif key == 'cart':
-        sid = session.get('user_id', 'anon')
+        sid = session.get('cart_id', 'anon')
         db = get_db()
         rows = db.execute("SELECT * FROM cart_items WHERE session_id=? ORDER BY id", (sid,)).fetchall()
         cart = []
@@ -1057,21 +1144,18 @@ def api_order_quick_add_color():
         return jsonify({'error': 'missing style_code or color_name'}), 400
     db = get_db()
 
-    # 1. Save image to photos/
+    # 1. Save image to photos/ (process via WebP pipeline)
     file_path = ''
     if image_data and image_data.startswith('data:image'):
         try:
             meta_match = re.match(r'data:image/(\w+);base64,(.+)', image_data)
             if meta_match:
-                ext = meta_match.group(1)
-                if ext == 'jpeg': ext = 'jpg'
                 b64_data = meta_match.group(2)
                 file_data = base64.b64decode(b64_data)
-                filename = f'quick_{style_code}_{uuid.uuid4().hex[:8]}.{ext}'
-                filepath = os.path.join(PHOTO_DIR, filename)
-                with open(filepath, 'wb') as f:
-                    f.write(file_data)
-                file_path = 'photos/' + filename
+                from io import BytesIO
+                buf = BytesIO(file_data)
+                result = process_uploaded_image(buf)
+                file_path = result['big_img']
         except Exception as e:
             print('Error saving quick-add image:', e)
 
@@ -1193,6 +1277,35 @@ def api_order_add_anchor_color():
     updated_fabrics = get_settings_list('fabrics')
     return jsonify({'ok': True, 'fabrics': updated_fabrics})
 
+# ── Fabric stock deduction (called from cutting page) ──
+
+@app.route('/api/fabrics/deduct-stock', methods=['POST'])
+@require_auth
+def api_fabrics_deduct_stock():
+    """Deduct stock for one or more fabrics. Body: {deductions: [{name, amount}], order_id: '...'}"""
+    data = request.get_json(silent=True) or {}
+    deductions = data.get('deductions', [])
+    if not deductions:
+        return jsonify({'ok': False, 'error': 'no_deductions'}), 400
+    db = get_db()
+    results = []
+    for d in deductions:
+        name = d.get('name', '').strip()
+        amount = float(d.get('amount', 0))
+        if not name or amount <= 0:
+            results.append({'name': name, 'ok': False, 'error': 'invalid_params'})
+            continue
+        row = db.execute("SELECT id, stock FROM fabrics WHERE name=?", (name,)).fetchone()
+        if not row:
+            results.append({'name': name, 'ok': False, 'error': 'not_found'})
+            continue
+        new_stock = max(0, (row['stock'] or 0) - amount)
+        db.execute("UPDATE fabrics SET stock=? WHERE id=?", (new_stock, row['id']))
+        results.append({'name': name, 'ok': True, 'deducted': amount, 'new_stock': new_stock})
+    db.commit()
+    ok = all(r.get('ok') for r in results)
+    return jsonify({'ok': ok, 'results': results})
+
 # ── Stampa / Print endpoints ──
 
 @app.route('/api/history-stampe', methods=['GET'])
@@ -1229,15 +1342,12 @@ def api_stampe_upload():
         try:
             meta_match = re.match(r'data:image/(\w+);base64,(.+)', image_data)
             if meta_match:
-                ext = meta_match.group(1)
-                if ext == 'jpeg': ext = 'jpg'
                 b64_data = meta_match.group(2)
                 file_data = base64.b64decode(b64_data)
-                filename = f'stampa_{stampa_code}_{uuid.uuid4().hex[:8]}.{ext}'
-                filepath = os.path.join(PHOTO_DIR, filename)
-                with open(filepath, 'wb') as f:
-                    f.write(file_data)
-                file_path = 'photos/' + filename
+                from io import BytesIO
+                buf = BytesIO(file_data)
+                result = process_uploaded_image(buf)
+                file_path = result['big_img']
         except Exception as e:
             print('Error saving stampa image:', e)
             return jsonify({'error': str(e)}), 500
@@ -1510,6 +1620,18 @@ def api_export_csv():
         order_sub = (o.get('sub_customer','') or '')
         ship_total = o.get('shipping_complete',{}).get('qty',0)
         cut_layers = o.get('cutting_complete',{}).get('layers',{})
+        # Compute fabric-1 total from fabrics if available
+        cc = o.get('cutting_complete', {})
+        cc_fabrics = cc.get('fabrics', {})
+        fabric1_cut = 0
+        if isinstance(cc_fabrics, dict) and cc_fabrics:
+            f_names = list(cc_fabrics.keys())
+            f1 = f_names[0] if f_names else ''
+            for c_data in cc_fabrics.get(f1, {}).get('colors', {}).values():
+                if isinstance(c_data, dict):
+                    fabric1_cut += c_data.get('total', 0) or 0
+        if not fabric1_cut:
+            fabric1_cut = cc.get('total_cut', 0) or 0
         order_total = o.get('total_qty',0)
         if o.get('items'):
             for item in o['items']:
@@ -1522,11 +1644,15 @@ def api_export_csv():
                 cut_qty = 0
                 if cut_layers and item.get('color') in cut_layers:
                     cut_qty = cut_layers[item['color']].get('total',0)
+                if not cut_qty and isinstance(cc_fabrics, dict):
+                    for f_name, f_data in cc_fabrics.items():
+                        if item.get('color') in f_data.get('colors', {}):
+                            cut_qty += f_data['colors'][item['color']].get('total', 0) or 0
                 ship_qty = round(ship_total * item_total / order_total) if order_total > 0 else 0
                 row.extend([item_total, cut_qty, ship_qty])
                 writer.writerow(row)
         else:
-            row = [o['id'], '', '', order_note] + [0]*len(size_keys) + [order_total, cut_layers.get('total_cut',0) or 0, ship_total]
+            row = [o['id'], '', '', order_note] + [0]*len(size_keys) + [order_total, fabric1_cut, ship_total]
             writer.writerow(row)
     csv_content = output.getvalue()
     output.close()
@@ -1573,24 +1699,14 @@ def api_upload():
     file = request.files['file']
     if not file.filename:
         return jsonify({'error': 'empty filename'}), 400
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ('.jpg','.jpeg','.png','.webp'):
-        return jsonify({'error': 'unsupported format'}), 400
-    # Generate unique filename
-    fname = uuid.uuid4().hex + ext
-    save_path = os.path.join(PHOTO_DIR, fname)
-    file.save(save_path)
-    # Also save a thumbnail for style images (max 1200px wide)
     try:
-        from PIL import Image
-        img = Image.open(save_path)
-        if img.width > 1200:
-            ratio = 1200 / img.width
-            img = img.resize((1200, int(img.height * ratio)), Image.LANCZOS)
-            img.save(save_path, optimize=True, quality=85)
-    except ImportError:
-        pass  # PIL not available, keep original
-    return jsonify({'ok': True, 'path': f'photos/{fname}'})
+        result = process_uploaded_image(file)
+        return jsonify({'ok': True, 'path': result['big_img']})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        print('Error in api_upload:', e)
+        return jsonify({'error': '图片处理失败'}), 500
 
 # ── Login logs & user control ──
 
@@ -1678,13 +1794,17 @@ def index():
 
 @app.route('/<path:path>')
 def static_files(path):
+    if path.endswith('.db'):
+        return jsonify({'error': 'forbidden'}), 403
     if path.startswith('photos/'):
         return send_from_directory(PHOTO_DIR, path[7:])
     return app.send_static_file(path)
 
 @app.after_request
 def add_cors(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    origin = request.headers.get('Origin', '')
+    if origin in ('https://www.diana-moda.asia', 'http://localhost:8766'):
+        response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
