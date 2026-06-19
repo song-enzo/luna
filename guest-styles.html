@@ -236,7 +236,8 @@ container.innerHTML = styles.map(function(s) {
   } else {
     imgHtml = getCategoryIcon(s.category);
   }
-  return '<div class="card" onclick="window.location.href=\'order-page.html?code=' + s.code + '\'">' +
+  var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
+  return '<div class="card" onclick="window.location.href=\'' + page + '?code=' + s.code + '\'">' +
   '<div class="img-wrap">' + imgHtml + '</div>' +
   '<div class="info">' +
   '<div class="code">ART-' + s.code + '</div>' +
@@ -270,7 +271,8 @@ function renderNewArrivals() {
     } else {
       img = getCategoryIcon(s.category);
     }
-    return '<div class="scroll-card" onclick="window.location.href=\'order-page.html?code='+s.code+'\'">' +
+    var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
+    return '<div class="scroll-card" onclick="window.location.href=\'' + page + '?code='+s.code+'\'">' +
       '<div class="s-img">'+img+'</div>' +
       '<div class="s-info"><div class="s-code">ART-'+s.code+'</div>' +
       '<div class="s-price">€'+(s.suggestedPrice||'0.00')+'</div></div></div>';
