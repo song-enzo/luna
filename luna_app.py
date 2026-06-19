@@ -2246,18 +2246,22 @@ QWEN_ANALYSIS_PROMPT = """You are a textile pattern analysis expert. This image 
 
 Analyze the image step by step:
 1. Find the pattern number (top of image, usually large text like E2, W830, TT439)
-2. Find the repeat/cycle size (top area, like 8.3cm, 9cm)  
-3. Identify EVERY individual color swatch — each one is a separate colored rectangle with text labels
+2. Find the repeat/cycle size (top area, like 8.3cm, 9cm)
+3. Identify EVERY individual color swatch — each one is a separate colored rectangle with text labels inside it
 
-For each swatch, extract the color name and the color code/number.
-List ALL swatches, one by one, going left-to-right then top-to-bottom.
+For each swatch, extract:
+- color_name: the color name in Chinese or English (e.g. 白色, 深蓝, 卡其)
+- sub_code: the color code/number (e.g. V2, W830, 01, 02)
+- bbox_percent: the approximate bounding box of this swatch as [x1%, y1%, x2%, y2%], where coordinates are percentages of the image width/height (0-100). Estimate the rectangle that tightly contains this color swatch.
+
+IMPORTANT: List ALL swatches you can see. Go left-to-right, top-to-bottom. Do not miss any.
 
 Respond ONLY with a valid JSON object, no other text:
 {
-  "pattern_no": "pattern number",
-  "cycle_size": "repeat size like 8.3cm",
+  "pattern_no": "pattern number or empty string",
+  "cycle_size": "repeat size like 8.3cm or empty string",
   "colorways": [
-    {"color_name": "color name only", "sub_code": "color code like V2 or W830"}
+    {"color_name": "color name", "sub_code": "color code", "bbox_percent": [x1, y1, x2, y2]}
   ]
 }"""
 
