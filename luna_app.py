@@ -21,6 +21,21 @@ SYSTEM_CONFIG = {
     'port': 8766
 }
 
+# ── Qwen VL config (通义千问视觉大模型) ──
+# API key 可以放在环境变量 QWEN_API_KEY 或 local_config.json 中
+
+_local_cfg_path = os.path.join(os.path.dirname(__file__), 'local_config.json')
+_local_cfg = {}
+if os.path.exists(_local_cfg_path):
+    try:
+        with open(_local_cfg_path, 'r') as _f:
+            _local_cfg = json.load(_f)
+    except: pass
+
+QWEN_API_KEY = os.environ.get('QWEN_API_KEY', '') or _local_cfg.get('qwen_api_key', '')
+QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen-vl-plus')
+QWEN_API_BASE = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+
 # ── Image processing utility ──
 
 def process_uploaded_image(file_storage, folder=None):
@@ -186,6 +201,33 @@ def init_db():
         );
     """)
     db.commit()
+    # Create print_warehouse table (花版仓库)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS print_warehouse (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            print_code TEXT NOT NULL UNIQUE,
+            print_name TEXT DEFAULT '',
+            big_img TEXT NOT NULL DEFAULT '',
+            thumb_img TEXT NOT NULL DEFAULT '',
+            supplier TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+    # Create style_prints table (款式-花版关联)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS style_prints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            style_code TEXT NOT NULL REFERENCES styles(code),
+            print_id INTEGER NOT NULL REFERENCES print_warehouse(id),
+            last_used TEXT DEFAULT (datetime('now','localtime')),
+            UNIQUE(style_code, print_id)
+        )
+    """)
+    db.execute("CREATE INDEX IF NOT EXISTS idx_style_prints_code ON style_prints(style_code)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_style_prints_print ON style_prints(print_id)")
+    db.commit()
     # Migration: add order_operations for old databases
     try:
         db.execute("SELECT 1 FROM order_operations LIMIT 1")
@@ -331,6 +373,46 @@ def init_db():
         db.execute("ALTER TABLE cart_items ADD COLUMN stampa_img_url TEXT DEFAULT ''")
         db.execute("ALTER TABLE cart_items ADD COLUMN stampa_code TEXT DEFAULT ''")
         db.commit()
+    # Migration: add stampa_id to order_items
+    try:
+        db.execute("SELECT stampa_id FROM order_items LIMIT 1")
+    except:
+        db.execute("ALTER TABLE order_items ADD COLUMN stampa_id INTEGER DEFAULT 0")
+        db.commit()
+    # Migration: add stampa_id to cart_items
+    try:
+        db.execute("SELECT stampa_id FROM cart_items LIMIT 1")
+    except:
+        db.execute("ALTER TABLE cart_items ADD COLUMN stampa_id INTEGER DEFAULT 0")
+        db.commit()
+    # Migration: migrate existing stampe data to print_warehouse
+    try:
+        cnt = db.execute("SELECT COUNT(*) FROM print_warehouse").fetchone()[0]
+        if cnt == 0:
+            rows = db.execute("SELECT * FROM stampe").fetchall()
+            for r in rows:
+                try:
+                    db.execute(
+                        "INSERT OR IGNORE INTO print_warehouse (print_code, big_img, thumb_img, created_at) VALUES (?,?,?,?)",
+                        (r['code'], r['img_url'], r['img_url'], r['created_at'])
+                    )
+                except:
+                    pass
+            # Also migrate from order_items distinct stampa records
+            oi_rows = db.execute(
+                "SELECT DISTINCT stampa_code, stampa_img_url FROM order_items WHERE stampa_code IS NOT NULL AND stampa_code != ''"
+            ).fetchall()
+            for r in oi_rows:
+                try:
+                    db.execute(
+                        "INSERT OR IGNORE INTO print_warehouse (print_code, big_img) VALUES (?,?)",
+                        (r['stampa_code'], r['stampa_img_url'])
+                    )
+                except:
+                    pass
+            db.commit()
+    except:
+        pass
     # Create stampe history table
     db.execute("""
         CREATE TABLE IF NOT EXISTS stampe (
@@ -342,6 +424,33 @@ def init_db():
         )
     """)
     db.commit()
+    # Migration: remove UNIQUE constraint on print_code to allow multiple prints per style code
+    try:
+        # First clean up any orphaned table from a previous failed migration
+        db.execute("DROP TABLE IF EXISTS print_warehouse_new")
+        idx_info = db.execute("PRAGMA index_list('print_warehouse')").fetchall()
+        has_auto_uniq = any(r['unique'] and 'sqlite_autoindex' in r['name'] for r in idx_info)
+        if has_auto_uniq:
+            db.execute("""
+                CREATE TABLE print_warehouse_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    print_code TEXT NOT NULL DEFAULT '',
+                    print_name TEXT DEFAULT '',
+                    big_img TEXT NOT NULL DEFAULT '',
+                    thumb_img TEXT NOT NULL DEFAULT '',
+                    supplier TEXT DEFAULT '',
+                    notes TEXT DEFAULT '',
+                    created_at TEXT DEFAULT (datetime('now','localtime')),
+                    updated_at TEXT DEFAULT (datetime('now','localtime'))
+                )
+            """)
+            db.execute("INSERT INTO print_warehouse_new SELECT * FROM print_warehouse")
+            db.execute("DROP TABLE print_warehouse")
+            db.execute("ALTER TABLE print_warehouse_new RENAME TO print_warehouse")
+            db.commit()
+            print("Migration: removed UNIQUE constraint from print_warehouse.print_code")
+    except Exception as e:
+        print(f"Migration note (print_warehouse recreate): {e}")
     # Migration: hash existing plaintext passwords
     rows = db.execute("SELECT id, password FROM users").fetchall()
     for row in rows:
@@ -372,6 +481,51 @@ def init_db():
                 (g[0], g[1], generate_password_hash(g[2]), g[3], g[4], g[5], g[6], g[7], g[8], g[9], g[10])
             )
         db.commit()
+    # Migration: create luna_style_images + luna_order_stickers (框选反单系统)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS luna_style_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            style_code TEXT NOT NULL,
+            image_url TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS luna_order_stickers (
+            id TEXT PRIMARY KEY,
+            image_id INTEGER NOT NULL,
+            label TEXT DEFAULT '',
+            coord_left REAL NOT NULL DEFAULT 0,
+            coord_top REAL NOT NULL DEFAULT 0,
+            coord_width REAL NOT NULL DEFAULT 0,
+            coord_height REAL NOT NULL DEFAULT 0,
+            size_quantities TEXT NOT NULL DEFAULT '{}',
+            updated_at TEXT DEFAULT (datetime('now','localtime')),
+            FOREIGN KEY (image_id) REFERENCES luna_style_images(id) ON DELETE CASCADE
+        )
+    """)
+    # Unique index so INSERT OR IGNORE deduplicates (style_code, image_url)
+    try:
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_lsi_style_img ON luna_style_images(style_code, image_url)")
+    except:
+        pass
+    # Seed luna_style_images from existing print_warehouse data
+    try:
+        existing = db.execute("SELECT COUNT(*) FROM luna_style_images").fetchone()[0]
+        if existing == 0:
+            pws = db.execute(
+                "SELECT print_code, big_img FROM print_warehouse WHERE big_img != '' AND print_code != ''"
+            ).fetchall()
+            for pw in pws:
+                db.execute(
+                    "INSERT OR IGNORE INTO luna_style_images (style_code, image_url) VALUES (?,?)",
+                    (pw['print_code'], pw['big_img'])
+                )
+            db.commit()
+            print(f"Migration: seeded {len(pws)} luna_style_images from print_warehouse")
+    except Exception as e:
+        print(f"Migration note (luna_style_images seed): {e}")
+    db.commit()
 
 def row_to_dict(row):
     if row is None: return None
@@ -641,7 +795,7 @@ def save_single_order(order):
     db.execute("DELETE FROM order_items WHERE order_id=?", (o['id'],))
     for item in o.get('items', []):
         db.execute(
-            "INSERT INTO order_items (order_id, code, name, color, fabric, price, qty_data, note, components_data, item_type, stampa_img_url, stampa_code) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO order_items (order_id, code, name, color, fabric, price, qty_data, note, components_data, item_type, stampa_img_url, stampa_code, stampa_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (o['id'], item.get('code',''), item.get('name',''),
              item.get('color',''), item.get('fabric',''),
              item.get('price',0), json.dumps(item.get('qty',{}), ensure_ascii=False),
@@ -649,7 +803,8 @@ def save_single_order(order):
              json.dumps(item.get('components', []), ensure_ascii=False),
              item.get('item_type', 'tinta_unita'),
              item.get('stampa_img_url', ''),
-             item.get('stampa_code', ''))
+             item.get('stampa_code', ''),
+             item.get('stampa_id', 0))
         )
     # Cutting layers — prefer fabrics structure (new format), fall back to layers
     db.execute("DELETE FROM cutting_layers WHERE order_id=?", (o['id'],))
@@ -783,6 +938,7 @@ def read_order(order_id):
         idict['item_type'] = idict.get('item_type', 'tinta_unita')
         idict['stampa_img_url'] = idict.get('stampa_img_url', '')
         idict['stampa_code'] = idict.get('stampa_code', '')
+        idict['stampa_id'] = idict.get('stampa_id', 0)
         result['items'].append(idict)
     # Cutting layers
     layers = db.execute("SELECT * FROM cutting_layers WHERE order_id=?", (order_id,)).fetchall()
@@ -1363,7 +1519,266 @@ def api_stampe_upload():
     )
     db.commit()
 
+    # Also save to print_warehouse if not already exists
+    existing = db.execute("SELECT id FROM print_warehouse WHERE print_code=?", (stampa_code,)).fetchone()
+    if not existing:
+        try:
+            db.execute(
+                "INSERT INTO print_warehouse (print_code, print_name, big_img, thumb_img) VALUES (?,?,?,?)",
+                (stampa_code, '', file_path, file_path)
+            )
+            db.commit()
+        except Exception as e:
+            print('Note: could not save to print_warehouse:', e)
+
     return jsonify({'ok': True, 'img_url': file_path})
+
+# ── Print Warehouse (花版仓库) CRUD ──
+
+@app.route('/api/print-warehouse', methods=['GET'])
+def api_print_warehouse_list():
+    """List/search print_warehouse. Support ?q=xxx fuzzy search on code/name"""
+    db = get_db()
+    q = request.args.get('q', '').strip()
+    if q:
+        like = f'%{q}%'
+        rows = db.execute(
+            "SELECT * FROM print_warehouse WHERE print_code LIKE ? OR print_name LIKE ? ORDER BY updated_at DESC",
+            (like, like)
+        ).fetchall()
+    else:
+        rows = db.execute("SELECT * FROM print_warehouse ORDER BY updated_at DESC").fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/print-warehouse', methods=['POST'])
+def api_print_warehouse_save():
+    """Create or update a print record. If id provided, update; else insert."""
+    data = request.get_json(silent=True) or {}
+    pid = data.get('id', 0)
+    print_code = data.get('print_code', '').strip()
+    if not print_code:
+        return jsonify({'error': 'print_code is required'}), 400
+    db = get_db()
+    if pid:
+        db.execute(
+            "UPDATE print_warehouse SET print_code=?, print_name=?, big_img=?, thumb_img=?, supplier=?, notes=?, updated_at=datetime('now','localtime') WHERE id=?",
+            (print_code, data.get('print_name',''), data.get('big_img',''), data.get('thumb_img',''),
+             data.get('supplier',''), data.get('notes',''), pid)
+        )
+    else:
+        db.execute(
+            "INSERT INTO print_warehouse (print_code, print_name, big_img, thumb_img, supplier, notes) VALUES (?,?,?,?,?,?)",
+            (print_code, data.get('print_name',''), data.get('big_img',''), data.get('thumb_img',''),
+             data.get('supplier',''), data.get('notes',''))
+        )
+        pid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    db.commit()
+    # Sync to luna_style_images for sticker system
+    try:
+        big_img = data.get('big_img', '')
+        if big_img:
+            db.execute(
+                "INSERT OR IGNORE INTO luna_style_images (style_code, image_url) VALUES (?,?)",
+                (print_code, big_img)
+            )
+            db.commit()
+    except Exception as e:
+        print(f"Note: luna_style_images sync: {e}")
+    row = db.execute("SELECT * FROM print_warehouse WHERE id=?", (pid,)).fetchone()
+    return jsonify(dict(row) if row else {'ok': True})
+
+@app.route('/api/print-warehouse/<int:pid>', methods=['GET'])
+def api_print_warehouse_get(pid):
+    """Get single print record by id"""
+    db = get_db()
+    row = db.execute("SELECT * FROM print_warehouse WHERE id=?", (pid,)).fetchone()
+    if not row:
+        return jsonify({'error': 'not found'}), 404
+    return jsonify(dict(row))
+
+@app.route('/api/print-warehouse/<int:pid>', methods=['DELETE'])
+def api_print_warehouse_delete(pid):
+    """Delete a print record"""
+    db = get_db()
+    db.execute("DELETE FROM print_warehouse WHERE id=?", (pid,))
+    db.execute("DELETE FROM style_prints WHERE print_id=?", (pid,))
+    db.commit()
+    return jsonify({'ok': True})
+
+# ── Print warehouse: groups & by-style ──
+
+@app.route('/api/print-warehouse/groups', methods=['GET'])
+def api_print_warehouse_groups():
+    """Return distinct print_code groups with counts and latest thumbnail"""
+    db = get_db()
+    rows = db.execute("""
+        SELECT pw.print_code,
+               COUNT(pw.id) as print_count,
+               MAX(pw.updated_at) as last_updated,
+               (SELECT pw2.thumb_img FROM print_warehouse pw2
+                WHERE pw2.print_code = pw.print_code AND pw2.thumb_img != ''
+                ORDER BY pw2.id DESC LIMIT 1) as thumb
+        FROM print_warehouse pw
+        WHERE pw.print_code != ''
+        GROUP BY pw.print_code
+        ORDER BY last_updated DESC
+    """).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/print-warehouse/by-style/<style_code>', methods=['GET'])
+def api_print_warehouse_by_style(style_code):
+    """Return all prints for a given style code (print_code=style_code) with total ordered qty"""
+    db = get_db()
+    rows = db.execute(
+        "SELECT pw.*, lsi.id as image_id FROM print_warehouse pw "
+        "LEFT JOIN luna_style_images lsi ON lsi.style_code=pw.print_code AND lsi.image_url=pw.big_img "
+        "WHERE pw.print_code=? ORDER BY pw.updated_at DESC",
+        (style_code,)
+    ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        # Calculate total historical ordered qty from order_items
+        order_items = db.execute(
+            "SELECT qty_data FROM order_items WHERE stampa_id=?",
+            (d['id'],)
+        ).fetchall()
+        total_qty = 0
+        for oi in order_items:
+            try:
+                qty = json.loads(oi['qty_data'])
+                total_qty += sum(v for v in qty.values() if isinstance(v, (int, float)))
+            except:
+                pass
+        d['total_ordered'] = total_qty
+        result.append(d)
+    return jsonify(result)
+
+# ── Luna Stickers CRUD (框选反单系统) ──
+
+@app.route('/api/luna/images/<int:image_id>/stickers', methods=['GET'])
+def api_luna_stickers_list(image_id):
+    """Get all stickers for an image"""
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM luna_order_stickers WHERE image_id=? ORDER BY updated_at DESC",
+        (image_id,)
+    ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d['size_quantities'] = json.loads(d['size_quantities'])
+        except:
+            d['size_quantities'] = {}
+        result.append(d)
+    return jsonify(result)
+
+@app.route('/api/luna/stickers/save', methods=['POST'])
+def api_luna_sticker_save():
+    """Create or update a sticker"""
+    import time, random
+    data = request.get_json(silent=True) or {}
+    sticker_id = data.get('id', '').strip()
+    image_id = data.get('image_id', 0)
+    label = data.get('label', '').strip()
+    coords = data.get('coords', {})
+    sizes = data.get('sizes', {})
+
+    if not image_id:
+        return jsonify({'error': 'image_id required'}), 400
+    if not coords or not all(k in coords for k in ('left','top','width','height')):
+        return jsonify({'error': 'coords with left/top/width/height required'}), 400
+
+    sizes_json = json.dumps(sizes, ensure_ascii=False)
+    now_str = "datetime('now','localtime')"
+    db = get_db()
+
+    if sticker_id:
+        existing = db.execute("SELECT id FROM luna_order_stickers WHERE id=?", (sticker_id,)).fetchone()
+        if existing:
+            db.execute(
+                """UPDATE luna_order_stickers
+                   SET label=?, coord_left=?, coord_top=?, coord_width=?, coord_height=?,
+                       size_quantities=?, updated_at=datetime('now','localtime')
+                   WHERE id=?""",
+                (label, coords['left'], coords['top'], coords['width'], coords['height'],
+                 sizes_json, sticker_id)
+            )
+        else:
+            sticker_id = ''
+    if not sticker_id:
+        ts = int(time.time())
+        sticker_id = f"sticker_{ts}_{random.randint(1000,9999)}"
+        db.execute(
+            "INSERT INTO luna_order_stickers (id, image_id, label, coord_left, coord_top, coord_width, coord_height, size_quantities) VALUES (?,?,?,?,?,?,?,?)",
+            (sticker_id, image_id, label, coords['left'], coords['top'], coords['width'], coords['height'], sizes_json)
+        )
+    db.commit()
+    return jsonify({'ok': True, 'id': sticker_id})
+
+@app.route('/api/luna/stickers/<sticker_id>', methods=['DELETE'])
+def api_luna_sticker_delete(sticker_id):
+    """Delete a sticker"""
+    db = get_db()
+    db.execute("DELETE FROM luna_order_stickers WHERE id=?", (sticker_id,))
+    db.commit()
+    return jsonify({'ok': True})
+
+# ── Style-Print binding ──
+
+@app.route('/api/style-prints', methods=['GET'])
+def api_style_prints_list():
+    """Get prints for a style code, or styles for a print_id."""
+    style_code = request.args.get('code', '').strip()
+    print_id = request.args.get('print_id', '').strip()
+    db = get_db()
+
+    if print_id:
+        # Get styles bound to this print
+        rows = db.execute(
+            """SELECT sp.id, sp.style_code, s.name as style_name, sp.last_used FROM style_prints sp
+               LEFT JOIN styles s ON s.code = sp.style_code
+               WHERE sp.print_id = ?
+               ORDER BY sp.last_used DESC""",
+            (print_id,)
+        ).fetchall()
+        return jsonify([dict(r) for r in rows])
+
+    if not style_code:
+        return jsonify({'error': 'code or print_id parameter required'}), 400
+
+    rows = db.execute(
+        """SELECT pw.*, sp.last_used FROM style_prints sp
+           JOIN print_warehouse pw ON pw.id = sp.print_id
+           WHERE sp.style_code = ?
+           ORDER BY sp.last_used DESC""",
+        (style_code,)
+    ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/style-prints', methods=['POST'])
+def api_style_prints_bind():
+    """Bind a print to a style (upsert last_used), or unbind by unbind_id"""
+    data = request.get_json(silent=True) or {}
+    unbind_id = data.get('unbind_id', 0)
+    db = get_db()
+
+    if unbind_id:
+        db.execute("DELETE FROM style_prints WHERE id=?", (unbind_id,))
+        db.commit()
+        return jsonify({'ok': True})
+
+    style_code = data.get('style_code', '').strip()
+    print_id = data.get('print_id', 0)
+    if not style_code or not print_id:
+        return jsonify({'error': 'style_code and print_id required'}), 400
+    db.execute(
+        "INSERT OR REPLACE INTO style_prints (style_code, print_id, last_used) VALUES (?,?, datetime('now','localtime'))",
+        (style_code, print_id)
+    )
+    db.commit()
+    return jsonify({'ok': True})
 
 # ── Order endpoints ──
 
@@ -1449,6 +1864,7 @@ def api_cart():
         item_type = data.get('item_type', 'tinta_unita')
         stampa_img_url = data.get('stampa_img_url', '')
         stampa_code = data.get('stampa_code', '')
+        stampa_id = data.get('stampa_id', 0)
         components_json = json.dumps(components, ensure_ascii=False) if components else '[]'
         # For merge detection: use color+components+stampa combo key
         existing = db.execute(
@@ -1460,19 +1876,19 @@ def api_cart():
             for k, v in qty.items():
                 old_qty[k] = old_qty.get(k, 0) + v
             db.execute(
-                "UPDATE cart_items SET qty_data=?, name=?, fabric=?, price=?, item_type=?, stampa_img_url=? WHERE id=?",
+                "UPDATE cart_items SET qty_data=?, name=?, fabric=?, price=?, item_type=?, stampa_img_url=?, stampa_id=? WHERE id=?",
                 (json.dumps(old_qty, ensure_ascii=False),
                  data.get('name',''), data.get('fabric',''),
-                 data.get('price',0), item_type, stampa_img_url, existing['id'])
+                 data.get('price',0), item_type, stampa_img_url, stampa_id, existing['id'])
             )
         else:
             db.execute(
-                "INSERT INTO cart_items (session_id, code, name, color, fabric, price, note, qty_data, components_data, item_type, stampa_img_url, stampa_code) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO cart_items (session_id, code, name, color, fabric, price, note, qty_data, components_data, item_type, stampa_img_url, stampa_code, stampa_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (sid, code, data.get('name',''),
                  color, data.get('fabric',''),
                  data.get('price',0), note,
                  json.dumps(qty, ensure_ascii=False),
-                 components_json, item_type, stampa_img_url, stampa_code)
+                 components_json, item_type, stampa_img_url, stampa_code, stampa_id)
             )
         # One note per code group — if note provided, update ALL items of this code
         if note:
@@ -1505,6 +1921,7 @@ def api_cart():
         d['item_type'] = d.get('item_type', 'tinta_unita')
         d['stampa_img_url'] = d.get('stampa_img_url', '')
         d['stampa_code'] = d.get('stampa_code', '')
+        d['stampa_id'] = d.get('stampa_id', 0)
         cart.append(d)
     return jsonify({'ok': True, 'cart': cart})
 
@@ -1551,7 +1968,8 @@ def api_checkout():
                 'components': components,
                 'item_type': r['item_type'] or 'tinta_unita',
                 'stampa_img_url': r['stampa_img_url'] or '',
-                'stampa_code': r['stampa_code'] or ''
+                'stampa_code': r['stampa_code'] or '',
+                'stampa_id': r['stampa_id'] or 0
             })
             total_qty += item_total
         order = {
@@ -1821,6 +2239,262 @@ def no_cache(response):
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
     return response
+
+# ── AI Pattern Analysis (Qwen VL 视觉大模型) ──
+
+QWEN_ANALYSIS_PROMPT = """You are a textile pattern analysis expert. This image is a pattern composite sheet with multiple color swatches arranged in a grid.
+
+Analyze the image step by step:
+1. Find the pattern number (top of image, usually large text like E2, W830, TT439)
+2. Find the repeat/cycle size (top area, like 8.3cm, 9cm)  
+3. Identify EVERY individual color swatch — each one is a separate colored rectangle with text labels
+
+For each swatch, extract the color name and the color code/number.
+List ALL swatches, one by one, going left-to-right then top-to-bottom.
+
+Respond ONLY with a valid JSON object, no other text:
+{
+  "pattern_no": "pattern number",
+  "cycle_size": "repeat size like 8.3cm",
+  "colorways": [
+    {"color_name": "color name only", "sub_code": "color code like V2 or W830"}
+  ]
+}"""
+
+def _analyze_with_qwen(image_path):
+    """调用通义千问 VL 大模型分析花版图，返回结构化数据"""
+    import requests as req
+    if not QWEN_API_KEY:
+        raise RuntimeError('QWEN_API_KEY 未配置，请在环境变量中设置')
+
+    # Downscale large images before sending to API (speeds up inference significantly)
+    import cv2 as _cv2
+    img_orig = _cv2.imread(image_path)
+    h_raw, w_raw = img_orig.shape[:2]
+    max_dim = 1024  # max pixels on longest side
+    if max(h_raw, w_raw) > max_dim:
+        scale = max_dim / max(h_raw, w_raw)
+        new_w, new_h = int(w_raw * scale), int(h_raw * scale)
+        img_small = _cv2.resize(img_orig, (new_w, new_h), interpolation=_cv2.INTER_AREA)
+        success, buf = _cv2.imencode('.jpg', img_small, [int(_cv2.IMWRITE_JPEG_QUALITY), 85])
+        img_b64 = base64.b64encode(buf).decode('utf-8')
+        mime = 'image/jpeg'
+    else:
+        with open(image_path, 'rb') as f:
+            img_b64 = base64.b64encode(f.read()).decode('utf-8')
+        mime = 'image/jpeg'
+        if image_path.lower().endswith('.png'): mime = 'image/png'
+        elif image_path.lower().endswith('.webp'): mime = 'image/webp'
+
+    data_url = f'data:{mime};base64,{img_b64}'
+
+    resp = req.post(
+        f'{QWEN_API_BASE}/chat/completions',
+        headers={'Authorization': f'Bearer {QWEN_API_KEY}', 'Content-Type': 'application/json'},
+        json={
+            'model': QWEN_MODEL,
+            'messages': [{
+                'role': 'user',
+                'content': [
+                    {'type': 'image_url', 'image_url': {'url': data_url}},
+                    {'type': 'text', 'text': QWEN_ANALYSIS_PROMPT}
+                ]
+            }]
+        },
+        timeout=180
+    )
+
+    if resp.status_code != 200:
+        raise RuntimeError(f'Qwen API error {resp.status_code}: {resp.text}')
+
+    # Parse response — extract JSON from text (may be wrapped in markdown)
+    import re as _re
+    result = resp.json()
+    content = result['choices'][0]['message']['content']
+
+    # Try to find JSON block: either pure JSON or wrapped in ```json ... ```
+    json_match = _re.search(r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```', content, _re.DOTALL)
+    if json_match:
+        json_str = json_match.group(1)
+    else:
+        json_str = content
+
+    parsed = json.loads(json_str)
+
+    # img_orig already loaded above for downscaling — reuse for cropping
+    h, w = img_orig.shape[:2]
+
+    def clamp(v, lo, hi):
+        return max(lo, min(hi, v))
+
+    colorways = []
+    raw_list = parsed.get('colorways', [])
+    total = len(raw_list)
+
+    # Estimate grid layout for bbox fallback (server-side image cropping)
+    if total > 0:
+        import math
+        cols = max(1, math.ceil(math.sqrt(total)))
+        rows = max(1, math.ceil(total / cols))
+
+        margin_top = int(h * 0.15)
+        margin_left = int(w * 0.02)
+        content_h = h - margin_top - int(h * 0.02)
+        content_w = w - 2 * margin_left
+
+        for i, cw in enumerate(raw_list):
+            bbox_pct = cw.get('bbox_percent')
+            if bbox_pct and isinstance(bbox_pct, (list, tuple)) and len(bbox_pct) >= 4:
+                x1 = int(clamp(bbox_pct[0], 0, 100) / 100.0 * w)
+                y1 = int(clamp(bbox_pct[1], 0, 100) / 100.0 * h)
+                x2 = int(clamp(bbox_pct[2], 0, 100) / 100.0 * w)
+                y2 = int(clamp(bbox_pct[3], 0, 100) / 100.0 * h)
+            else:
+                row = i // cols
+                col = i % cols
+                cell_w = content_w // cols
+                cell_h = content_h // rows
+                x1 = margin_left + col * cell_w
+                y1 = margin_top + row * cell_h
+                x2 = x1 + cell_w
+                y2 = y1 + cell_h
+
+            if x2 <= x1 or y2 <= y1:
+                continue
+
+            roi = img_orig[y1:y2, x1:x2]
+            avg_color = '#888888'
+            if roi.size > 0:
+                avg = _cv2.mean(roi)[:3][::-1]
+                avg_color = '#{:02x}{:02x}{:02x}'.format(int(avg[0]), int(avg[1]), int(avg[2]))
+
+            colorways.append({
+                'index': i + 1,
+                'color_name': (cw.get('color_name', '') or '').strip(),
+                'sub_code': (cw.get('sub_code', '') or '').strip(),
+                'sku_code': '',
+                'bbox': [x1, y1, x2, y2],
+                'dominant_color': avg_color,
+                'ocr_text': ''
+            })
+
+    if not colorways:
+        raise RuntimeError('Qwen 未能识别出任何色块，请确认图片是花版复合图')
+
+    return {
+        'pattern_no': (parsed.get('pattern_no', '') or '').strip(),
+        'cycle_size': (parsed.get('cycle_size', '') or '').strip(),
+        'colorways': colorways
+    }
+
+# ── API: AI Analyze Pattern ──
+
+@app.route('/api/ai/analyze-pattern', methods=['POST'])
+@require_auth
+def api_ai_analyze_pattern():
+    """上传复合大图 → Qwen VL 视觉大模型分析 → 切图 → 返回结构化 JSON"""
+    if 'file' not in request.files:
+        return jsonify({'error': 'no file'}), 400
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'empty filename'}), 400
+
+    # Save uploaded image
+    ext = os.path.splitext(file.filename)[1] or '.jpg'
+    filename = 'ai_' + uuid.uuid4().hex + ext
+    filepath = os.path.join(PHOTO_DIR, filename)
+    file.save(filepath)
+
+    try:
+        import cv2, numpy as np
+
+        # Create webp display copy
+        result = process_uploaded_image(filepath)
+        display_url = '/' + result['big_img']
+
+        # ── Qwen VL analysis ──
+        if QWEN_API_KEY:
+            analysis = _analyze_with_qwen(filepath)
+        else:
+            return jsonify({'status': 'error', 'error': 'QWEN_API_KEY 未配置，请在环境变量中设置'}), 503
+
+        pattern_no = analysis['pattern_no']
+        cycle_size = analysis['cycle_size']
+        swatches = analysis['colorways']
+
+        # Generate SKU for each colorway
+        for s in swatches:
+            cn = s.get('color_name', '')
+            pn = pattern_no
+            s['sku_code'] = f'{pn}_{cn}' if pn and cn else (pn or cn or '')
+
+        # Crop each swatch from original image and save
+        img_bgr = cv2.imread(filepath)
+        for s in swatches:
+            x1, y1, x2, y2 = s['bbox']
+            roi = img_bgr[y1:y2, x1:x2]
+            if roi.size == 0: continue
+            crop_name = 'swatch_' + uuid.uuid4().hex + '.jpg'
+            crop_path = os.path.join(PHOTO_DIR, crop_name)
+            cv2.imwrite(crop_path, roi)
+            crop_result = process_uploaded_image(crop_path)
+            s['image_url'] = '/' + crop_result['big_img']
+
+        # Clean up the uploaded raw file
+        try: os.remove(filepath)
+        except: pass
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'master_image': display_url,
+                'pattern_no': pattern_no,
+                'cycle_size': cycle_size,
+                'colorways': [{
+                    'index': s['index'],
+                    'color_name': s.get('color_name', ''),
+                    'sub_code': s.get('sub_code', ''),
+                    'sku_code': s.get('sku_code', ''),
+                    'crop_box': s['bbox'],
+                    'image_url': s.get('image_url', ''),
+                    'dominant_color': s.get('dominant_color', ''),
+                    'ocr_text': s.get('ocr_text', '')
+                } for s in swatches]
+            }
+        })
+    except Exception as e:
+        print('Qwen analyze error:', e)
+        import traceback; traceback.print_exc()
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+@app.route('/api/ai/confirm-pattern', methods=['POST'])
+@require_auth
+def api_ai_confirm_pattern():
+    """确认 AI 分析结果 → 保存到 print_warehouse → 返回打印数据"""
+    data = request.get_json()
+    if not data: return jsonify({'error': 'no data'}), 400
+    pattern_no = data.get('pattern_no', '')
+    cycle_size = data.get('cycle_size', '')
+    colorways = data.get('colorways', [])
+    style_code = data.get('style_code', '')
+
+    saved = []
+    db = get_db()
+    for cw in colorways:
+        if cw.get('confirmed') is False: continue
+        sku = cw.get('sku_code', '') or pattern_no
+        color_name = cw.get('color_name', '')
+        sub_code = cw.get('sub_code', '')
+        notes = json.dumps({'color_name': color_name, 'sub_code': sub_code, 'cycle_size': cycle_size}, ensure_ascii=False)
+        db.execute(
+            "INSERT INTO print_warehouse (print_code, big_img, thumb_img, notes, cycle_size) VALUES (?, ?, ?, ?, ?)",
+            (pattern_no, cw.get('image_url',''), cw.get('image_url',''), notes, cycle_size)
+        )
+        saved.append({'id': db.lastrowid, 'sku': sku, 'image_url': cw.get('image_url',''), 'color_name': color_name, 'sub_code': sub_code})
+    db.commit()
+    return jsonify({'status': 'success', 'saved': saved})
+
 
 # ── Main ──
 

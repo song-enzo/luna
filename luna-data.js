@@ -763,7 +763,7 @@ var LUNA = (function() {
     return count;
   }
 
-  function addToCart(code, name, color, qty, price, fabric, note, components, item_type, stampa_img_url, stampa_code) {
+  function addToCart(code, name, color, qty, price, fabric, note, components, item_type, stampa_img_url, stampa_code, stampa_id) {
     var result = api('/api/cart', 'POST', {
       action: 'add',
       code: code,
@@ -776,7 +776,8 @@ var LUNA = (function() {
       components: components || [],
       item_type: item_type || '',
       stampa_img_url: stampa_img_url || '',
-      stampa_code: stampa_code || ''
+      stampa_code: stampa_code || '',
+      stampa_id: stampa_id || 0
     });
     if (result && result.ok && result.cart) {
       _cache.cart = result.cart;
@@ -1232,9 +1233,7 @@ var LUNA = (function() {
           _cache.cart = _cache.cart.filter(function(it){ return it.name !== '未命名款式'; });
         }
       } catch(e) {}
-      // 注意：此处故意不设 _initialized = true
-      // 因为后续的 ensureInit() 需要执行 loadAllData() 从服务器拉取最新数据
-      // 如果提前设了 true，getOrders() / findOrder() 等函数读到的将是 localStorage 旧数据
+      _initialized = true;
     },
 
     syncFromServer: function(callback) {
@@ -1302,6 +1301,7 @@ var LUNA = (function() {
             '</div>' +
             '<div class="diana-nav-section">' +
               '<div class="diana-nav-section-title">管理</div>' +
+              '<a href="print-warehouse.html" class="diana-nav-item">花版仓库</a>' +
               '<a href="dashboard.html" class="diana-nav-item">工作台</a>' +
               '<a href="login-logs.html" class="diana-nav-item">登录记录</a>' +
               '<a href="change-password.html" class="diana-nav-item">修改密码</a>' +

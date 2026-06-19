@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>花版AI下单 · <span class="dynamic-brand-name"></span></title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:100px}
+/* Header */
+.header{display:flex;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #EBE8E3;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 8px 4px 0;background:none;border:none;color:#666;font-family:inherit;text-decoration:none}
+.header .logo{font-family:'Playfair Display',serif;font-size:14px;letter-spacing:3px;color:#1C1C1C;margin-right:auto}
+.header .cart-icon{background:none;border:none;font-size:18px;cursor:pointer;position:relative;padding:4px;color:#999}
+.header .cart-badge{position:absolute;top:-2px;right:-6px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff}
+.page{max-width:480px;margin:0 auto;padding:0 16px 32px}
+/* Sections */
+.section{margin:16px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.section h3{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:12px}
+/* Product info */
+.prod-info{padding:16px 0 8px}
+.prod-code{font-size:14px;color:#C8A56D;font-weight:600}
+.prod-name{font-family:'Playfair Display',serif;font-size:22px;margin-top:4px;color:#1C1C1C}
+.prod-price{font-size:13px;color:#C8A56D;font-weight:600;margin-top:4px}
+/* Upload zone */
+.upload-zone{border:2px dashed #ddd;border-radius:8px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .15s;background:#faf9f7}
+.upload-zone:hover,.upload-zone.drag-over{border-color:#C8A56D;background:#faf6ee}
+.upload-zone .icon{font-size:36px;margin-bottom:6px}
+.upload-zone .hint{font-size:12px;color:#999}
+.upload-zone.has-image{padding:8px;background:#faf9f7}
+/* Spinner (used in upload zone during analysis) */
+.spinner{width:32px;height:32px;border:3px solid #EBE8E3;border-top-color:#C8A56D;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:#999}
+/* Buttons */
+.btn-primary{width:100%;padding:14px;background:#C8A56D;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-primary:disabled{opacity:.5;cursor:default;background:#ddd}
+.btn-primary:not(:disabled):hover{background:#b8963e}
+.btn-secondary{background:transparent;color:#C8A56D;border:1.5px solid #C8A56D;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-secondary:hover{background:#C8A56D;color:#fff}
+/* Analysis results (hidden initially) */
+.analysis-section{display:none}
+.analysis-section.active{display:block}
+/* Master image with bbox overlay */
+.master-image-wrap{position:relative;display:inline-block;width:100%;margin-bottom:10px;display:none}
+.master-image-wrap img{width:100%;height:auto;display:block;border-radius:4px;background:#f0ede8}
+.bbox-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.bbox-rect{position:absolute;border:2px solid #C8A56D;background:rgba(200,165,109,0.12);border-radius:3px}
+.bbox-label{position:absolute;top:-1px;left:-1px;background:#C8A56D;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px 0 3px 0;line-height:1.4}
+/* Pattern fields */
+.pattern-fields{display:flex;gap:8px;margin-bottom:12px}
+.field-group{flex:1}
+.field-group label{display:block;font-size:10px;color:#999;font-weight:500;margin-bottom:3px;text-transform:uppercase}
+.field-group input{width:100%;padding:8px 10px;border:1px solid #EBE8E3;border-radius:6px;font-size:13px;font-family:inherit;outline:none;background:#F7F6F3;color:#1C1C1C}
+.field-group input:focus{border-color:#C8A56D}
+/* Colorway grid */
+.cw-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+.cw-card{background:#fff;border:1px solid #EBE8E3;border-radius:8px;overflow:hidden}
+.cw-card .cw-thumb{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#f0ede8}
+.cw-card .cw-body{padding:8px}
+.cw-field{margin-bottom:6px}
+.cw-field label{display:block;font-size:9px;color:#999;font-weight:500;margin-bottom:2px}
+.cw-field input{width:100%;padding:5px 6px;border:1px solid #EBE8E3;border-radius:4px;font-size:12px;font-family:inherit;outline:none;background:#F7F6F3;color:#1C1C1C}
+.cw-field input:focus{border-color:#C8A56D}
+.cw-sku{font-size:10px;color:#C8A56D;font-weight:500;word-break:break-all}
+/* Order blocks (after confirm) */
+.cw-order-block{margin-bottom:14px;padding:12px;background:#faf9f7;border:1px solid #EBE8E3;border-radius:8px}
+.size-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.size-chip{padding:10px 0;text-align:center;background:#F0EDE8;border-radius:6px;font-size:12px;font-weight:700;color:#666;cursor:pointer;transition:all .1s;font-family:inherit}
+.size-chip.selected{background:#C8A56D;color:#fff}
+.size-chip.unica-chip{background:#fef0e6;color:#c2410c}
+.size-chip.unica-chip.selected{background:#ea580c;color:#fff}
+.order-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.qty-input{width:70px;padding:8px 6px;border:1px solid #EBE8E3;border-radius:6px;text-align:center;font-weight:700;font-size:15px;font-family:inherit;outline:none;background:#fff}
+.qty-input:focus{border-color:#C8A56D}
+.add-cart-btn{flex:1;padding:10px;background:transparent;color:#C8A56D;border:1.5px solid #C8A56D;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}
+.add-cart-btn:hover{background:#C8A56D;color:#fff}
+/* Cart */
+.cart-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:8px;margin-bottom:8px;font-size:13px;border:1px solid #EBE8E3}
+.cart-item .info{flex:1;min-width:0}
+.cart-item .info .sz{font-weight:600;color:#333;font-size:13px}
+.cart-item .del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:2px 6px;font-family:inherit}
+.cart-item .del-btn:hover{color:#c41e3a}
+.cart-empty{text-align:center;padding:24px;color:#bbb;font-size:13px}
+.guest-select{width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;outline:none;color:#333;background:#fff;margin-bottom:8px}
+.order-note{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:inherit;resize:none;min-height:44px;outline:none;margin-bottom:8px}
+.order-note:focus{border-color:#C8A56D}
+.submit-btn{width:100%;padding:16px;background:#C8A56D;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin:8px 0;transition:background .15s}
+.submit-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1C1C1C;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:480px){.cw-grid{grid-template-columns:1fr 1fr}.size-chips{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back" href="javascript:history.back()">←</a>
+  <span class="logo"><span class="dynamic-brand-name"></span></span>
+  <button class="cart-icon" onclick="document.getElementById('cartSection').scrollIntoView({behavior:'smooth'})">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+</div>
+
+<div class="page" id="pageContent" style="display:none">
+
+  <!-- Product info -->
+  <div class="prod-info">
+    <div class="prod-code" id="prodCode"></div>
+    <div class="prod-name" id="prodName"></div>
+    <div class="prod-price" id="prodPrice"></div>
+  </div>
+
+  <!-- Step 1: AI Pattern Analysis -->
+  <div class="section">
+    <h3>① AI 花版分析</h3>
+    <div class="upload-zone" id="uploadZone">
+      <div class="icon">📸</div>
+      <div class="hint">点击上传复合花版大图（含多个色块 & 编号）</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+  </div>
+
+  <!-- Step 2: Analysis Results -->
+  <div class="section analysis-section" id="analysisSection">
+    <h3>② 分析结果 — 请确认 & 编辑</h3>
+    <div class="master-image-wrap" id="masterImageWrap">
+      <img id="masterImage" src="" alt="">
+      <div class="bbox-overlay" id="bboxOverlay"></div>
+    </div>
+    <div class="pattern-fields">
+      <div class="field-group"><label>花版编号</label><input type="text" id="patternNoInput" placeholder="AI 自动识别..."></div>
+      <div class="field-group"><label>循环尺寸</label><input type="text" id="cycleSizeInput" placeholder="如 9cm"></div>
+    </div>
+    <div class="cw-grid" id="cwGrid"></div>
+    <button class="btn-primary" id="confirmBtn" style="margin-top:12px">✅ 确认并保存花版</button>
+  </div>
+
+  <!-- Step 3: Order per Colorway -->
+  <div class="section" id="orderSection" style="display:none">
+    <h3>③ 选择尺码与数量</h3>
+    <div id="colorwayOrderBlocks"></div>
+  </div>
+
+  <!-- Step 4: Cart + Checkout -->
+  <div class="section" id="cartSection">
+    <h3>④ 购物车</h3>
+    <div id="cartContent"><div class="cart-empty">购物车是空的</div></div>
+    <select class="guest-select" id="guestSelect"><option value="">— 选择客人 —</option></select>
+    <textarea class="order-note" id="orderNote" placeholder="订单备注（可选）"></textarea>
+    <button class="submit-btn" id="submitBtn" disabled>📋 下单 <span id="submitSub">(购物车为空)</span></button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="luna-data.js?v=25"></script>
+<script>
+// ── State ──
+var style, styleCode;
+var analysisData = null;
+var masterImageUrl = '';
+var patternNo = '', cycleSize = '';
+var colorways = [];
+var savedPrints = [];
+var isConfirmed = false;
+var _cwSelectedSizes = {};
+var _cwSizeQty = {};
+
+// ── Utilities ──
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function showToast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2500)}
+
+// ── Init ──
+function init(){
+  styleCode = new URLSearchParams(location.search).get('code');
+  if(!styleCode){showToast('缺少款式编号');history.back();return}
+  style = LUNA.findStyle(styleCode);
+  if(!style){showToast('款式不存在');history.back();return}
+  if(style.type!=='stampa'&&style.type!=='print'){window.location.href='order-page.html?code='+encodeURIComponent(styleCode);return}
+  renderInfo();
+  setupUpload();
+  renderCart();
+  updateCartBadge();
+  renderGuestDropdown();
+  document.getElementById('pageContent').style.display='block';
+}
+function renderInfo(){
+  document.getElementById('prodCode').textContent=style.code;
+  document.getElementById('prodName').textContent=style.name||'';
+  document.getElementById('prodPrice').textContent='€'+((style.suggestedPrice||0).toFixed(2));
+}
+
+// ── Upload + Auto Analyze ──
+function setupUpload(){
+  var zone=document.getElementById('uploadZone');
+  var input=document.getElementById('fileInput');
+  zone.onclick=function(){if(!zone.classList.contains('loading'))input.click()};
+  input.onchange=function(){
+    if(input.files&&input.files[0]){resetAnalysis();startAnalysis(input.files[0]);}
+  };
+  zone.ondragover=function(e){e.preventDefault();zone.classList.add('drag-over')};
+  zone.ondragleave=function(){zone.classList.remove('drag-over')};
+  zone.ondrop=function(e){e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files&&e.dataTransfer.files[0]){input.files=e.dataTransfer.files;resetAnalysis();startAnalysis(e.dataTransfer.files[0])}};
+}
+function startAnalysis(file){
+  if(!file)return;
+  var zone=document.getElementById('uploadZone');
+  zone.classList.add('loading');zone.classList.remove('has-image');
+  zone.innerHTML='<div class="spinner" style="margin:0 auto 8px"></div><div class="loading-text" id="loadingStatus">🔍 AI 分析中，正在识别色块…</div>';
+  // Also update hint text periodically so user knows it's working
+  var statusEl=document.getElementById('loadingStatus');
+  var dots=0;
+  var animTimer=setInterval(function(){
+    if(!statusEl)return clearInterval(animTimer);
+    dots=(dots+1)%4;
+    statusEl.textContent='🔍 AI 分析中'+'.'.repeat(dots);
+  },800);
+  var fd=new FormData();fd.append('file',file);
+  fetch('/api/ai/analyze-pattern',{method:'POST',body:fd})
+    .then(function(r){return r.json()})
+    .then(function(res){
+      clearInterval(animTimer);
+      if(res.status==='success'&&res.data){onAnalysisComplete(res.data)}
+      else{
+        showToast('❌ '+(res.error||'分析失败'));
+        zone.classList.remove('loading');
+        previewFile(file);
+      }
+    })
+    .catch(function(){
+      clearInterval(animTimer);
+      showToast('❌ 网络错误，请重试');
+      zone.classList.remove('loading');
+      previewFile(file);
+    });
+}
+function previewFile(file){
+  var zone=document.getElementById('uploadZone');
+  var reader=new FileReader();
+  reader.onload=function(e){
+    zone.innerHTML='<img src="'+e.target.result+'" style="max-height:200px;max-width:100%;border-radius:4px;display:block;margin:0 auto"><div class="hint" style="margin-top:4px">点击重新选择图片</div>';
+    zone.classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+}
+function resetAnalysis(){
+  analysisData=null;colorways=[];savedPrints=[];isConfirmed=false;_cwSelectedSizes={};_cwSizeQty={};
+  document.getElementById('analysisSection').classList.remove('active');
+  document.getElementById('masterImageWrap').style.display='none';
+  document.getElementById('orderSection').style.display='none';
+  document.getElementById('cwGrid').innerHTML='';
+  document.getElementById('colorwayOrderBlocks').innerHTML='';
+  document.getElementById('confirmBtn').disabled=false;
+  document.getElementById('confirmBtn').textContent='✅ 确认并保存花版';
+  document.getElementById('confirmBtn').style.background='';
+}
+// ── Analyze (auto on upload, no button needed) ──
+
+function onAnalysisComplete(data){
+  analysisData=data;
+  masterImageUrl=data.master_image||'';
+  patternNo=data.pattern_no||'';
+  cycleSize=data.cycle_size||'';
+  colorways=(data.colorways||[]).map(function(cw){
+    return {
+      index:cw.index,color_name:cw.color_name||'',sub_code:cw.sub_code||'',
+      sku_code:cw.sku_code||'',crop_box:cw.crop_box,image_url:cw.image_url||'',
+      dominant_color:cw.dominant_color||'',ocr_text:cw.ocr_text||'',
+      edit_color_name:cw.color_name||'',edit_sub_code:cw.sub_code||''
+    };
+  });
+  document.getElementById('analysisSection').classList.add('active');
+  var img=document.getElementById('masterImage');
+  var wrap=document.getElementById('masterImageWrap');
+  img.onload=function(){renderBoundingBoxes()};
+  img.src=masterImageUrl;
+  wrap.style.display='block';
+  document.getElementById('patternNoInput').value=patternNo;
+  document.getElementById('cycleSizeInput').value=cycleSize;
+  renderColorwayCards();
+  document.getElementById('analysisSection').scrollIntoView({behavior:'smooth'});
+}
+
+// ── Bounding Boxes ──
+function renderBoundingBoxes(){
+  var img=document.getElementById('masterImage');
+  var overlay=document.getElementById('bboxOverlay');
+  overlay.innerHTML='';
+  if(!img.naturalWidth){img.onload=renderBoundingBoxes;return}
+  var natW=img.naturalWidth,natH=img.naturalHeight;
+  if(!natW||!natH)return;
+  var dW=img.offsetWidth||natW,dH=img.offsetHeight||natH;
+  var sX=dW/natW,sY=dH/natH;
+  colorways.forEach(function(cw){
+    var box=cw.crop_box;if(!box||box.length<4)return;
+    var r=document.createElement('div');r.className='bbox-rect';
+    r.style.left=(box[0]*sX)+'px';r.style.top=(box[1]*sY)+'px';
+    r.style.width=((box[2]-box[0])*sX)+'px';r.style.height=((box[3]-box[1])*sY)+'px';
+    var l=document.createElement('div');l.className='bbox-label';l.textContent='#'+cw.index;
+    r.appendChild(l);overlay.appendChild(r);
+  });
+}
+window.addEventListener('resize',function(){
+  if(document.getElementById('analysisSection').classList.contains('active'))renderBoundingBoxes();
+});
+
+// ── Colorway Cards ──
+function renderColorwayCards(){
+  var grid=document.getElementById('cwGrid');
+  var html='';
+  colorways.forEach(function(cw,i){
+    html+='<div class="cw-card">'+
+      (cw.image_url?'<img class="cw-thumb" src="'+esc(cw.image_url)+'" alt="">':'')+
+      '<div class="cw-body">'+
+        '<div class="cw-field"><label>颜色名称</label><input type="text" class="cw-name" data-idx="'+i+'" value="'+esc(cw.edit_color_name||'')+'" oninput="updateCW('+i+',this.value)"></div>'+
+        '<div class="cw-field"><label>子色号</label><input type="text" class="cw-sub" data-idx="'+i+'" value="'+esc(cw.edit_sub_code||'')+'" oninput="updateCWSub('+i+',this.value)"></div>'+
+        '<div style="font-size:10px;color:#999;margin-top:2px">SKU: <span class="cw-sku" id="cwSku_'+i+'">'+esc(generateSku(i))+'</span></div>'+
+      '</div></div>';
+  });
+  grid.innerHTML=html;
+}
+function updateCW(idx,val){colorways[idx].edit_color_name=val;var e=document.getElementById('cwSku_'+idx);if(e)e.textContent=generateSku(idx)}
+function updateCWSub(idx,val){colorways[idx].edit_sub_code=val}
+function generateSku(idx){
+  var pn=document.getElementById('patternNoInput').value.trim()||patternNo;
+  var cn=colorways[idx]?colorways[idx].edit_color_name||'':'';
+  return pn&&cn?pn+'_'+cn:(pn||cn||'');
+}
+document.getElementById('patternNoInput').addEventListener('input',function(){
+  colorways.forEach(function(_,i){var e=document.getElementById('cwSku_'+i);if(e)e.textContent=generateSku(i)});
+});
+
+// ── Confirm ──
+document.getElementById('confirmBtn').addEventListener('click',function(){
+  var btn=this;btn.disabled=true;btn.textContent='⏳ 保存中...';
+  var pn=document.getElementById('patternNoInput').value.trim();
+  if(!pn){showToast('⚠️ 请输入花版编号');btn.disabled=false;btn.textContent='✅ 确认并保存花版';return}
+  var cs=document.getElementById('cycleSizeInput').value.trim();
+  var payload={
+    pattern_no:pn,cycle_size:cs,style_code:styleCode,
+    colorways:colorways.map(function(cw,idx){
+      return{
+        index:cw.index,color_name:cw.edit_color_name||cw.color_name,
+        sub_code:cw.edit_sub_code||cw.sub_code,sku_code:generateSku(idx),
+        image_url:cw.image_url,crop_box:cw.crop_box,dominant_color:cw.dominant_color,confirmed:true
+      };
+    })
+  };
+  fetch('/api/ai/confirm-pattern',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(function(r){return r.json()})
+    .then(function(res){
+      if(res.status==='success'||res.saved){
+        savedPrints=res.saved||[];isConfirmed=true;onConfirmSuccess();
+        btn.textContent='✅ 已保存';btn.style.background='#10b981';
+      }else{showToast('❌ 保存失败: '+(res.error||'未知错误'));btn.disabled=false;btn.textContent='✅ 确认并保存花版'}
+    })
+    .catch(function(){showToast('❌ 网络错误');btn.disabled=false;btn.textContent='✅ 确认并保存花版'});
+});
+function onConfirmSuccess(){
+  showToast('✅ 花版已保存到仓库，可选择尺码下单');
+  document.getElementById('orderSection').style.display='block';
+  renderColorwayOrderBlocks();
+  document.getElementById('orderSection').scrollIntoView({behavior:'smooth'});
+}
+
+// ── Order Blocks ──
+var ALL_SIZES=['XS','S','M','L','XL','XXL','XXXL','UNICA'];
+function renderColorwayOrderBlocks(){
+  var container=document.getElementById('colorwayOrderBlocks');
+  var html='';
+  colorways.forEach(function(cw,i){
+    var saved=savedPrints[i]||{};
+    var printId=saved.id||0;
+    var imgUrl=cw.image_url||saved.image_url||'';
+    var cwName=cw.edit_color_name||cw.color_name||'花色';
+    html+='<div class="cw-order-block">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+        (imgUrl?'<img src="'+esc(imgUrl)+'" style="width:40px;height:40px;object-fit:cover;border-radius:4px">':'')+
+        '<div><div style="font-weight:600;font-size:13px">'+esc(cwName)+'</div>'+
+        '<div style="font-size:11px;color:#999">'+esc(saved.sku||generateSku(i))+'</div></div>'+
+      '</div>'+
+      '<div class="size-chips" id="sizeChips_'+i+'">';
+        ALL_SIZES.forEach(function(sz){
+          html+='<div class="size-chip'+(sz==='UNICA'?' unica-chip':'')+'" onclick="toggleSize('+i+',\''+sz+'\',this)">'+sz+'</div>';
+        });
+    html+='</div>'+
+      '<div class="order-row">'+
+        '<span style="font-size:12px;color:#666">数量</span>'+
+        '<input type="number" class="qty-input" id="qtyInput_'+i+'" value="0" min="0" onfocus="if(this.value===\'0\')this.value=\'\'" onblur="if(this.value===\'\')this.value=\'0\'">'+
+        '<button class="add-cart-btn" id="addCartBtn_'+i+'" onclick="addToCart('+i+','+printId+')">🛒 加入购物车</button>'+
+      '</div></div>';
+  });
+  container.innerHTML=html;
+}
+
+// ── Size toggle ──
+function toggleSize(idx,sz,el){
+  if(!_cwSelectedSizes[idx])_cwSelectedSizes[idx]={};
+  if(sz==='UNICA'){
+    if(_cwSelectedSizes[idx][sz]){delete _cwSelectedSizes[idx][sz];el.classList.remove('selected')}
+    else{
+      Object.keys(_cwSelectedSizes[idx]).forEach(function(s){if(s!=='UNICA'){delete _cwSelectedSizes[idx][s];var chips=document.querySelectorAll('#sizeChips_'+idx+' .size-chip');chips.forEach(function(c){if(c.textContent.trim()===s)c.classList.remove('selected')})}});
+      _cwSelectedSizes[idx]={UNICA:true};el.classList.add('selected');
+    }
+  }else{
+    if(_cwSelectedSizes[idx]['UNICA']){delete _cwSelectedSizes[idx]['UNICA'];var chips=document.querySelectorAll('#sizeChips_'+idx+' .size-chip');chips.forEach(function(c){if(c.textContent.trim()==='UNICA')c.classList.remove('selected')})}
+    if(_cwSelectedSizes[idx][sz]){delete _cwSelectedSizes[idx][sz];el.classList.remove('selected')}
+    else{_cwSelectedSizes[idx][sz]=true;el.classList.add('selected')}
+  }
+}
+
+// ── Add to Cart ──
+function addToCart(idx,printId){
+  var sizes=_cwSelectedSizes[idx]||{};
+  var qtyVal=parseInt(document.getElementById('qtyInput_'+idx).value)||0;
+  if(qtyVal<1){showToast('⚠️ 请输入数量');return}
+  var szKeys=Object.keys(sizes);
+  if(!szKeys.length){showToast('⚠️ 请至少选择一个尺码');return}
+  var qty={};szKeys.forEach(function(s){qty[s]=qtyVal});
+  var cw=colorways[idx];
+  var fabric=(style.fabrics&&style.fabrics.length)?style.fabrics.map(function(f){return f.name}).join(', '):'';
+  var imgUrl=cw.image_url||'';
+  var sku=generateSku(idx);
+  LUNA.addToCart(styleCode,style.name||'',cw.edit_color_name||'印花',qty,style.suggestedPrice||0,fabric,'',[],'stampa',imgUrl,sku,printId);
+  renderCart();updateCartBadge();showToast('✅ 已加入购物车');
+}
+
+// ── Cart ──
+function renderCart(){
+  var cart=LUNA.getCart()||[];
+  var el=document.getElementById('cartContent');
+  if(!cart.length){el.innerHTML='<div class="cart-empty">购物车是空的</div>';updateSubmitBtn();return}
+  var html='';
+  cart.forEach(function(item,i){
+    if(item.item_type!=='stampa')return;
+    var qty=item.qty||{};var total=0;Object.keys(qty).forEach(function(s){total+=qty[s]||0});
+    var sizes=Object.keys(qty).filter(function(s){return qty[s]>0}).map(function(s){return s+'×'+qty[s]}).join(', ');
+    html+='<div class="cart-item">'+
+      (item.stampa_img_url?'<img src="'+esc(item.stampa_img_url)+'" style="width:44px;height:44px;object-fit:cover;border-radius:4px;border:1px solid #eee" alt="">':'')+
+      '<div class="info"><div class="sz">'+esc(item.code)+'</div>'+
+      (item.color?'<div style="font-size:11px;color:#C8A56D;margin-top:1px">'+esc(item.color)+'</div>':'')+
+      '<div style="font-size:11px;color:#999;margin-top:2px">'+esc(sizes)+' · 共'+total+'件</div></div>'+
+      '<button class="del-btn" onclick="removeCartItem('+i+')">✕</button></div>';
+  });
+  if(!html)html='<div class="cart-empty">购物车是空的</div>';
+  el.innerHTML=html;updateSubmitBtn();
+}
+function removeCartItem(idx){LUNA.removeFromCart(idx);renderCart();updateCartBadge()}
+function updateCartBadge(){
+  var cart=LUNA.getCart()||[];var total=0;
+  cart.forEach(function(item){var q=item.qty||{};Object.keys(q).forEach(function(s){total+=q[s]||0})});
+  document.getElementById('cartBadge').textContent=total;
+}
+function updateSubmitBtn(){
+  var cart=LUNA.getCart()||[];
+  var has=cart.some(function(item){return item.item_type==='stampa'});
+  document.getElementById('submitBtn').disabled=!has;
+  document.getElementById('submitSub').textContent=has?'':'(购物车为空)';
+}
+
+// ── Guest dropdown ──
+function renderGuestDropdown(){
+  var sel=document.getElementById('guestSelect');
+  try{
+    var guests=LUNA.getGuests()||[];
+    sel.innerHTML='<option value="">— 选择客人 —</option>';
+    guests.forEach(function(g){if(g.enabled!==false)sel.innerHTML+='<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>'});
+  }catch(e){}
+}
+
+// ── Submit ──
+document.getElementById('submitBtn').addEventListener('click',function(){
+  var guest=document.getElementById('guestSelect').value;
+  if(!guest){showToast('⚠️ 请选择客人');return}
+  var note=document.getElementById('orderNote').value.trim();
+  var btn=this;btn.disabled=true;btn.textContent='⏳ 提交中...';
+  var result=LUNA.checkout(guest,note);
+  if(result&&result.ok!==false){
+    showToast('✅ 下单成功');renderCart();updateCartBadge();
+    setTimeout(function(){window.location.href='my-orders.html'},800);
+  }else{
+    showToast('❌ 下单失败: '+(result&&result.error?result.error:'未知错误'));
+    btn.disabled=false;btn.textContent='📋 下单';
+  }
+});
+
+// ── Bootstrap ──
+(function(){
+  var _initDone=false;
+  window.addEventListener('luna-data-initialized',function(){if(!_initDone){_initDone=true;init()}});
+  setTimeout(function(){if(!_initDone){_initDone=true;init()}},500);
+})();
+</script>
+</body>
+</html>
