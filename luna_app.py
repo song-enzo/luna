@@ -36,6 +36,10 @@ QWEN_API_KEY = os.environ.get('QWEN_API_KEY', '') or _local_cfg.get('qwen_api_ke
 QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen-vl-plus')
 QWEN_API_BASE = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
 
+# ── Gemini config (Google 视觉大模型) ──
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '') or _local_cfg.get('gemini_api_key', '')
+GEMINI_MODEL = 'gemini-1.5-flash'
+
 # ── Image processing utility ──
 
 def process_uploaded_image(file_storage, folder=None):
@@ -2242,28 +2246,147 @@ def no_cache(response):
 
 # ── AI Pattern Analysis (Qwen VL 视觉大模型) ──
 
-QWEN_ANALYSIS_PROMPT = """You are a textile pattern analysis expert. This image is a pattern composite sheet with multiple color swatches arranged in a grid.
+QWEN_ANALYSIS_PROMPT = """你是一个服装面料与花型数据提取专家。请仔细分析这张手机 App 的花型分析长截图，并严格按照以下步骤提取数据：
 
-Analyze the image step by step:
-1. Find the pattern number (top of image, usually large text like E2, W830, TT439)
-2. Find the repeat/cycle size (top area, like 8.3cm, 9cm)
-3. Identify EVERY individual color swatch — each one is a separate colored rectangle with text labels inside it
+1. 寻找基础信息：
+   - 提取"花型编号"（图中有明确标签，如 Q1111）
+   - 提取"循环尺寸"（图中有明确标签，如 W69）
 
-For each swatch, extract:
-- color_name: the color name in Chinese or English (e.g. 白色, 深蓝, 卡其)
-- sub_code: the color code/number (e.g. V2, W830, 01, 02)
-- bbox_percent: the approximate bounding box of this swatch as [x1%, y1%, x2%, y2%], where coordinates are percentages of the image width/height (0-100). Estimate the rectangle that tightly contains this color swatch.
+2. 提取下方列表中的所有配色卡（Colorways）数据：
+   - 忽略顶部的缩略图网格，直接从中下部的详细列表卡片中，自上而下、自左向右依次提取。
+   - 每个色卡包含：
+     * color_name: 颜色名称（例如：玫瑰红、酸粉、湖绿、天蓝 等）
+     * sub_code: 子编号（例如：Anya、E2、W830 等）
+     * sku: 对应的 SKU 编码
+     * bbox_percent: 该色卡在截图中的大致位置框，格式为 [x1%, y1%, x2%, y2%]，值为百分比（0-100）。尽量让框紧密包围该色卡区域。
 
-IMPORTANT: List ALL swatches you can see. Go left-to-right, top-to-bottom. Do not miss any.
-
-Respond ONLY with a valid JSON object, no other text:
+请严格按照以下指定的 JSON 格式输出，不要包含任何额外的解释或 Markdown 代码块：
 {
-  "pattern_no": "pattern number or empty string",
-  "cycle_size": "repeat size like 8.3cm or empty string",
+  "pattern_no": "提取到的花型编号",
+  "cycle_size": "提取到的循环尺寸",
   "colorways": [
-    {"color_name": "color name", "sub_code": "color code", "bbox_percent": [x1, y1, x2, y2]}
+    {
+      "color_name": "颜色名称",
+      "sub_code": "子编号",
+      "sku": "SKU编码",
+      "bbox_percent": [x1, y1, x2, y2]
+    }
   ]
 }"""
+
+def _analyze_with_gemini(image_path):
+    """调用 Gemini 1.5 Flash 视觉大模型分析花版图，返回结构化数据"""
+    import requests as req
+    if not GEMINI_API_KEY:
+        raise RuntimeError('GEMINI_API_KEY 未配置')
+
+    # Downscale large images before sending to API
+    import cv2 as _cv2
+    img_orig = _cv2.imread(image_path)
+    h_raw, w_raw = img_orig.shape[:2]
+    max_dim = 1024
+    if max(h_raw, w_raw) > max_dim:
+        scale = max_dim / max(h_raw, w_raw)
+        new_w, new_h = int(w_raw * scale), int(h_raw * scale)
+        img_small = _cv2.resize(img_orig, (new_w, new_h), interpolation=_cv2.INTER_AREA)
+        success, buf = _cv2.imencode('.jpg', img_small, [int(_cv2.IMWRITE_JPEG_QUALITY), 85])
+        img_b64 = base64.b64encode(buf).decode('utf-8')
+        mime = 'image/jpeg'
+    else:
+        with open(image_path, 'rb') as f:
+            img_b64 = base64.b64encode(f.read()).decode('utf-8')
+        mime = 'image/jpeg'
+        if image_path.lower().endswith('.png'): mime = 'image/png'
+        elif image_path.lower().endswith('.webp'): mime = 'image/webp'
+
+    resp = req.post(
+        f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}',
+        headers={'Content-Type': 'application/json'},
+        json={
+            'contents': [{
+                'parts': [
+                    {'inlineData': {'mimeType': mime, 'data': img_b64}},
+                    {'text': QWEN_ANALYSIS_PROMPT}
+                ]
+            }],
+            'generationConfig': {
+                'responseMimeType': 'application/json'
+            }
+        },
+        timeout=180
+    )
+
+    if resp.status_code != 200:
+        raise RuntimeError(f'Gemini API error {resp.status_code}: {resp.text}')
+
+    result = resp.json()
+    content = result['candidates'][0]['content']['parts'][0]['text']
+    parsed = json.loads(content)
+
+    h, w = img_orig.shape[:2]
+
+    def clamp(v, lo, hi):
+        return max(lo, min(hi, v))
+
+    colorways = []
+    raw_list = parsed.get('colorways', [])
+    total = len(raw_list)
+
+    if total > 0:
+        import math
+        cols = max(1, math.ceil(math.sqrt(total)))
+        rows = max(1, math.ceil(total / cols))
+
+        margin_top = int(h * 0.15)
+        margin_left = int(w * 0.02)
+        content_h = h - margin_top - int(h * 0.02)
+        content_w = w - 2 * margin_left
+
+        for i, cw in enumerate(raw_list):
+            bbox_pct = cw.get('bbox_percent')
+            if bbox_pct and isinstance(bbox_pct, (list, tuple)) and len(bbox_pct) >= 4:
+                x1 = int(clamp(bbox_pct[0], 0, 100) / 100.0 * w)
+                y1 = int(clamp(bbox_pct[1], 0, 100) / 100.0 * h)
+                x2 = int(clamp(bbox_pct[2], 0, 100) / 100.0 * w)
+                y2 = int(clamp(bbox_pct[3], 0, 100) / 100.0 * h)
+            else:
+                row = i // cols
+                col = i % cols
+                cell_w = content_w // cols
+                cell_h = content_h // rows
+                x1 = margin_left + col * cell_w
+                y1 = margin_top + row * cell_h
+                x2 = x1 + cell_w
+                y2 = y1 + cell_h
+
+            if x2 <= x1 or y2 <= y1:
+                continue
+
+            roi = img_orig[y1:y2, x1:x2]
+            avg_color = '#888888'
+            if roi.size > 0:
+                avg = _cv2.mean(roi)[:3][::-1]
+                avg_color = '#{:02x}{:02x}{:02x}'.format(int(avg[0]), int(avg[1]), int(avg[2]))
+
+            colorways.append({
+                'index': i + 1,
+                'color_name': (cw.get('color_name', '') or '').strip(),
+                'sub_code': (cw.get('sub_code', '') or '').strip(),
+                'sku_code': (cw.get('sku', '') or '').strip(),
+                'bbox': [x1, y1, x2, y2],
+                'dominant_color': avg_color,
+                'ocr_text': ''
+            })
+
+    if not colorways:
+        raise RuntimeError('Gemini 未能识别出任何色块，请确认图片是花版复合图')
+
+    return {
+        'pattern_no': (parsed.get('pattern_no', '') or '').strip(),
+        'cycle_size': (parsed.get('cycle_size', '') or '').strip(),
+        'colorways': colorways
+    }
+
 
 def _analyze_with_qwen(image_path):
     """调用通义千问 VL 大模型分析花版图，返回结构化数据"""
@@ -2396,7 +2519,7 @@ def _analyze_with_qwen(image_path):
 @app.route('/api/ai/analyze-pattern', methods=['POST'])
 @require_auth
 def api_ai_analyze_pattern():
-    """上传复合大图 → Qwen VL 视觉大模型分析 → 切图 → 返回结构化 JSON"""
+    """上传复合大图 → Gemini 视觉大模型分析 → 切图 → 返回结构化 JSON"""
     if 'file' not in request.files:
         return jsonify({'error': 'no file'}), 400
     file = request.files['file']
@@ -2416,21 +2539,27 @@ def api_ai_analyze_pattern():
         result = process_uploaded_image(filepath)
         display_url = '/' + result['big_img']
 
-        # ── Qwen VL analysis ──
-        if QWEN_API_KEY:
+        # ── Gemini analysis ──
+        if GEMINI_API_KEY:
+            analysis = _analyze_with_gemini(filepath)
+        elif QWEN_API_KEY:
             analysis = _analyze_with_qwen(filepath)
         else:
-            return jsonify({'status': 'error', 'error': 'QWEN_API_KEY 未配置，请在环境变量中设置'}), 503
+            return jsonify({'status': 'error', 'error': '未配置 AI API Key（Gemini 或 Qwen）'}), 503
 
         pattern_no = analysis['pattern_no']
         cycle_size = analysis['cycle_size']
         swatches = analysis['colorways']
 
-        # Generate SKU for each colorway
+        # Use SKU from Qwen if available, otherwise generate
         for s in swatches:
-            cn = s.get('color_name', '')
-            pn = pattern_no
-            s['sku_code'] = f'{pn}_{cn}' if pn and cn else (pn or cn or '')
+            sku = s.get('sku', '') or ''
+            if sku:
+                s['sku_code'] = sku
+            else:
+                cn = s.get('color_name', '')
+                pn = pattern_no
+                s['sku_code'] = f'{pn}_{cn}' if pn and cn else (pn or cn or '')
 
         # Crop each swatch from original image and save
         img_bgr = cv2.imread(filepath)
