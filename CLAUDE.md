@@ -1,45 +1,54 @@
-# LUNA ATELIER
+﻿# 系统工作流 / LUNA ATELIER
 
-Tailoring business web app. Flask + SQLite backend, single-file HTML with inline CSS/JS, central data layer in luna-data.js.
+## 认证流程
+- `index.html` → 登录页，管理员通过密码登录
+- 登录后跳转 `dashboard.html`（管理员）或 `guest-styles.html`（客人浏览）
 
-## Project Structure
+## 浏览端（客人可见）
+- `guest-styles.html` — 款式浏览主页（分类网格 + 新款横向滚动）
+  - 分类筛选（侧边栏 + 顶部标签）
+  - 点击款式跳转下单页（净色→`order-page.html`，印花→`order-print.html`）
+- `my-orders.html` — 客人查单
 
-- `luna_app.py` — Flask server (port 8766), serves static files + JSON API
-- `luna-data.js` — Shared data layer (LUNA namespace), API calls + local cache
-- `order-page.html` — Product detail / order page (carousel, color/size selection, cart)
-- `guest-styles.html` — Main browsing page (style grid, new arrivals scroll)
-- `cart.html` — Cart page (legacy)
-- `settings.html` — Fabric/color/category management
-- `my-orders.html` — Customer order list
-- `*.html` — Other pages (dashboard, marker, cutting, etc.)
-- `luna.db` — SQLite database (auto-created)
-- `photos/` — Uploaded images directory
+## 下单端
+- `order-page.html` — 净色下单（轮播图、颜色/面料选择、尺码/数量、加入购物车）
+- `order-print.html` — 印花下单（AI 识别花版 → 选择贴纸款式 → 加入购物车）
+- `cart.html` — 购物车确认，提交订单
 
-## Common Commands
+## 订单管理
+- `orders.html` — 订单列表（筛选、搜索、状态标签）
+- `order-detail.html` — 订单详情（里程碑 + 操作按钮，每步自动写时间戳）
 
-```bash
-# Start server (use /usr/local/bin/python3 — system Python with Pillow)
-/usr/local/bin/python3 /opt/data/luna/luna_app.py
+## 生产流程
+- `marker.html` — 排料/打唛架
+- `cutting.html` — 裁剪
+- `cutting_history.html` — 裁剪历史
+- `ready-pickup.html` — 待拿货
+- `shipping.html` — 发货管理（进度条/预计完工）
 
-# Restart server (kill old first)
-kill $(lsof -ti :8766) 2>/dev/null; sleep 2; nohup /usr/local/bin/python3 /opt/data/luna/luna_app.py &>/tmp/luna_server.log &
+## 仓库管理
+- `fabric-warehouse.html` — 面料仓库（色卡管理）
+- `print-warehouse.html` — 花版仓库（印花贴纸管理）
 
-# Check server status
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8766/
-```
+## 系统管理
+- `dashboard.html`, `style-manage.html`, `settings.html`, `people-manage.html` 等
 
-## Frontend Conventions
+## 核心数据流
+- 所有数据通过 `luna-data.js` 的 `LUNA.*` API 读写
+- 本地缓存 + 服务器同步（SQLite）
+- 图片上传至 `photos/` 目录
 
-- All styles inline in `<style>` blocks per page
-- Fonts: Playfair Display (serif headings), Inter (sans-serif body)
-- Brand color: #C8A56D (gold)
-- Code prefix: ART- (e.g. ART-STYLE001)
-- Data layer: always use `LUNA.*` functions, never access localStorage directly
+## AI 功能（印花识别）
+- 上传花版截图 → OpenCV HSV 饱和度阈值检测色块位置
+- 裁剪每个色块 → Gemini 1.5 Flash 分析颜色名/色号/SKU
+- 匹配方式：CV 检测位置排序后与 AI 结果 1:1 对应
+- API key 配置在 `local_config.json`（gitignored）
 
-## Data Model
+## 技术栈
+- 后端：Flask + SQLite + OpenCV + Gemini API
+- 前端：纯 HTML + 内联 CSS + 原生 JS（无框架）
+- 数据层：`luna-data.js`
+- 服务器端口：8766
+- 字体：Playfair Display / Inter
+- 品牌色：#C8A56D
 
-- Styles have: code, name, category, type, suggestedPrice, images[], fabrics[], colors[]
-- Cart: session-based, stored via API, items have {code, name, color, qty, price, fabric, note}
-- Orders: have {id, customer, date, items[], note, order_placed, marker_complete, ...}
-- Fabrics: have {id, name, colors[{name, hex, img_path}]}
-- Colors: managed in settings page, read-only on order page
