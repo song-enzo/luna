@@ -2258,7 +2258,6 @@ QWEN_ANALYSIS_PROMPT = """你是一个服装面料与花型数据提取专家。
      * color_name: 颜色名称（例如：玫瑰红、酸粉、湖绿、天蓝 等）
      * sub_code: 子编号（例如：Anya、E2、W830 等）
      * sku: 对应的 SKU 编码
-     * bbox_percent: 该色卡在截图中的大致位置框，格式为 [x1%, y1%, x2%, y2%]，值为百分比（0-100）。尽量让框紧密包围该色卡区域。
 
 请严格按照以下指定的 JSON 格式输出，不要包含任何额外的解释或 Markdown 代码块：
 {
@@ -2268,22 +2267,69 @@ QWEN_ANALYSIS_PROMPT = """你是一个服装面料与花型数据提取专家。
     {
       "color_name": "颜色名称",
       "sub_code": "子编号",
-      "sku": "SKU编码",
-      "bbox_percent": [x1, y1, x2, y2]
+      "sku": "SKU编码"
     }
   ]
 }"""
 
+def _detect_swatches_cv(image_path):
+    """用 OpenCV 检测图片中的彩色色块区域，返回排序后的 bbox 列表"""
+    import cv2 as _cv2, numpy as _np
+    img = _cv2.imread(image_path)
+    if img is None:
+        return []
+    h, w = img.shape[:2]
+
+    # HSV 色彩空间，高饱和度区域 = 彩色色块
+    hsv = _cv2.cvtColor(img, _cv2.COLOR_BGR2HSV)
+    sat = hsv[:, :, 1]
+
+    # 自适应阈值：保留饱和度较高的像素
+    _, mask = _cv2.threshold(sat, 60, 255, _cv2.THRESH_BINARY)
+
+    # 形态学闭运算，连接色块内部的零散孔洞
+    kernel = _np.ones((5, 5), _np.uint8)
+    mask = _cv2.morphologyEx(mask, _cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = _cv2.morphologyEx(mask, _cv2.MORPH_OPEN, kernel, iterations=1)
+
+    # 找轮廓
+    cnts, _ = _cv2.findContours(mask, _cv2.RETR_EXTERNAL, _cv2.CHAIN_APPROX_SIMPLE)
+
+    min_area = (h * w) * 0.003   # 至少 0.3% 面积
+    max_area = (h * w) * 0.5     # 最多 50%
+    rects = []
+
+    for cnt in cnts:
+        area = _cv2.contourArea(cnt)
+        if area < min_area or area > max_area:
+            continue
+        x, y, bw, bh = _cv2.boundingRect(cnt)
+        aspect = bw / bh if bh > 0 else 0
+        # 色块不是细长条也不是超大块
+        if aspect < 0.2 or aspect > 8:
+            continue
+        rects.append([x, y, x + bw, y + bh])
+
+    # 自上而下、自左向右排序
+    rects.sort(key=lambda r: (r[1], r[0]))
+    return rects
+
+
 def _analyze_with_gemini(image_path):
-    """调用 Gemini 1.5 Flash 视觉大模型分析花版图，返回结构化数据"""
+    """CV 检测色块位置 + Gemini 识别名称/编号"""
     import requests as req
     if not GEMINI_API_KEY:
         raise RuntimeError('GEMINI_API_KEY 未配置')
 
-    # Downscale large images before sending to API
+    # Step 1: CV 检测色块位置 (在原图上检测，不缩放)
+    cv_bboxes = _detect_swatches_cv(image_path)
+
+    # Step 2: 缩放图片并发给 Gemini 识别
     import cv2 as _cv2
     img_orig = _cv2.imread(image_path)
-    h_raw, w_raw = img_orig.shape[:2]
+    h, w = img_orig.shape[:2]
+
+    h_raw, w_raw = h, w
     max_dim = 1024
     if max(h_raw, w_raw) > max_dim:
         scale = max_dim / max(h_raw, w_raw)
@@ -2323,41 +2369,36 @@ def _analyze_with_gemini(image_path):
     content = result['candidates'][0]['content']['parts'][0]['text']
     parsed = json.loads(content)
 
-    h, w = img_orig.shape[:2]
-
-    def clamp(v, lo, hi):
-        return max(lo, min(hi, v))
-
-    colorways = []
     raw_list = parsed.get('colorways', [])
     total = len(raw_list)
 
-    if total > 0:
-        import math
-        cols = max(1, math.ceil(math.sqrt(total)))
-        rows = max(1, math.ceil(total / cols))
+    # 决定用哪个 bbox 来源：CV 检测优先，数量不匹配时走网格估算
+    use_cv = len(cv_bboxes) > 0 and len(cv_bboxes) == total
 
-        margin_top = int(h * 0.15)
-        margin_left = int(w * 0.02)
-        content_h = h - margin_top - int(h * 0.02)
-        content_w = w - 2 * margin_left
+    colorways = []
+    if total > 0:
+        if not use_cv:
+            # 网格估算作为 fallback
+            import math
+            cols = max(1, math.ceil(math.sqrt(total)))
+            rows = max(1, math.ceil(total / cols))
+            margin_top = int(h * 0.15)
+            margin_left = int(w * 0.02)
+            content_h_val = h - margin_top - int(h * 0.02)
+            content_w_val = w - 2 * margin_left
 
         for i, cw in enumerate(raw_list):
-            bbox_pct = cw.get('bbox_percent')
-            if bbox_pct and isinstance(bbox_pct, (list, tuple)) and len(bbox_pct) >= 4:
-                x1 = int(clamp(bbox_pct[0], 0, 100) / 100.0 * w)
-                y1 = int(clamp(bbox_pct[1], 0, 100) / 100.0 * h)
-                x2 = int(clamp(bbox_pct[2], 0, 100) / 100.0 * w)
-                y2 = int(clamp(bbox_pct[3], 0, 100) / 100.0 * h)
+            if use_cv:
+                x1, y1, x2, y2 = cv_bboxes[i]
             else:
                 row = i // cols
                 col = i % cols
-                cell_w = content_w // cols
-                cell_h = content_h // rows
-                x1 = margin_left + col * cell_w
-                y1 = margin_top + row * cell_h
-                x2 = x1 + cell_w
-                y2 = y1 + cell_h
+                cell_w_v = content_w_val // cols
+                cell_h_v = content_h_val // rows
+                x1 = margin_left + col * cell_w_v
+                y1 = margin_top + row * cell_h_v
+                x2 = x1 + cell_w_v
+                y2 = y1 + cell_h_v
 
             if x2 <= x1 or y2 <= y1:
                 continue
@@ -2389,16 +2430,20 @@ def _analyze_with_gemini(image_path):
 
 
 def _analyze_with_qwen(image_path):
-    """调用通义千问 VL 大模型分析花版图，返回结构化数据"""
+    """调用通义千问 VL 大模型分析花版图，CV 检测位置 + AI 识别"""
     import requests as req
     if not QWEN_API_KEY:
         raise RuntimeError('QWEN_API_KEY 未配置，请在环境变量中设置')
 
-    # Downscale large images before sending to API (speeds up inference significantly)
+    # CV 检测色块位置
+    cv_bboxes = _detect_swatches_cv(image_path)
+
+    # Downscale for API
     import cv2 as _cv2
     img_orig = _cv2.imread(image_path)
     h_raw, w_raw = img_orig.shape[:2]
-    max_dim = 1024  # max pixels on longest side
+    h, w = img_orig.shape[:2]
+    max_dim = 1024
     if max(h_raw, w_raw) > max_dim:
         scale = max_dim / max(h_raw, w_raw)
         new_w, new_h = int(w_raw * scale), int(h_raw * scale)
@@ -2448,43 +2493,33 @@ def _analyze_with_qwen(image_path):
 
     parsed = json.loads(json_str)
 
-    # img_orig already loaded above for downscaling — reuse for cropping
-    h, w = img_orig.shape[:2]
-
-    def clamp(v, lo, hi):
-        return max(lo, min(hi, v))
-
-    colorways = []
     raw_list = parsed.get('colorways', [])
     total = len(raw_list)
+    use_cv = len(cv_bboxes) > 0 and len(cv_bboxes) == total
 
-    # Estimate grid layout for bbox fallback (server-side image cropping)
+    colorways = []
     if total > 0:
-        import math
-        cols = max(1, math.ceil(math.sqrt(total)))
-        rows = max(1, math.ceil(total / cols))
-
-        margin_top = int(h * 0.15)
-        margin_left = int(w * 0.02)
-        content_h = h - margin_top - int(h * 0.02)
-        content_w = w - 2 * margin_left
+        if not use_cv:
+            import math
+            cols = max(1, math.ceil(math.sqrt(total)))
+            rows = max(1, math.ceil(total / cols))
+            margin_top = int(h * 0.15)
+            margin_left = int(w * 0.02)
+            content_h_val = h - margin_top - int(h * 0.02)
+            content_w_val = w - 2 * margin_left
 
         for i, cw in enumerate(raw_list):
-            bbox_pct = cw.get('bbox_percent')
-            if bbox_pct and isinstance(bbox_pct, (list, tuple)) and len(bbox_pct) >= 4:
-                x1 = int(clamp(bbox_pct[0], 0, 100) / 100.0 * w)
-                y1 = int(clamp(bbox_pct[1], 0, 100) / 100.0 * h)
-                x2 = int(clamp(bbox_pct[2], 0, 100) / 100.0 * w)
-                y2 = int(clamp(bbox_pct[3], 0, 100) / 100.0 * h)
+            if use_cv:
+                x1, y1, x2, y2 = cv_bboxes[i]
             else:
                 row = i // cols
                 col = i % cols
-                cell_w = content_w // cols
-                cell_h = content_h // rows
-                x1 = margin_left + col * cell_w
-                y1 = margin_top + row * cell_h
-                x2 = x1 + cell_w
-                y2 = y1 + cell_h
+                cell_w_v = content_w_val // cols
+                cell_h_v = content_h_val // rows
+                x1 = margin_left + col * cell_w_v
+                y1 = margin_top + row * cell_h_v
+                x2 = x1 + cell_w_v
+                y2 = y1 + cell_h_v
 
             if x2 <= x1 or y2 <= y1:
                 continue
