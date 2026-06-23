@@ -11,4 +11,4 @@ venv/
 .env
 *.log
 local_config.json
-photos/
+test_gemini_key.py
