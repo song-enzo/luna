@@ -11,3 +11,4 @@ venv/
 .env
 *.log
 local_config.json
+photos/

@@ -196,14 +196,10 @@ var LUNA = (function() {
 
   function getStyles() {
     ensureInit();
-    if (_cache.styles) {
-      _cache.styles.forEach(function(s) { delete s.name; });
-    }
     return _cache.styles || [];
   }
 
   function saveStyles(styles) {
-    styles.forEach(function(s) { delete s.name; });
     _cache.styles = styles;
     _cache.styles.forEach(function(s) {
       api('/api/styles', 'POST', s);
@@ -217,15 +213,12 @@ var LUNA = (function() {
     var styles = _cache.styles || [];
     for (var i = 0; i < styles.length; i++) {
       if (styles[i].code === code) {
-        var s = JSON.parse(JSON.stringify(styles[i]));
-        delete s.name;
-        return s;
+        return JSON.parse(JSON.stringify(styles[i]));
       }
     }
     // 缓存未命中时直接从服务器查询（localStorage 可能延迟）
     var r = api('/api/styles/' + encodeURIComponent(code));
     if (r && !r.error) {
-      delete r.name;
       // 补充到缓存
       _cache.styles = _cache.styles || [];
       _cache.styles.push(r);
@@ -1171,7 +1164,6 @@ var LUNA = (function() {
               // 保留加工备注
               if (!s.processingNote && old.processingNote) s.processingNote = old.processingNote;
             }
-            delete s.name;
           });
         }
       }
@@ -1216,12 +1208,6 @@ var LUNA = (function() {
         }
         var userRaw = localStorage.getItem('luna_user_session');
         if (userRaw) _user = JSON.parse(userRaw);
-        // 清理旧数据中的"未命名款式"（name 字段已废弃）
-        if (_cache.styles) {
-          for (var si = 0; si < _cache.styles.length; si++) {
-            delete _cache.styles[si].name;
-          }
-        }
         if (_cache.orders) {
           _cache.orders.forEach(function(o){
             if (o.items) o.items.forEach(function(it){

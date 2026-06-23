@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>流程模拟 · LUNA ATELIER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a;min-height:100vh}
+/* Header */
+.header{background:#fff;border-bottom:1px solid #e8e2d9;padding:0 24px;height:56px;display:flex;align-items:center;position:sticky;top:0;z-index:100}
+.logo{font-family:'Playfair Display',Georgia,serif;font-size:18px;letter-spacing:4px;font-weight:600;color:#1a1a1a}
+.logo span{color:#b8965a}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.mode-badge{background:#b8965a;color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.5px}
+.control-btn{padding:6px 16px;border:1px solid #e0dcd5;border-radius:6px;font-size:12px;cursor:pointer;background:#fff;color:#666;transition:all .15s;font-family:inherit}
+.control-btn:hover{border-color:#b8965a;color:#b8965a}
+/* Container */
+.container{max-width:1000px;margin:0 auto;padding:24px}
+/* Title */
+.page-title{margin-bottom:24px}
+.page-title h1{font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:#1a1a1a}
+.page-title p{font-size:13px;color:#b0a99e;margin-top:4px}
+/* Pipeline */
+.pipeline{display:flex;align-items:center;justify-content:center;gap:0;padding:20px 0;background:#fff;border:1px solid #e8e2d9;border-radius:12px;margin-bottom:24px}
+.pipeline-step{text-align:center;flex:1;cursor:pointer;transition:all .3s;position:relative}
+.pipeline-step:hover .pipeline-dot{transform:scale(1.08)}
+.pipeline-dot{width:48px;height:48px;border-radius:50%;background:#f5f1eb;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 8px;transition:all .3s;border:2px solid transparent}
+.pipeline-step.active .pipeline-dot{background:#b8965a;color:#fff;border-color:#b8965a;box-shadow:0 0 0 4px #f0e6d2;animation:pulseGlow 2s infinite}
+.pipeline-step.done .pipeline-dot{background:#6b9e6b;color:#fff;border-color:#6b9e6b}
+.pipeline-step.current-step .pipeline-dot{background:#e8a040;color:#fff;border-color:#e8a040;box-shadow:0 0 0 4px #fce9cc}
+.pipeline-label{font-size:11px;color:#b0a99e;white-space:nowrap}
+.pipeline-step.active .pipeline-label{color:#b8965a;font-weight:600}
+.pipeline-step.done .pipeline-label{color:#6b9e6b}
+.pipeline-step.current-step .pipeline-label{color:#e8a040;font-weight:600}
+.pipeline-line{height:2px;flex:0.5;background:#e8e2d9;margin-bottom:28px;transition:background .3s}
+.pipeline-line.done{background:#6b9e6b}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 4px #f0e6d2}50%{box-shadow:0 0 0 6px #e0d0b0}}
+/* Section */
+.section-title{font-size:13px;font-weight:600;color:#7a756d;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.section-title .step-hint{font-size:11px;color:#b8965a;font-weight:400;text-transform:none}
+/* Order Cards */
+.order-card{background:#fff;border:1px solid #e8e5e0;border-radius:10px;margin-bottom:14px;overflow:hidden;transition:all .3s;position:relative}
+.order-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent,#ddd);transition:background .3s}
+.order-card.status-confirmed{--accent:#e8a040}
+.order-card.status-cutting{--accent:#5090c0}
+.order-card.status-pickup{--accent:#709050}
+.order-card.status-sewing{--accent:#6b8eb8}
+.order-card.status-shipped{--accent:#2e7d32}
+.order-card:hover{border-color:#d4b87a;box-shadow:0 2px 12px rgba(0,0,0,0.05)}
+.oc-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 12px 20px;flex-wrap:wrap;gap:4px}
+.oc-id{font-weight:700;font-size:13px;color:#b8965a;letter-spacing:.03em}
+.oc-customer{font-size:13px;color:#1a1a1a;font-weight:500}
+.oc-date{font-size:11px;color:#999}
+.oc-body{padding:4px 16px 4px 20px}
+.oc-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f2ef;font-size:13px}
+.oc-item:last-child{border-bottom:none}
+.oc-item .code{font-weight:600;color:#b8965a;min-width:70px;font-size:15px}
+.oc-item .detail{color:#666;flex:1}
+.oc-item .qty{color:#999;white-space:nowrap}
+.oc-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 10px 20px;border-top:1px solid #f0ede8;flex-wrap:wrap;gap:8px}
+.oc-step-info{font-size:11px;color:#888;background:#faf8f5;padding:4px 10px;border-radius:4px;display:flex;align-items:center;gap:6px}
+.oc-actions{display:flex;gap:6px}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:7px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;text-decoration:none}
+.btn-primary{background:#b8965a;color:#fff}
+.btn-primary:hover{background:#a38348;transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:#f0ede8;color:#666}
+.btn-secondary:hover{background:#e4dfd8}
+.btn-success{background:#6b9e6b;color:#fff}
+.btn-success:hover{background:#5a8a5a}
+.btn-gold-outline{border:1.5px solid #b8965a;color:#b8965a;background:transparent}
+.btn-gold-outline:hover{background:#b8965a;color:#fff}
+/* Status badges */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-pending{background:#f5f5f5;color:#999}
+.badge-confirmed{background:#fff3e0;color:#e8a040}
+.badge-cutting{background:#e3f0fa;color:#5090c0}
+.badge-pickup{background:#eef5e8;color:#709050}
+.badge-sewing{background:#eef2f8;color:#6b8eb8}
+.badge-shipped{background:#e8f5e9;color:#2e7d32}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:16px;text-align:center}
+.stat-number{font-size:28px;font-weight:700;color:#1a1a1a}
+.stat-label{font-size:11px;color:#b0a99e;margin-top:2px}
+/* Step Detail Modal Overlay */
+.step-panel{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:20px;margin-bottom:20px;display:none}
+.step-panel.visible{display:block;animation:fadeIn .3s}
+.step-panel h3{margin-bottom:12px;font-size:15px;color:#1a1a1a;display:flex;align-items:center;gap:8px}
+.step-panel h3 span{background:#b8965a;color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.step-panel .field{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;color:#555}
+.step-panel .field label{min-width:70px;font-weight:500}
+.step-panel .field input,.step-panel .field select{padding:8px 12px;border:1.5px solid #e0dcd5;border-radius:6px;font-size:13px;font-family:inherit;outline:none;flex:1;max-width:200px}
+.step-panel .field input:focus,.step-panel .field select:focus{border-color:#b8965a}
+.step-panel .field .hint{font-size:11px;color:#999}
+/* Success toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:#1a1a1a;color:#fff;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:all .4s;box-shadow:0 4px 20px rgba(0,0,0,.2);pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Empty */
+.empty-state{text-align:center;padding:40px 20px;color:#ccc;font-size:13px}
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn .4s both}
+.delay-1{animation-delay:.1s}
+.delay-2{animation-delay:.2s}
+.delay-3{animation-delay:.3s}
+/* Empty step guide */
+.guide-card{background:linear-gradient(135deg,#faf8f5,#f5f1eb);border:1px dashed #d4b87a;border-radius:10px;padding:28px;text-align:center;margin-bottom:20px}
+.guide-card .guide-icon{font-size:40px;margin-bottom:12px}
+.guide-card h3{font-size:16px;color:#1a1a1a;margin-bottom:6px}
+.guide-card p{font-size:13px;color:#888;line-height:1.6}
+.guide-card .guide-steps{display:flex;justify-content:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+.guide-card .guide-step{background:#fff;border:1px solid #e8e2d9;border-radius:8px;padding:12px 16px;min-width:100px;font-size:12px;color:#666}
+.guide-card .guide-step strong{display:block;color:#b8965a;font-size:14px;margin-bottom:2px}
+/* Reset button */
+.reset-area{text-align:center;margin-top:24px;padding:16px;border-top:1px solid #e8e2d9}
+.reset-btn{background:none;border:1px solid #ddd;color:#aaa;padding:8px 20px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+.reset-btn:hover{color:#c44;border-color:#c44}
+@media(max-width:600px){
+  .container{padding:12px}
+  .pipeline{gap:2px;padding:14px 4px}
+  .pipeline-dot{width:38px;height:38px;font-size:16px}
+  .pipeline-label{font-size:10px}
+  .header{padding:0 12px}
+  .oc-header{flex-direction:column;align-items:flex-start}
+  .oc-footer{flex-direction:column;align-items:stretch}
+  .oc-actions{justify-content:flex-end}
+  .step-panel .field{flex-direction:column;align-items:flex-start}
+  .step-panel .field input{max-width:100%}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">LUNA <span>A</span></div>
+  <div class="header-right">
+    <span class="mode-badge">🧪 流程模拟</span>
+    <span style="font-size:13px;color:#888" id="userBadge">管理员</span>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<div class="container">
+
+  <!-- Title -->
+  <div class="page-title fade-in">
+    <h1>📋 订单全流程模拟</h1>
+    <p>从下单 → 打唛架 → 裁剪 → 待拿货 → 发货，完整演示服装定制业务流程</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats fade-in delay-1">
+    <div class="stat-card"><div class="stat-number" id="statTotal">0</div><div class="stat-label">总订单</div></div>
+    <div class="stat-card"><div class="stat-number" id="statActive">0</div><div class="stat-label">进行中</div></div>
+    <div class="stat-card"><div class="stat-number" id="statCompleted">0</div><div class="stat-label">已完成</div></div>
+    <div class="stat-card"><div class="stat-number" id="statCutting">0</div><div class="stat-label">裁剪件数</div></div>
+  </div>
+
+  <!-- Pipeline Flow -->
+  <div class="pipeline fade-in delay-2">
+    <div class="pipeline-step" data-step="placed" onclick="goToStep('placed')">
+      <div class="pipeline-dot">📝</div>
+      <div class="pipeline-label">下单</div>
+    </div>
+    <div class="pipeline-line" data-connector="placed-marker"></div>
+    <div class="pipeline-step" data-step="marker" onclick="goToStep('marker')">
+      <div class="pipeline-dot">📐</div>
+      <div class="pipeline-label">打唛架</div>
+    </div>
+    <div class="pipeline-line" data-connector="marker-cutting"></div>
+    <div class="pipeline-step" data-step="cutting" onclick="goToStep('cutting')">
+      <div class="pipeline-dot">✂️</div>
+      <div class="pipeline-label">裁剪</div>
+    </div>
+    <div class="pipeline-line" data-connector="cutting-pickup"></div>
+    <div class="pipeline-step" data-step="pickup" onclick="goToStep('pickup')">
+      <div class="pipeline-dot">🏭</div>
+      <div class="pipeline-label">待拿货</div>
+    </div>
+    <div class="pipeline-line" data-connector="pickup-shipping"></div>
+    <div class="pipeline-step" data-step="shipping" onclick="goToStep('shipping')">
+      <div class="pipeline-dot">📦</div>
+      <div class="pipeline-label">发货</div>
+    </div>
+  </div>
+
+  <!-- Step Guide (shown initially) -->
+  <div class="guide-card fade-in delay-3" id="guideCard">
+    <div class="guide-icon">🚀</div>
+    <h3>开始模拟操作</h3>
+    <p>点击下方按钮开始演示服装定制全流程<br>每一步都会模拟真实操作，包含数据变化和状态更新</p>
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" onclick="startSimulation()" style="font-size:14px;padding:12px 32px">▶ 开始模拟</button>
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step"><strong>① 下单</strong>创建订单</div>
+      <div class="guide-step"><strong>② 打唛架</strong>出纸样</div>
+      <div class="guide-step"><strong>③ 裁剪</strong>裁床操作</div>
+      <div class="guide-step"><strong>④ 待拿货</strong>送工厂</div>
+      <div class="guide-step"><strong>⑤ 发货</strong>完成出货</div>
+    </div>
+  </div>
+
+  <!-- Step Action Panel (shown per step) -->
+  <div class="step-panel" id="stepPanel">
+    <h3 id="stepTitle">📝 下单</h3>
+    <div id="stepContent"></div>
+  </div>
+
+  <!-- Order List -->
+  <div class="fade-in delay-3" id="orderSection" style="display:none">
+    <div class="section-title">
+      <span>📄 订单列表</span>
+      <span class="step-hint" id="statusHint">点击对应步骤进行操作</span>
+    </div>
+    <div id="orderList"></div>
+  </div>
+
+  <!-- Reset -->
+  <div class="reset-area">
+    <button class="reset-btn" onclick="resetAll()">⟲ 重置所有数据</button>
+  </div>
+</div>
+
+<script>
+// ===================== SIMULATION DATA =====================
+var state = {
+  orders: [],
+  step: 'idle',       // idle | placed | marker | cutting | pickup | shipping | done
+  currentOrderIndex: 0,
+  fabrics: ['精纺羊毛','素罗马','弹力针织','全棉府绸','亚麻混纺'],
+  factories: ['广州富绅制衣厂','东莞华丰车缝厂','深圳丽人影业','中山恒达制衣'],
+  colors: ['黑色','白色','驼色','深蓝','烟灰','卡其','酒红','藏青'],
+  sizes: ['XS','S','M','L','XL','XXL'],
+  styles: [
+    {code:'JW001', name:'经典西装外套', category:'西装外套', price:399},
+    {code:'JK002', name:'修身西装裤', category:'西装裤', price:259},
+    {code:'QS003', name:'真丝衬衫', category:'衬衫', price:289},
+    {code:'LZ004', name:'A字半身裙', category:'裙装', price:219},
+    {code:'LY005', name:'优雅连衣裙', category:'连衣裙', price:459},
+  ],
+  customers: ['张华服装工作室','李敏时尚定制','王磊高端男装','陈雪童装坊','刘洋设计工作室','赵丽个人定制']
+};
+
+// ===================== UTILITY =====================
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[rand(0, arr.length-1)]; }
+function pad(n) { return n < 10 ? '0'+n : ''+n; }
+function today() { var d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function nowStr() { var d = new Date(); return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+
+function generateOrderId() {
+  var d = today();
+  var seq = 1;
+  state.orders.forEach(function(o) {
+    if (o.id.indexOf('ORD-'+d) === 0) seq++;
+  });
+  return 'ORD-'+d+'-'+pad(seq);
+}
+
+function createRandomOrder() {
+  var style = pick(state.styles);
+  var customer = pick(state.customers);
+  var fabric = pick(state.fabrics);
+  var color = pick(state.colors);
+  var qty = {};
+  var total = 0;
+  var sizeCount = rand(2, 4);
+  var shuffled = state.sizes.slice().sort(function(){return Math.random()-0.5});
+  for (var i = 0; i < sizeCount; i++) {
+    var n = rand(2, 12);
+    qty[shuffled[i]] = n;
+    total += n;
+  }
+  var items = [{
+    code: style.code,
+    name: style.name,
+    color: color,
+    fabric: fabric,
+    price: style.price,
+    qty: JSON.parse(JSON.stringify(qty))
+  }];
+  // Maybe add a second item
+  if (Math.random() > 0.5) {
+    var style2 = pick(state.styles);
+    var color2 = pick(state.colors);
+    var fabric2 = pick(state.fabrics);
+    var qty2 = {};
+    var t2 = 0;
+    var s2 = state.sizes.slice().sort(function(){return Math.random()-0.5});
+    for (var j = 0; j < rand(1,3); j++) {
+      var n2 = rand(2, 8);
+      qty2[s2[j]] = n2;
+      t2 += n2;
+    }
+    items.push({
+      code: style2.code,
+      name: style2.name,
+      color: color2,
+      fabric: fabric2,
+      price: style2.price,
+      qty: qty2
+    });
+    total += t2;
+  }
+  return {
+    id: generateOrderId(),
+    customer: customer,
+    date: today(),
+    total_qty: total,
+    note: Math.random() > 0.7 ? '加急处理，注意品质' : '',
+    items: items,
+    order_placed: {completed: 1},
+    marker_complete: {completed: 0, length: 0, hands: 1, operator: '', time: ''},
+    cutting_complete: {completed: 0, total_cut: 0, operator: '', time: '', layers: {}, checkmarks: {}},
+    pickup_complete: {completed: 0, factory: '', operator: '', time: ''},
+    shipping_complete: {completed: 0, qty: 0, operator: '', time: ''},
+    _stepLog: []
+  };
+}
+
+// ===================== CORE FUNCTIONS =====================
+
+function getOrdersByStep(step) {
+  return state.orders.filter(function(o) {
+    if (step === 'placed') return o.order_placed && o.order_placed.completed === 1 && (!o.marker_complete || o.marker_complete.completed === 0);
+    if (step === 'marker') return o.marker_complete && o.marker_complete.completed === 1 && (!o.cutting_complete || o.cutting_complete.completed === 0);
+    if (step === 'cutting') return o.cutting_complete && o.cutting_complete.completed === 1 && (!o.pickup_complete || o.pickup_complete.completed === 0);
+    if (step === 'pickup') return o.pickup_complete && o.pickup_complete.completed === 1 && (!o.shipping_complete || o.shipping_complete.completed === 0);
+    if (step === 'shipping') return o.shipping_complete && o.shipping_complete.completed === 1;
+    return true;
+  });
+}
+
+function getOrderStatus(o) {
+  if (o.shipping_complete && o.shipping_complete.completed === 1) return 'shipped';
+  if (o.pickup_complete && o.pickup_complete.completed === 1) return 'sewing';
+  if (o.cutting_complete && o.cutting_complete.completed === 1) return 'pickup';
+  if (o.marker_complete && o.marker_complete.completed === 1) return 'cutting';
+  if (o.order_placed && o.order_placed.completed === 1) return 'confirmed';
+  return 'pending';
+}
+
+function getStatusName(s) {
+  var m = {confirmed:'打唛架中', cutting:'裁剪中', pickup:'待拿货', sewing:'车缝中', shipped:'已发货', completed:'已完成', pending:'待处理'};
+  return m[s] || s;
+}
+
+function getStepLabel(step) {
+  var m = {placed:'已下单待打唛架', marker:'打唛架完成待裁剪', cutting:'裁剪完成待拿货', pickup:'已送工厂车缝中', shipping:'已发货'};
+  return m[step] || '';
+}
+
+function showToast(msg, isSuccess) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isSuccess !== false ? '#1a1a1a' : '#c0392b';
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 2500);
+}
+
+function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// ===================== PIPELINE RENDER =====================
+
+function updatePipeline() {
+  var steps = ['placed','marker','cutting','pickup','shipping'];
+  var maxDone = 0;
+  var stepOrder = {placed:1, marker:2, cutting:3, pickup:4, shipping:5};
+
+  state.orders.forEach(function(o) {
+    var level = 1;
+    if (o.marker_complete && o.marker_complete.completed) level = 2;
+    if (o.cutting_complete && o.cutting_complete.completed) level = 3;
+    if (o.pickup_complete && o.pickup_complete.completed) level = 4;
+    if (o.shipping_complete && o.shipping_complete.completed) level = 5;
+    if (level > maxDone) maxDone = level;
+  });
+
+  var currentStepVal = state.step === 'idle' ? 0 : (stepOrder[state.step] || 0);
+
+  steps.forEach(function(s, i) {
+    var el = document.querySelector('[data-step="'+s+'"]');
+    el.classList.remove('active','done','current-step');
+    var stepVal = stepOrder[s];
+    if (stepVal < maxDone) el.classList.add('done');
+    else if (stepVal === maxDone && maxDone > 0) el.classList.add('active');
+    if (s === state.step) el.classList.add('current-step');
+
+    // connectors
+    var connectors = document.querySelectorAll('[data-connector]');
+    connectors.forEach(function(c) {
+      c.classList.remove('done');
+      if (c.dataset.connector === 'placed-marker' && maxDone >= 2) c.classList.add('done');
+      if (c.dataset.connector === 'marker-cutting' && maxDone >= 3) c.classList.add('done');
+      if (c.dataset.connector === 'cutting-pickup' && maxDone >= 4) c.classList.add('done');
+      if (c.dataset.connector === 'pickup-shipping' && maxDone >= 5) c.classList.add('done');
+    });
+  });
+}
+
+// ===================== STEP ACTIONS =====================
+
+function goToStep(step) {
+  if (state.step === 'idle') return;
+  state.step = step;
+  renderAll();
+  document.getElementById('orderSection').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function startSimulation() {
+  document.getElementById('guideCard').style.display = 'none';
+  document.getElementById('orderSection').style.display = 'block';
+  state.step = 'placed';
+  // Generate 2-3 initial orders
+  var count = rand(2, 3);
+  for (var i = 0; i < count; i++) {
+    state.orders.push(createRandomOrder());
+  }
+  renderAll();
+  showToast('✅ 已生成 '+count+' 个模拟订单，点击"打唛架"开始操作', true);
+}
+
+function processPlaceToMarker(orderId) {
+  var o = findOrder(orderId);
+  if (!o) return;
+  var length = parseFloat(document.getElementById('markerLen_'+orderId).value) || 0;
+  var hands = parseInt(document.getElementById('markerHands_'+orderId).value) || 1;
+  o.marker_complete = {completed: 1, length: length, hands: hands, operator: '管理员', time: nowStr()};
+  if (!o._stepLog) o._stepLog = [];
+  o._stepLog.push({step:'marker', time:nowStr(), detail:'打唛架完成 · 长度'+length+'m · '+hands+'手'});
+  showToast('✅ 订单 '+orderId+' 打唛架完成', true);
+  // Check if all placed orders are done
+  var remaining = getOrdersByStep('placed');
+  if (remaining.length === 0) {
+    state.step = 'marker';
+    showToast('📐 所有订单已打唛架，进行裁剪环节', true);
+  }
+  renderAll();
+}
+
+function processMarkerToCutting(orderId) {
+  var o = findOrder(orderId);
+  if (!o) return;
+  // Build cutting data from items
+  var totalCut = 0;
+  var layers = {};
+  var checkmarks = {};
+  o.items.forEach(function(item) {
+    var color = item.color;
+    var itemTotal = 0;
+    for (var sz in item.qty) itemTotal += item.qty[sz] || 0;
+    // Simulate calculating layers
+    var layerCount = Math.ceil(itemTotal / rand(4, 8));
+    layers[color] = {layers: layerCount, total: itemTotal};
+    totalCut += itemTotal;
+  });
+  // Some checkmarks
+  checkmarks = {'面料已检验':1,'唛架已对齐':1,'裁刀已准备':1,'铺层平整':0,'对位标记':0};
+  var operator = document.getElementById('cutOp_'+orderId).value || '管理员';
+  o.cutting_complete = {completed: 1, total_cut: totalCut, operator: operator, time: nowStr(), layers: layers, checkmarks: checkmarks};
+  o._stepLog.push({step:'cutting', time:nowStr(), detail:'裁剪完成 · 共'+totalCut+'件 · 操作:'+operator});
+  showToast('✂️ 订单 '+orderId+' 裁剪完成，共 '+totalCut+' 件', true);
+  var remaining = getOrdersByStep('marker');
+  if (remaining.length === 0) {
+    state.step = 'cutting';
+    showToast('🏭 所有订单已裁剪，进入待拿货环节', true);
+  }
+  renderAll();
+}
+
+function processCuttingToPickup(orderId) {
+  var o = findOrder(orderId);
+  if (!o) return;
+  var factory = document.getElementById('pickupFactory_'+orderId).value || pick(state.factories);
+  var operator = document.getElementById('pickupOp_'+orderId).value || '管理员';
+  o.pickup_complete = {completed: 1, factory: factory, operator: operator, time: nowStr()};
+  o._stepLog.push({step:'pickup', time:nowStr(), detail:'送工厂: '+factory+' · 操作:'+operator});
+  showToast('🏭 订单 '+orderId+' 已送 '+factory+' 车缝', true);
+  var remaining = getOrdersByStep('cutting');
+  if (remaining.length === 0) {
+    state.step = 'pickup';
+    showToast('📦 所有订单已送工厂，进入发货环节', true);
+  }
+  renderAll();
+}
+
+function processPickupToShipping(orderId) {
+  var o = findOrder(orderId);
+  if (!o) return;
+  var shipQty = parseInt(document.getElementById('shipQty_'+orderId).value) || o.total_qty;
+  var operator = document.getElementById('shipOp_'+orderId).value || '管理员';
+  o.shipping_complete = {completed: 1, qty: shipQty, operator: operator, time: nowStr()};
+  o._stepLog.push({step:'shipping', time:nowStr(), detail:'发货完成 · '+shipQty+'件 · 操作:'+operator});
+  showToast('📦 订单 '+orderId+' 已发货 ('+shipQty+'件)', true);
+  var remaining = getOrdersByStep('pickup');
+  if (remaining.length === 0) {
+    state.step = 'done';
+    showToast('🎉 所有订单已完成！整个流程模拟结束', true);
+  }
+  renderAll();
+}
+
+function findOrder(id) {
+  for (var i = 0; i < state.orders.length; i++) {
+    if (state.orders[i].id === id) return state.orders[i];
+  }
+  return null;
+}
+
+function autoAdvanceOrder(orderId, fromStep) {
+  if (fromStep === 'placed') {
+    var o = findOrder(orderId);
+    var len = (rand(3, 12) + Math.random()).toFixed(1);
+    var hands = rand(1, 3);
+    o.marker_complete = {completed: 1, length: parseFloat(len), hands: hands, operator: '自动操作', time: nowStr()};
+    o._stepLog.push({step:'marker', time:nowStr(), detail:'自动打唛架 · '+len+'m · '+hands+'手'});
+    showToast('⚡ 订单 '+orderId+' 自动打唛架完成', true);
+    // Advance to cutting automatically too
+    setTimeout(function() {
+      var itemTotal = 0;
+      o.items.forEach(function(item) {
+        for (var sz in item.qty) itemTotal += item.qty[sz] || 0;
+      });
+      var layers = {};
+      o.items.forEach(function(item) {
+        layers[item.color] = {layers: Math.ceil(itemTotal/6), total: itemTotal};
+      });
+      o.cutting_complete = {completed: 1, total_cut: itemTotal, operator: '自动操作', time: nowStr(), layers: layers, checkmarks: {}};
+      o._stepLog.push({step:'cutting', time:nowStr(), detail:'自动裁剪 · '+itemTotal+'件'});
+      showToast('⚡ 订单 '+orderId+' 自动裁剪完成', true);
+      if (getOrdersByStep('placed').length === 0 && getOrdersByStep('marker').length === 0) {
+        state.step = 'cutting';
+      }
+      renderAll();
+    }, 800);
+    renderAll();
+  }
+}
+
+// ===================== RENDER =====================
+
+function renderAll() {
+  updatePipeline();
+  renderStats();
+  renderPanel();
+  renderOrders();
+}
+
+function renderStats() {
+  var total = state.orders.length;
+  var completed = getOrdersByStep('shipping').length;
+  var active = total - completed;
+  var cuttingTotal = 0;
+  state.orders.forEach(function(o) {
+    if (o.cutting_complete && o.cutting_complete.total_cut) cuttingTotal += o.cutting_complete.total_cut;
+  });
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statActive').textContent = active;
+  document.getElementById('statCompleted').textContent = completed;
+  document.getElementById('statCutting').textContent = cuttingTotal;
+}
+
+function renderPanel() {
+  var panel = document.getElementById('stepPanel');
+  var title = document.getElementById('stepTitle');
+  var content = document.getElementById('stepContent');
+
+  if (state.step === 'idle') {
+    panel.classList.remove('visible');
+    return;
+  }
+
+  panel.classList.add('visible');
+
+  // Determine which orders are in the current step
+  var currentOrders = getOrdersByStep(state.step);
+  var nextOrders = [];
+  var prevOrders = [];
+
+  if (state.step === 'placed') {
+    title.innerHTML = '📝 下单 · 待打唛架 <span>操作提示</span>';
+    if (currentOrders.length === 0) {
+      content.innerHTML = '<div style="color:#888;font-size:13px;text-align:center;padding:12px">✅ 所有订单已完成打唛架</div>';
+      return;
+    }
+    var html = '<div style="font-size:13px;color:#666;margin-bottom:12px">选择订单进行 <strong>打唛架</strong> 操作（填写唛架长度和手数）</div>';
+    currentOrders.forEach(function(o) {
+      var itemStr = o.items.map(function(it) { return it.code + ' ('+it.color+') x'+ (Object.values(it.qty).reduce(function(a,b){return a+b},0)); }).join(', ');
+      html += '<div style="background:#faf8f5;border:1px solid #e8e2d9;border-radius:8px;padding:14px;margin-bottom:10px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+        '<span><strong>'+esc(o.id)+'</strong> · '+esc(o.customer)+' · '+o.total_qty+'件</span>'+
+        '<span style="font-size:11px;color:#888">'+itemStr+'</span></div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+        '<label style="font-size:12px;color:#666">唛架长度(m): <input type="number" id="markerLen_'+o.id+'" value="'+(rand(5,20)+Math.random()).toFixed(1)+'" step="0.1" style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px"></label>'+
+        '<label style="font-size:12px;color:#666">手数: <input type="number" id="markerHands_'+o.id+'" value="'+rand(1,3)+'" min="1" style="width:50px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px"></label>'+
+        '<button class="btn btn-primary" onclick="processPlaceToMarker(\''+o.id+'\')">📐 打唛架完成</button>'+
+        '<button class="btn btn-gold-outline" onclick="autoAdvanceOrder(\''+o.id+'\',\'placed\')" style="font-size:11px;padding:5px 12px">⚡ 自动完成</button>'+
+        '</div></div>';
+    });
+    if (currentOrders.length > 0) {
+      html += '<div style="margin-top:8px"><button class="btn btn-success" onclick="batchAdvance()" style="font-size:12px">⚡ 全部一键完成</button></div>';
+    }
+    content.innerHTML = html;
+
+  } else if (state.step === 'marker') {
+    title.innerHTML = '📐 打唛架 · 待裁剪 <span>操作提示</span>';
+    if (currentOrders.length === 0) {
+      content.innerHTML = '<div style="color:#888;font-size:13px;text-align:center;padding:12px">✅ 所有订单已完成裁剪</div>';
+      return;
+    }
+    var html = '<div style="font-size:13px;color:#666;margin-bottom:12px">选择订单进行 <strong>裁剪</strong> 操作</div>';
+    currentOrders.forEach(function(o) {
+      var itemStr = o.items.map(function(it) { return it.code + ' ('+it.color+') x'+ (Object.values(it.qty).reduce(function(a,b){return a+b},0)); }).join(', ');
+      html += '<div style="background:#faf8f5;border:1px solid #e8e2d9;border-radius:8px;padding:14px;margin-bottom:10px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+        '<span><strong>'+esc(o.id)+'</strong> · '+esc(o.customer)+' · '+o.total_qty+'件</span>'+
+        '<span style="font-size:11px;color:#888">'+itemStr+'</span></div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+        '<label style="font-size:12px;color:#666">操作人: <input type="text" id="cutOp_'+o.id+'" value="裁剪师傅" style="width:100px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px"></label>'+
+        '<button class="btn btn-primary" onclick="processMarkerToCutting(\''+o.id+'\')">✂️ 裁剪完成</button>'+
+        '</div></div>';
+    });
+    if (currentOrders.length > 0) {
+      html += '<div style="margin-top:8px"><button class="btn btn-success" onclick="batchAdvance()" style="font-size:12px">⚡ 全部一键完成</button></div>';
+    }
+    content.innerHTML = html;
+
+  } else if (state.step === 'cutting') {
+    title.innerHTML = '✂️ 裁剪 · 待送工厂 <span>操作提示</span>';
+    if (currentOrders.length === 0) {
+      content.innerHTML = '<div style="color:#888;font-size:13px;text-align:center;padding:12px">✅ 所有订单已送工厂</div>';
+      return;
+    }
+    var html = '<div style="font-size:13px;color:#666;margin-bottom:12px">选择订单进行 <strong>送工厂车缝</strong> 操作</div>';
+    currentOrders.forEach(function(o) {
+      var factoryOpts = state.factories.map(function(f) { return '<option value="'+f+'"'+(f===(o.pickup_complete&&o.pickup_complete.factory)?' selected':'')+'>'+f+'</option>'; }).join('');
+      html += '<div style="background:#faf8f5;border:1px solid #e8e2d9;border-radius:8px;padding:14px;margin-bottom:10px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+        '<span><strong>'+esc(o.id)+'</strong> · '+esc(o.customer)+' · 已裁'+o.cutting_complete.total_cut+'件</span>'+
+        '<span style="font-size:11px;color:#888">裁片: '+(o.cutting_complete.layers?Object.keys(o.cutting_complete.layers).join(', '):'')+'</span></div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+        '<label style="font-size:12px;color:#666">选择工厂: <select id="pickupFactory_'+o.id+'" style="padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px">'+factoryOpts+'</select></label>'+
+        '<label style="font-size:12px;color:#666">操作人: <input type="text" id="pickupOp_'+o.id+'" value="管理员" style="width:90px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px"></label>'+
+        '<button class="btn btn-primary" onclick="processCuttingToPickup(\''+o.id+'\')">🏭 送工厂</button>'+
+        '</div></div>';
+    });
+    if (currentOrders.length > 0) {
+      html += '<div style="margin-top:8px"><button class="btn btn-success" onclick="batchAdvance()" style="font-size:12px">⚡ 全部一键完成</button></div>';
+    }
+    content.innerHTML = html;
+
+  } else if (state.step === 'pickup') {
+    title.innerHTML = '🏭 待拿货 · 待发货 <span>操作提示</span>';
+    if (currentOrders.length === 0) {
+      content.innerHTML = '<div style="color:#888;font-size:13px;text-align:center;padding:12px">🎉 所有订单已发货完成！</div>';
+      return;
+    }
+    var html = '<div style="font-size:13px;color:#666;margin-bottom:12px">选择订单进行 <strong>发货</strong> 操作（车缝完成，成品回仓）</div>';
+    currentOrders.forEach(function(o) {
+      html += '<div style="background:#faf8f5;border:1px solid #e8e2d9;border-radius:8px;padding:14px;margin-bottom:10px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+        '<span><strong>'+esc(o.id)+'</strong> · '+esc(o.customer)+' · 工厂: '+esc(o.pickup_complete.factory)+'</span>'+
+        '<span style="font-size:11px;color:#888">订单总数: '+o.total_qty+'件</span></div>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+        '<label style="font-size:12px;color:#666">发货数量: <input type="number" id="shipQty_'+o.id+'" value="'+o.total_qty+'" min="1" style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px"></label>'+
+        '<label style="font-size:12px;color:#666">操作人: <input type="text" id="shipOp_'+o.id+'" value="管理员" style="width:90px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px"></label>'+
+        '<button class="btn btn-primary" onclick="processPickupToShipping(\''+o.id+'\')">📦 确认发货</button>'+
+        '</div></div>';
+    });
+    if (currentOrders.length > 0) {
+      html += '<div style="margin-top:8px"><button class="btn btn-success" onclick="batchAdvance()" style="font-size:12px">⚡ 全部一键完成</button></div>';
+    }
+    content.innerHTML = html;
+
+  } else if (state.step === 'done') {
+    title.innerHTML = '🎉 流程全部完成 <span>完成</span>';
+    content.innerHTML = '<div style="text-align:center;padding:20px">'+
+      '<div style="font-size:48px;margin-bottom:12px">🎉</div>'+
+      '<h3 style="color:#1a1a1a;margin-bottom:8px">所有订单已完成全流程操作！</h3>'+
+      '<p style="color:#888;font-size:13px">共处理 '+state.orders.length+' 个订单，全部完成从下单到发货的完整流程</p>'+
+      '<button class="btn btn-primary" onclick="resetAll()" style="margin-top:16px">⟲ 重新模拟</button>'+
+      '</div>';
+  }
+}
+
+function batchAdvance() {
+  var currentOrders = getOrdersByStep(state.step);
+  if (currentOrders.length === 0) return;
+
+  var step = state.step;
+  currentOrders.forEach(function(o) {
+    if (step === 'placed') {
+      o.marker_complete = {completed: 1, length: parseFloat((rand(5,20)+Math.random()).toFixed(1)), hands: rand(1,3), operator: '批量操作', time: nowStr()};
+      o._stepLog.push({step:'marker', time:nowStr(), detail:'批量打唛架'});
+      // Also auto-cutting
+      var totalCut = 0;
+      var layers = {};
+      o.items.forEach(function(item) {
+        var itemTotal = 0;
+        for (var sz in item.qty) itemTotal += item.qty[sz] || 0;
+        layers[item.color] = {layers: Math.ceil(itemTotal/6), total: itemTotal};
+        totalCut += itemTotal;
+      });
+      o.cutting_complete = {completed: 1, total_cut: totalCut, operator: '批量操作', time: nowStr(), layers: layers, checkmarks: {}};
+      o._stepLog.push({step:'cutting', time:nowStr(), detail:'批量裁剪'});
+    } else if (step === 'marker') {
+      var totalCut = 0;
+      var layers = {};
+      o.items.forEach(function(item) {
+        var itemTotal = 0;
+        for (var sz in item.qty) itemTotal += item.qty[sz] || 0;
+        layers[item.color] = {layers: Math.ceil(itemTotal/6), total: itemTotal};
+        totalCut += itemTotal;
+      });
+      o.cutting_complete = {completed: 1, total_cut: totalCut, operator: '批量操作', time: nowStr(), layers: layers, checkmarks: {}};
+      o._stepLog.push({step:'cutting', time:nowStr(), detail:'批量裁剪'});
+    } else if (step === 'cutting') {
+      o.pickup_complete = {completed: 1, factory: pick(state.factories), operator: '批量操作', time: nowStr()};
+      o._stepLog.push({step:'pickup', time:nowStr(), detail:'批量送工厂'});
+    } else if (step === 'pickup') {
+      o.shipping_complete = {completed: 1, qty: o.total_qty, operator: '批量操作', time: nowStr()};
+      o._stepLog.push({step:'shipping', time:nowStr(), detail:'批量发货'});
+    }
+  });
+
+  // Auto-advance step
+  var nextSteps = {placed:'cutting', marker:'cutting', cutting:'pickup', pickup:'shipping'};
+  if (nextSteps[step]) state.step = nextSteps[step];
+
+  var checkDone = getOrdersByStep(state.step);
+  if (checkDone.length === 0 && state.step !== 'done') {
+    var furtherSteps = {cutting:'pickup', pickup:'shipping', shipping:'done'};
+    if (furtherSteps[state.step]) state.step = furtherSteps[state.step];
+  }
+
+  showToast('⚡ 批量完成 '+currentOrders.length+' 个订单', true);
+  renderAll();
+}
+
+function renderOrders() {
+  var container = document.getElementById('orderList');
+  if (state.orders.length === 0) {
+    container.innerHTML = '<div class="empty-state">暂无订单，点击"开始模拟"</div>';
+    return;
+  }
+
+  var html = '';
+  state.orders.slice().reverse().forEach(function(o) {
+    var st = getOrderStatus(o);
+    var statusName = getStatusName(st);
+    var statusClass = st;
+    var stepInfo = getStepLabel(state.step);
+    var itemLines = o.items.map(function(item) {
+      var tot = 0; for (var sz in item.qty) tot += item.qty[sz] || 0;
+      return '<div class="oc-item"><span class="code">'+esc(item.code)+'</span><span class="detail">'+esc(item.color)+' · '+esc(item.fabric)+'</span><span class="qty">'+tot+'件</span></div>';
+    }).join('');
+
+    // Step log
+    var logHtml = '';
+    if (o._stepLog && o._stepLog.length > 0) {
+      logHtml = o._stepLog.map(function(l) {
+        var icons = {marker:'📐', cutting:'✂️', pickup:'🏭', shipping:'📦'};
+        return '<span style="font-size:11px;color:#999">'+(icons[l.step]||'•')+' '+l.time+' '+esc(l.detail)+'</span>';
+      }).join(' &nbsp;|&nbsp; ');
+    }
+
+    html += '<div class="order-card status-'+statusClass+'">'+
+      '<div class="oc-header">'+
+        '<span class="oc-id">'+esc(o.id)+'</span>'+
+        '<span class="oc-customer">'+esc(o.customer)+'</span>'+
+        '<span class="oc-date">📅 '+o.date+'</span>'+
+      '</div>'+
+      '<div class="oc-body">'+itemLines+'</div>'+
+      (o.note ? '<div style="font-size:11px;color:#c44;padding:2px 16px 4px 20px;background:#fff8f6">📝 '+esc(o.note)+'</div>' : '')+
+      '<div class="oc-footer">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span class="badge badge-'+statusClass+'">'+statusName+'</span>'+
+          (logHtml ? '<span style="font-size:11px;color:#ccc">|</span> '+logHtml : '')+
+        '</div>'+
+        '<div class="oc-actions">'+
+          (st === 'confirmed' && state.step === 'placed' ? '<button class="btn btn-primary" onclick="processPlaceToMarker(\''+o.id+'\')" style="padding:5px 12px;font-size:11px">📐 打唛架</button>' : '')+
+          (st === 'cutting' && state.step === 'marker' ? '<button class="btn btn-primary" onclick="processMarkerToCutting(\''+o.id+'\')" style="padding:5px 12px;font-size:11px">✂️ 裁剪</button>' : '')+
+          (st === 'pickup' && state.step === 'cutting' ? '<button class="btn btn-primary" onclick="processCuttingToPickup(\''+o.id+'\')" style="padding:5px 12px;font-size:11px">🏭 送工厂</button>' : '')+
+          (st === 'sewing' && state.step === 'pickup' ? '<button class="btn btn-primary" onclick="processPickupToShipping(\''+o.id+'\')" style="padding:5px 12px;font-size:11px">📦 发货</button>' : '')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function resetAll() {
+  if (state.orders.length > 0 && !confirm('确认重置所有数据？当前进度将丢失。')) return;
+  state.orders = [];
+  state.step = 'idle';
+  state.currentOrderIndex = 0;
+  document.getElementById('guideCard').style.display = 'block';
+  document.getElementById('orderSection').style.display = 'none';
+  document.getElementById('stepPanel').classList.remove('visible');
+  renderAll();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  showToast('⟲ 已重置，可重新开始模拟', false);
+}
+
+// ===================== INIT =====================
+renderAll();
+</script>
+</body>
+</html>

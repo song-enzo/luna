@@ -1,82 +1,196 @@
-#!/usr/bin/env python3
-"""LUNA ATELIER — 简易服务器（静态文件 + 数据持久化）"""
-import json, os, mimetypes, urllib.parse
+import json, os, mimetypes, re, sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '_data')
-os.makedirs(DATA_DIR, exist_ok=True)
+B = os.path.dirname(os.path.abspath(__file__))
+D = os.path.join(B, '_data')
 
-class Handler(BaseHTTPRequestHandler):
+def load(f):
+    p = os.path.join(D, f)
+    if not os.path.isfile(p): return None
+    try:
+        with open(p, encoding='utf-8') as h: return json.load(h)
+    except: return None
+
+def save(f, data):
+    p = os.path.join(D, f)
+    with open(p, 'w', encoding='utf-8') as h:
+        json.dump(data, h, ensure_ascii=False)
+
+class H(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/api/data':
-            self._send_json(200, self._load_all())
-            return
+        p = self.path.split('?')[0]
+        # API endpoints — exact match
+        api = {
+            '/api/styles': 'luna_styles_data.json',
+            '/api/data/styles': 'luna_styles_data.json',
+            '/api/orders': 'luna_orders_data.json',
+            '/api/cart': 'luna_cart_data.json',
+            '/api/data/guests': 'luna_settings_guests.json',
+            '/api/data/fabrics': 'luna_settings_fabrics.json',
+            '/api/data/categories': 'luna_settings_categories.json',
+            '/api/data/procacc': 'luna_settings_procacc.json',
+            '/api/data/factories': 'luna_settings_factories.json',
+        }
+        if p in api:
+            d = load(api[p])
+            return self.json(200, d if d is not None else ([] if 'cart' not in p else {}))
+        if p == '/api/me':
+            return self.json(200, {'username': 'admin', 'name': 'Admin'})
+        # /api/styles/<code> — individual style lookup
+        m = re.match(r'^/api/styles/(.+)$', p)
+        if m:
+            code = m.group(1)
+            styles = load('luna_styles_data.json') or []
+            for s in styles:
+                if s.get('code') == code:
+                    return self.json(200, s)
+            return self.json(404, {'error': 'style not found'})
+        # /api/print-warehouse/groups
+        if p == '/api/print-warehouse/groups':
+            pw = load('luna_print_warehouse.json') or []
+            return self.json(200, pw)
+        # /api/print-warehouse/by-style/<code>
+        m = re.match(r'^/api/print-warehouse/by-style/(.+)$', p)
+        if m:
+            code = m.group(1)
+            pw = load('luna_print_warehouse.json') or []
+            matches = [x for x in pw if x.get('print_code') == code]
+            return self.json(200, matches)
         # Static file
-        path = self.path.split('?')[0]
-        if path == '/': path = '/settings.html'
-        filepath = os.path.join(os.path.dirname(__file__), path.lstrip('/'))
-        if not os.path.isfile(filepath):
-            self.send_response(404)
-            self.end_headers()
-            return
-        ctype, _ = mimetypes.guess_type(filepath)
+        fp = os.path.join(B, p.lstrip('/') if p != '/' else 'order-print.html')
+        if not os.path.isfile(fp):
+            return self.json(404, {'error': 'not found'})
+        ct, _ = mimetypes.guess_type(fp)
         self.send_response(200)
-        self.send_header('Content-Type', ctype or 'application/octet-stream')
+        self.send_header('Content-Type', ct or 'text/html')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        with open(filepath, 'rb') as f:
-            self.wfile.write(f.read())
+        try:
+            with open(fp, 'rb') as f:
+                self.wfile.write(f.read())
+        except: pass
 
     def do_POST(self):
-        if self.path == '/api/data':
-            length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(length)
+        p = self.path.split('?')[0]
+        l = int(self.headers.get('Content-Length', 0))
+        b = self.rfile.read(l)
+        try:
+            d = json.loads(b) if b else {}
+        except:
+            d = {}
+        # Save order
+        if p == '/api/orders':
             try:
-                data = json.loads(body)
-                self._save_all(data)
-                self._send_json(200, {'ok': True, 'saved': len(data)})
-            except Exception as e:
-                self._send_json(400, {'error': str(e)})
-            return
-        self._send_json(404, {'error': 'not found'})
+                ex = load('luna_orders_data.json') or []
+                ex.append(d)
+                save('luna_orders_data.json', ex)
+                return self.json(200, {'ok': True})
+            except:
+                return self.json(400, {'error': 'bad'})
+        # Cart operations
+        if p == '/api/cart':
+            action = d.get('action', '')
+            cart = load('luna_cart_data.json') or []
+            if action == 'add':
+                cart.append({
+                    'id': len(cart) + 1,
+                    'code': d.get('code', ''),
+                    'name': d.get('name', ''),
+                    'color': d.get('color', ''),
+                    'fabric': d.get('fabric', ''),
+                    'price': d.get('price', 0),
+                    'note': d.get('note', ''),
+                    'qty': d.get('qty', {}),
+                    'item_type': d.get('item_type', ''),
+                    'stampa_img_url': d.get('stampa_img_url', ''),
+                    'sku_code': d.get('sku_code', ''),
+                    'print_id': d.get('print_id', 0),
+                })
+            elif action == 'remove':
+                idx = d.get('id')
+                cart = [c for c in cart if c.get('id') != idx]
+            elif action == 'update_qty':
+                for c in cart:
+                    if c.get('id') == d.get('id'):
+                        sz = d.get('size')
+                        delta = d.get('delta', 0)
+                        c['qty'][sz] = max(0, c['qty'].get(sz, 0) + delta)
+            elif action == 'clear':
+                cart = []
+            save('luna_cart_data.json', cart)
+            return self.json(200, {'ok': True, 'cart': cart})
+        # Checkout (simple: saves order from cart)
+        if p == '/api/checkout':
+            cart = load('luna_cart_data.json') or []
+            if not cart:
+                return self.json(400, {'error': 'cart empty'})
+            from datetime import date
+            today = date.today().isoformat()
+            orders = load('luna_orders_data.json') or []
+            count = sum(1 for o in orders if o.get('date') == today)
+            order_id = f'ORD-{today}-{count+1:02d}'
+            items = []
+            total_qty = 0
+            for c in cart:
+                qty = c.get('qty', {})
+                item_total = sum(qty.values())
+                items.append({
+                    'code': c.get('code',''), 'name': c.get('name',''),
+                    'color': c.get('color',''), 'fabric': c.get('fabric',''),
+                    'price': c.get('price',0), 'qty': qty
+                })
+                total_qty += item_total
+            order = {
+                'id': order_id, 'customer': d.get('guest', ''),
+                'date': today, 'items': items, 'total_qty': total_qty,
+                'note': d.get('note', ''),
+                'order_placed': {'completed': 1},
+                'marker_complete': {'completed': 0},
+                'cutting_complete': {'completed': 0},
+                'pickup_complete': {'completed': 0},
+                'shipping_complete': {'completed': 0},
+            }
+            orders.append(order)
+            save('luna_orders_data.json', orders)
+            save('luna_cart_data.json', [])
+            return self.json(200, {'ok': True, 'order': order})
+        # AI analyze pattern (stub)
+        if p == '/api/ai/analyze-pattern':
+            return self.json(200, {
+                'status': 'success',
+                'data': {
+                    'pattern_no': 'PAT-001',
+                    'cycle_size': '9cm',
+                    'master_image': '',
+                    'colorways': []
+                }
+            })
+        # AI confirm pattern (stub)
+        if p == '/api/ai/confirm-pattern':
+            saved = []
+            for i, cw in enumerate(d.get('colorways', [])):
+                saved.append({'id': i+1, 'sku_code': cw.get('sku_code', '')})
+            return self.json(200, {'status': 'success', 'saved': saved})
+        return self.json(404, {'error': 'nf'})
 
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
-    def _load_all(self):
-        data = {}
-        for fname in os.listdir(DATA_DIR):
-            fpath = os.path.join(DATA_DIR, fname)
-            if fname.endswith('.json') and os.path.isfile(fpath):
-                try:
-                    with open(fpath, 'r') as f:
-                        data[fname[:-5]] = json.load(f)
-                except: pass
-        return data
+    def json(self, c, o):
+        try:
+            b = json.dumps(o, ensure_ascii=False).encode('utf-8')
+            self.send_response(c)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', len(b))
+            self.end_headers()
+            self.wfile.write(b)
+        except: pass
 
-    def _save_all(self, data):
-        for key, val in data.items():
-            fpath = os.path.join(DATA_DIR, key + '.json')
-            with open(fpath, 'w') as f:
-                json.dump(val, f, ensure_ascii=False)
+    def log_message(self, *a): pass
 
-    def _send_json(self, code, obj):
-        body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Content-Length', len(body))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, fmt, *args):
-        pass  # quiet
-
-if __name__ == '__main__':
-    port = 8765
-    print(f'LUNA Server on http://0.0.0.0:{port}')
-    HTTPServer(('0.0.0.0', port), Handler).serve_forever()
+HTTPServer(('0.0.0.0', 8765), H).serve_forever()

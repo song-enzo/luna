@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna AI 能力演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 粒子背景 */
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 头部 */
+        .header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #6c5ce7, #00cec9, transparent);
+        }
+
+        .logo {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6c5ce7, #00cec9, #fd79a8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            letter-spacing: 4px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 18px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(108, 92, 231, 0.15);
+            border: 1px solid rgba(108, 92, 231, 0.3);
+            border-radius: 20px;
+            font-size: 14px;
+            color: #a29bfe;
+            margin-top: 16px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00cec9;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent, #6c5ce7), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #a29bfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: all 0.3s;
+        }
+
+        .counter-value {
+            display: inline-block;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* 功能面板 */
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 48px 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title span {
+            background: linear-gradient(135deg, #6c5ce7, #00cec9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(108, 92, 231, 0.3);
+            box-shadow: 0 4px 24px rgba(108, 92, 231, 0.1);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .feature-icon.purple { background: rgba(108, 92, 231, 0.15); }
+        .feature-icon.teal { background: rgba(0, 206, 201, 0.15); }
+        .feature-icon.pink { background: rgba(253, 121, 168, 0.15); }
+        .feature-icon.orange { background: rgba(255, 159, 67, 0.15); }
+        .feature-icon.blue { background: rgba(116, 185, 255, 0.15); }
+        .feature-icon.green { background: rgba(85, 239, 196, 0.15); }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .feature-desc {
+            color: #999;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+
+        /* 模拟终端/控制台 */
+        .terminal-section {
+            margin-top: 40px;
+        }
+
+        .terminal {
+            background: #1a1a2e;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #ffbd2e; }
+        .terminal-dot.green { background: #28c840; }
+
+        .terminal-title {
+            margin-left: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+
+        .terminal-line {
+            opacity: 0;
+            animation: fadeInLine 0.3s ease forwards;
+        }
+
+        @keyframes fadeInLine {
+            to { opacity: 1; }
+        }
+
+        .terminal-line .prompt {
+            color: #00cec9;
+        }
+
+        .terminal-line .cmd {
+            color: #e0e0e0;
+        }
+
+        .terminal-line .output {
+            color: #a29bfe;
+        }
+
+        .terminal-line .output-success {
+            color: #55efc4;
+        }
+
+        .terminal-line .output-error {
+            color: #ff7675;
+        }
+
+        .terminal-line .output-info {
+            color: #74b9ff;
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #6c5ce7;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* 输入区域 */
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .terminal-input-line .prompt {
+            color: #00cec9;
+            font-family: inherit;
+        }
+
+        .terminal-input {
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 14px;
+            flex: 1;
+            outline: none;
+        }
+
+        .terminal-input::placeholder {
+            color: #555;
+        }
+
+        /* 进度条 */
+        .progress-section {
+            margin-top: 40px;
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #6c5ce7, #00cec9);
+            transition: width 1.5s ease;
+            width: 0%;
+        }
+
+        /* 响应式模拟 */
+        .mock-interface {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 40px;
+        }
+
+        .mock-interface .mock-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .mock-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6c5ce7, #fd79a8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .mock-user-info .name {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .mock-user-info .role {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .mock-messages {
+            margin-bottom: 16px;
+        }
+
+        .mock-message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            animation: slideIn 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .mock-message.user-message {
+            justify-content: flex-end;
+        }
+
+        .mock-message.user-message .bubble {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .mock-message.ai-message .bubble {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-bottom-left-radius: 4px;
+        }
+
+        .bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .bubble .code-inline {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .mock-typing {
+            display: flex;
+            gap: 4px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+            margin-bottom: 16px;
+        }
+
+        .mock-typing span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+            animation: typing 1.4s infinite;
+        }
+
+        .mock-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .mock-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); background: #555; }
+            30% { transform: translateY(-6px); background: #a29bfe; }
+        }
+
+        /* 技能标签 */
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .skill-tag {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            background: rgba(108, 92, 231, 0.12);
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            color: #a29bfe;
+        }
+
+        .skill-tag.python { background: rgba(55, 118, 171, 0.15); border-color: rgba(55, 118, 171, 0.3); color: #74b9ff; }
+        .skill-tag.js { background: rgba(247, 223, 30, 0.12); border-color: rgba(247, 223, 30, 0.25); color: #fdcb6e; }
+        .skill-tag.html { background: rgba(227, 76, 38, 0.12); border-color: rgba(227, 76, 38, 0.25); color: #e17055; }
+        .skill-tag.css { background: rgba(41, 128, 185, 0.12); border-color: rgba(41, 128, 185, 0.25); color: #74b9ff; }
+        .skill-tag.flask { background: rgba(0, 0, 0, 0.15); border-color: rgba(255, 255, 255, 0.15); color: #dfe6e9; }
+        .skill-tag.git { background: rgba(240, 80, 50, 0.12); border-color: rgba(240, 80, 50, 0.25); color: #ff7675; }
+        .skill-tag.api { background: rgba(85, 239, 196, 0.1); border-color: rgba(85, 239, 196, 0.2); color: #55efc4; }
+        .skill-tag.sql { background: rgba(0, 98, 255, 0.12); border-color: rgba(0, 98, 255, 0.25); color: #74b9ff; }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: #6c5ce7;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: #a29bfe;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .logo { font-size: 32px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .feature-grid { grid-template-columns: 1fr; }
+            .bubble { max-width: 90%; }
+            .header { padding: 40px 12px 30px; }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+
+        /* 快捷指令按钮 */
+        .quick-commands {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .quick-cmd-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            background: rgba(108, 92, 231, 0.08);
+            color: #a29bfe;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .quick-cmd-btn:hover {
+            background: rgba(108, 92, 231, 0.2);
+            border-color: rgba(108, 92, 231, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .quick-cmd-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 粒子背景 -->
+    <canvas id="particles"></canvas>
+
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="logo">✦ LUNA AI</div>
+            <div class="subtitle">智能服装管理系统 · 能力演示</div>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                系统在线 · 模拟运行中
+            </div>
+        </header>
+
+        <!-- 统计面板 -->
+        <div class="stats-grid">
+            <div class="stat-card" style="--accent: #6c5ce7;">
+                <div class="stat-icon">📄</div>
+                <div class="stat-number" data-target="47">0</div>
+                <div class="stat-label">功能页面</div>
+            </div>
+            <div class="stat-card" style="--accent: #00cec9;">
+                <div class="stat-icon">⚙️</div>
+                <div class="stat-number" data-target="128">0</div>
+                <div class="stat-label">API 接口</div>
+            </div>
+            <div class="stat-card" style="--accent: #fd79a8;">
+                <div class="stat-icon">💻</div>
+                <div class="stat-number" data-target="5">0</div>
+                <div class="stat-label">支持语言</div>
+            </div>
+            <div class="stat-card" style="--accent: #fdcb6e;">
+                <div class="stat-icon">🚀</div>
+                <div class="stat-number" data-target="99">0</div>
+                <div class="stat-label">% 功能覆盖率</div>
+            </div>
+        </div>
+
+        <!-- 核心技术能力 -->
+        <div class="section-title">🧠 <span>核心技术能力</span></div>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon purple">💬</div>
+                    <div class="feature-title">智能对话</div>
+                </div>
+                <div class="feature-desc">
+                    理解自然语言指令，支持上下文记忆与多轮对话。可以解释代码、调试问题、优化方案、提供建议。
+                </div>
+                <div class="skill-tags">
+                    <span class="skill-tag">NLP</span>
+                    <span class="skill-tag">上下文记忆</span>
+                    <span class="skill-tag">代码理解</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon teal">📝</div>
+                    <div class="feature-title">代码生成与编辑</div>
+                </div>
+                <div class="feature-desc">
+                    从零创建项目文件、生成完整功能代码、精准修改现有代码。支持 Python、JavaScript、HTML/CSS、SQL 等。
+                </div>
+                <div class="skill-tags">
+                    <span class="skill-tag python">Python</span>
+                    <span class="skill-tag js">JavaScript</span>
+                    <span class="skill-tag html">HTML</span>
+                    <span class="skill-tag css">CSS</span>
+                    <span class="skill-tag sql">SQL</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon pink">🔍</div>
+                    <div class="feature-title">代码分析与搜索</div>
+                </div>
+                <div class="feature-desc">
+                    深度分析代码库结构，理解项目架构，跨文件搜索、定位 bug、重构建议、性能优化。
+                </div>
+                <div class="skill-tags">
+                    <span class="skill-tag">代码审查</span>
+                    <span class="skill-tag">重构</span>
+                    <span class="skill-tag">性能优化</span>
+                    <span class="skill-tag">调试</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon orange">🛠️</div>
+                    <div class="feature-title">系统操作</div>
+                </div>
+                <div class="feature-desc">
+                    执行命令行操作、管理文件系统、安装依赖、运行服务器、配置环境、Git 版本控制。
+                </div>
+                <div class="skill-tags">
+                    <span class="skill-tag">CLI</span>
+                    <span class="skill-tag git">Git</span>
+                    <span class="skill-tag flask">Flask</span>
+                    <span class="skill-tag">Node.js</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon blue">🌐</div>
+                    <div class="feature-title">API 与集成</div>
+                </div>
+                <div class="feature-desc">
+                    调用外部 API、连接数据库、对接第三方服务、MCP 服务器集成、数据迁移与同步。
+                </div>
+                <div class="skill-tags">
+                    <span class="skill-tag api">REST API</span>
+                    <span class="skill-tag">MCP</span>
+                    <span class="skill-tag">数据库</span>
+                    <span class="skill-tag">Docker</span>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-header">
+                    <div class="feature-icon green">🎨</div>
+                    <div class="feature-title">前端界面设计</div>
+                </div>
+                <div class="feature-desc">
+                    创建美观的 UI 页面、响应式布局、动画效果、交互式仪表盘、数据可视化。
+                </div>
+                <div class="skill-tags">
+                    <span class="skill-tag html">HTML5</span>
+                    <span class="skill-tag css">CSS3</span>
+                    <span class="skill-tag js">ES6+</span>
+                    <span class="skill-tag">Canvas</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模拟对话界面 -->
+        <div class="section-title">💬 <span>交互模拟</span></div>
+        <div class="mock-interface" id="chatInterface">
+            <div class="mock-header">
+                <div class="mock-avatar">🤖</div>
+                <div class="mock-user-info">
+                    <div class="name">Luna AI 助手</div>
+                    <div class="role">在线 · 随时为你服务</div>
+                </div>
+            </div>
+            <div class="mock-messages" id="chatMessages">
+                <div class="mock-message ai-message" style="animation-delay: 0s;">
+                    <div class="bubble">
+                        你好！我是 <strong>Luna AI</strong>，你的智能编程助手 👋<br><br>
+                        我可以帮你完成以下操作：
+                        <ul style="margin: 8px 0 0 16px; padding: 0;">
+                            <li>📄 创建和编辑文件</li>
+                            <li>🔍 搜索和分析代码</li>
+                            <li>🐛 调试和修复问题</li>
+                            <li>🚀 部署和运行项目</li>
+                            <li>💡 提供技术方案建议</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mock-message user-message" style="animation-delay: 0.4s;">
+                    <div class="bubble">帮我创建一个用户管理页面？</div>
+                </div>
+                <div class="mock-typing" style="animation-delay: 0.8s;">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+            <div class="terminal-input-line">
+                <span class="prompt">❯</span>
+                <input class="terminal-input" id="chatInput" type="text" placeholder="输入指令，模拟交互..." autofocus>
+                <button class="quick-cmd-btn" onclick="sendChatMessage()" style="border-radius:8px; padding:6px 16px; cursor:pointer;">发送</button>
+            </div>
+            <div class="quick-commands">
+                <button class="quick-cmd-btn" onclick="quickChat('帮我创建一个登录页面')">🔐 创建登录页面</button>
+                <button class="quick-cmd-btn" onclick="quickChat('帮我修复这个 bug')">🐛 修复 Bug</button>
+                <button class="quick-cmd-btn" onclick="quickChat('优化数据库查询性能')">⚡ 性能优化</button>
+                <button class="quick-cmd-btn" onclick="quickChat('生成项目结构')">📁 项目结构</button>
+            </div>
+        </div>
+
+        <!-- 模拟终端 -->
+        <div class="section-title">🖥️ <span>模拟终端</span></div>
+        <div class="terminal-section">
+            <div class="terminal">
+                <div class="terminal-header">
+                    <span class="terminal-dot red"></span>
+                    <span class="terminal-dot yellow"></span>
+                    <span class="terminal-dot green"></span>
+                    <span class="terminal-title">luna-terminal — 模拟控制台</span>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <div class="terminal-line" style="animation-delay: 0s;">
+                        <span class="prompt">luna@ai:~$ </span><span class="cmd">./luna.sh --status</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.2s;">
+                        <span class="output-info">⏺ Luna AI System v2.0</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.4s;">
+                        <span class="output-success">✓ 核心引擎已启动</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.6s;">
+                        <span class="output-success">✓ 47 个模块加载完成</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 0.8s;">
+                        <span class="output-success">✓ API 服务运行中 (端口 8766)</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.0s;">
+                        <span class="output">📊 系统状态: <span style="color:#55efc4;">运行正常</span> | 内存: 256MB/1024MB</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.2s;">
+                        <span class="prompt">luna@ai:~$ </span><span class="cmd">ready</span>
+                    </div>
+                    <div class="terminal-line" style="animation-delay: 1.4s;">
+                        <span class="prompt">luna@ai:~$ <span class="cursor-blink"></span></span>
+                    </div>
+                </div>
+                <div style="padding: 0 20px 16px;">
+                    <div class="terminal-input-line" style="margin-top:0;">
+                        <span class="prompt" style="color:#00cec9; font-family:monospace;">luna@ai:~$</span>
+                        <input class="terminal-input" id="terminalInput" type="text" placeholder="输入命令模拟执行..." style="font-family:monospace;">
+                        <button class="quick-cmd-btn" onclick="executeTerminalCommand()" style="border-radius:8px; padding:6px 16px; cursor:pointer;">执行</button>
+                    </div>
+                    <div class="quick-commands" style="margin-top:8px;">
+                        <button class="quick-cmd-btn" onclick="quickTerminal('help')">help</button>
+                        <button class="quick-cmd-btn" onclick="quickTerminal('status')">status</button>
+                        <button class="quick-cmd-btn" onclick="quickTerminal('list modules')">list modules</button>
+                        <button class="quick-cmd-btn" onclick="quickTerminal('check db')">check db</button>
+                        <button class="quick-cmd-btn" onclick="quickTerminal('clear')">clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进度展示 -->
+        <div class="section-title">📊 <span>系统负载</span></div>
+        <div class="progress-section">
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span>🧠 AI 推理引擎</span>
+                    <span id="progress1Text">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress1"></div>
+                </div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span>📡 API 请求处理</span>
+                    <span id="progress2Text">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress2" style="background: linear-gradient(90deg, #fd79a8, #e17055);"></div>
+                </div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span>💾 数据处理</span>
+                    <span id="progress3Text">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress3" style="background: linear-gradient(90deg, #00cec9, #55efc4);"></div>
+                </div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span>🔒 安全模块</span>
+                    <span id="progress4Text">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress4" style="background: linear-gradient(90deg, #6c5ce7, #a29bfe);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            Luna AI 能力演示 · 使用 HTML/CSS/JavaScript 构建<br>
+            在 VSCode 中打开此文件，右键 → 用浏览器打开即可查看
+        </div>
+    </div>
+
+    <script>
+        // ========== 粒子背景 ==========
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.speedY = (Math.random() - 0.5) * 0.3;
+                this.opacity = Math.random() * 0.5 + 0.1;
+                this.color = ['#6c5ce7', '#00cec9', '#fd79a8', '#a29bfe', '#74b9ff'][Math.floor(Math.random() * 5)];
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 100; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            // 连线
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 120) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = particles[i].color;
+                        ctx.globalAlpha = (1 - dist / 120) * 0.15;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ========== 数字动画 ==========
+        function animateNumbers() {
+            const counters = document.querySelectorAll('.stat-number');
+            counters.forEach(counter => {
+                const target = parseInt(counter.getAttribute('data-target'));
+                const duration = 2000;
+                const step = Math.ceil(target / (duration / 16));
+                let current = 0;
+                const update = () => {
+                    current += step;
+                    if (current >= target) {
+                        counter.textContent = target;
+                        return;
+                    }
+                    counter.textContent = current;
+                    requestAnimationFrame(update);
+                };
+                update();
+            });
+        }
+
+        // ========== 进度条动画 ==========
+        function animateProgress() {
+            const targets = [92, 78, 85, 99];
+            const ids = ['progress1', 'progress2', 'progress3', 'progress4'];
+            const texts = ['progress1Text', 'progress2Text', 'progress3Text', 'progress4Text'];
+
+            targets.forEach((target, i) => {
+                let current = 0;
+                const duration = 2000;
+                const step = target / (duration / 16);
+                const update = () => {
+                    current += step;
+                    if (current >= target) {
+                        document.getElementById(ids[i]).style.width = target + '%';
+                        document.getElementById(texts[i]).textContent = target + '%';
+                        return;
+                    }
+                    document.getElementById(ids[i]).style.width = current + '%';
+                    document.getElementById(texts[i]).textContent = Math.floor(current) + '%';
+                    requestAnimationFrame(update);
+                };
+                setTimeout(() => update(), i * 300);
+            });
+        }
+
+        // ========== 聊天模拟 ==========
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+
+            const messages = document.getElementById('chatMessages');
+
+            // 用户消息
+            const userDiv = document.createElement('div');
+            userDiv.className = 'mock-message user-message';
+            userDiv.innerHTML = `<div class="bubble">${msg}</div>`;
+            messages.appendChild(userDiv);
+
+            // 滚动到底部
+            const chatInterface = document.getElementById('chatInterface');
+            chatInterface.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // 打字指示器
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'mock-typing';
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            messages.appendChild(typingDiv);
+
+            // 模拟回复
+            const responses = [
+                '好的，我来处理这个任务！🔨 正在分析需求...',
+                '明白了！让我为你生成对应的代码实现。📝',
+                '收到指令！开始执行操作，请稍候... ⏳',
+                '已理解你的需求，正在生成解决方案... 💡',
+            ];
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+            setTimeout(() => {
+                typingDiv.remove();
+
+                const aiDiv = document.createElement('div');
+                aiDiv.className = 'mock-message ai-message';
+                aiDiv.innerHTML = `<div class="bubble">${randomResponse}<br><br><span style="color:#888;font-size:12px;">✅ 模拟操作已执行</span></div>`;
+                messages.appendChild(aiDiv);
+
+                chatInterface.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 1500 + Math.random() * 1000);
+        }
+
+        function quickChat(msg) {
+            document.getElementById('chatInput').value = msg;
+            sendChatMessage();
+        }
+
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        // ========== 终端模拟 ==========
+        const terminalCommands = {
+            'help': '可用命令:\n  help    - 显示帮助信息\n  status  - 查看系统状态\n  list    - 列出模块\n  check   - 检查数据库连接\n  clear   - 清屏\n  version - 查看版本',
+            'status': '📊 系统状态:\n  ├─ 运行时间: 2天 14小时 32分\n  ├─ 活动连接: 23\n  ├─ 内存使用: 256MB/1024MB\n  ├─ CPU 负载: 12%\n  └─ 磁盘空间: 4.7GB/16GB',
+            'list': '📦 已加载模块 (47):\n  ├─ auth          ✔ 认证模块\n  ├─ orders        ✔ 订单管理\n  ├─ inventory     ✔ 库存管理\n  ├─ cutting       ✔ 裁剪管理\n  ├─ shipping      ✔ 物流管理\n  ├─ reports       ✔ 报表系统\n  └─ ... 及 41 个其他模块',
+            'check': '🔍 数据库检查:\n  ├─ PostgreSQL ✔ 已连接\n  ├─ 连接池: 10/20\n  ├─ 查询延迟: 3ms\n  ├─ 表数量: 28\n  └─ 数据大小: 256MB',
+            'version': 'Luna AI System v2.0.1 (build 20260530)\n  Python 3.9.13 · Flask 2.3.2 · Node 18.16.0',
+            'clear': 'CLEAR',
+            'list modules': '📦 已加载模块 (47):\n  ├─ auth          ✔ 认证模块\n  ├─ orders        ✔ 订单管理\n  ├─ inventory     ✔ 库存管理\n  ├─ cutting       ✔ 裁剪管理\n  ├─ shipping      ✔ 物流管理\n  ├─ reports       ✔ 报表系统\n  └─ ... 及 41 个其他模块',
+            'check db': '🔍 数据库检查:\n  ├─ PostgreSQL ✔ 已连接\n  ├─ 连接池: 10/20\n  ├─ 查询延迟: 3ms\n  ├─ 表数量: 28\n  └─ 数据大小: 256MB',
+        };
+
+        function executeTerminalCommand() {
+            const input = document.getElementById('terminalInput');
+            const cmd = input.value.trim().toLowerCase();
+            if (!cmd) return;
+            input.value = '';
+
+            const terminal = document.getElementById('terminalBody');
+
+            // 移除光标行
+            const lines = terminal.querySelectorAll('.terminal-line');
+            const lastLine = lines[lines.length - 1];
+            if (lastLine && lastLine.innerHTML.includes('cursor-blink')) {
+                lastLine.remove();
+            }
+
+            // 显示输入的命令
+            const cmdLine = document.createElement('div');
+            cmdLine.className = 'terminal-line';
+            cmdLine.innerHTML = `<span class="prompt">luna@ai:~$ </span><span class="cmd">${cmd}</span>`;
+            terminal.appendChild(cmdLine);
+
+            // 生成输出
+            setTimeout(() => {
+                let output = terminalCommands[cmd];
+                if (!output) {
+                    output = `❌ 未知命令: "${cmd}"\n输入 "help" 查看可用命令`;
+                }
+
+                if (output === 'CLEAR') {
+                    terminal.innerHTML = '';
+                } else {
+                    const outLines = output.split('\n');
+                    outLines.forEach((line, i) => {
+                        const outDiv = document.createElement('div');
+                        outDiv.className = 'terminal-line';
+                        if (line.startsWith('  ├─') || line.startsWith('  └─') || line.startsWith('  ')) {
+                            outDiv.innerHTML = `<span class="output">${line}</span>`;
+                        } else if (line.startsWith('❌')) {
+                            outDiv.innerHTML = `<span class="output-error">${line}</span>`;
+                        } else if (line.startsWith('📊') || line.startsWith('📦') || line.startsWith('🔍')) {
+                            outDiv.innerHTML = `<span class="output-info">${line}</span>`;
+                        } else if (line.startsWith('  ✔')) {
+                            outDiv.innerHTML = `<span class="output-success">${line}</span>`;
+                        } else {
+                            outDiv.innerHTML = `<span class="output">${line}</span>`;
+                        }
+                        outDiv.style.animationDelay = (i * 0.1) + 's';
+                        terminal.appendChild(outDiv);
+                    });
+                }
+
+                // 添加新的光标行
+                const cursorDiv = document.createElement('div');
+                cursorDiv.className = 'terminal-line';
+                cursorDiv.style.animationDelay = '0.2s';
+                cursorDiv.innerHTML = `<span class="prompt">luna@ai:~$ </span><span class="cursor-blink"></span>`;
+                terminal.appendChild(cursorDiv);
+
+                terminal.scrollTop = terminal.scrollHeight;
+            }, 300 + Math.random() * 500);
+        }
+
+        function quickTerminal(cmd) {
+            document.getElementById('terminalInput').value = cmd;
+            executeTerminalCommand();
+        }
+
+        document.getElementById('terminalInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') executeTerminalCommand();
+        });
+
+        // ========== 页面加载完成后启动动画 ==========
+        window.addEventListener('load', () => {
+            setTimeout(animateNumbers, 500);
+            setTimeout(animateProgress, 800);
+        });
+
+        // ========== 滚动监测触发动画 ==========
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const progressSection = entry.target;
+                    const bars = progressSection.querySelectorAll('.progress-fill');
+                    bars.forEach((bar, i) => {
+                        setTimeout(() => {
+                            const target = [92, 78, 85, 99][i];
+                            bar.style.width = target + '%';
+                        }, i * 200);
+                    });
+                    observer.unobserve(progressSection);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        const progressSection = document.querySelector('.progress-section');
+        if (progressSection) observer.observe(progressSection);
+    </script>
+
+</body>
+</html>
