@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """LUNA ATELIER — Flask + SQLite 后端"""
-import json, os, sqlite3, uuid, re, base64, mimetypes
+import json, os, sqlite3, uuid, re, base64, mimetypes, threading, time
 from PIL import Image, ImageOps
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -39,6 +39,8 @@ QWEN_API_BASE = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/
 # ── Gemini config (Google 视觉大模型) ──
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '') or _local_cfg.get('gemini_api_key', '')
 GEMINI_MODEL = 'gemini-2.5-flash'
+
+AI_ANALYSIS_JOBS = {}
 
 # ── Image processing utility ──
 
@@ -2264,6 +2266,35 @@ QWEN_ANALYSIS_PROMPT = """你是一个精通面料印花分色文件的视觉专
 }  
 注意：box_2d 必须使用 0-1000 的相对坐标。请务必把中间最大的那一块完整花型识别为 main_pattern，其余所有小方块识别为 colorways，确保不漏掉任何一个。"""  
 
+QWEN_ANALYSIS_PROMPT = """You are digitizing a fabric print color-card sheet for an ordering system.
+
+Find the usable fabric color swatches and the main print pattern preview. Ignore model photos, lifestyle photos, handwritten marks, white inventory quantity stickers, size stickers, arrows, logos, and decorative text that is not part of a swatch label.
+
+Return strict JSON only, no markdown:
+{
+  "pattern_no": "main pattern number such as Q1111, W845V2, W830; empty string if not visible",
+  "cycle_size": "repeat/cycle size such as 8.3cm, 9cm, W69; empty string if not visible",
+  "main_pattern": {
+    "box_2d": [ymin, xmin, ymax, xmax]
+  },
+  "colorways": [
+    {
+      "color_index": 1,
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "color_name": "visible color name, prefer the exact Chinese text when visible, for example 桃粉, 湖绿, 黑色; English such as Cacao is OK; empty string if not visible",
+      "sub_code": "visible per-color code such as W845V9, W830 V10, V2; empty string if not visible",
+      "ocr_text": "all useful text printed inside this swatch, excluding inventory/stock stickers"
+    }
+  ]
+}
+
+Coordinates must be relative 0-1000 in [ymin, xmin, ymax, xmax] order.
+Colorways must be sorted top-to-bottom, left-to-right.
+Do not include the big main pattern as a colorway unless it is the only usable swatch.
+Do not include model/lifestyle images as colorways.
+If a white sticker only shows numbers like 20 or 30, ignore that sticker and still read the swatch name/code around it.
+Make sure every visible usable small swatch is included."""
+
 def refine_and_crop(img, box_1000):  
     """  
     基于 AI 的千分比坐标，进行像素级的边缘微调裁剪  
@@ -2324,6 +2355,8 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
     base_name = os.path.splitext(os.path.basename(image_path))[0]  
 
     results = {  
+        "pattern_no": data.get("pattern_no", ""),
+        "cycle_size": data.get("cycle_size", ""),
         "main_pattern_url": "",  
         "colorways": []  
     }  
@@ -2338,6 +2371,10 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
 
     # 2. 裁剪周围的小色卡  
     colorways = data.get("colorways", [])  
+    colorways = sorted(
+        colorways,
+        key=lambda cw: ((cw.get("box_2d") or [0, 0, 0, 0])[0], (cw.get("box_2d") or [0, 0, 0, 0])[1])
+    )
     for cw in colorways:  
         idx = cw.get("color_index", 1)  
         box = cw.get("box_2d", [])  
@@ -2361,9 +2398,10 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
 
         results["colorways"].append({  
             "color_index": idx,  
-            "color_name": "",  
-            "sub_code": "",  
-            "sku_code": "",  
+            "color_name": cw.get("color_name", ""),  
+            "sub_code": cw.get("sub_code", ""),  
+            "sku_code": cw.get("sku_code", "") or cw.get("sub_code", "") or cw.get("color_name", ""),  
+            "ocr_text": cw.get("ocr_text", ""),
             "dominant_color": avg_color,  
             "image_url": f"/photos/{cw_filename}",  
             "confirmed": True  
@@ -2380,11 +2418,13 @@ crop_colorways_by_ai = process_luna_pattern_image
 def set_colorway_index(results):
     """Convert process_luna_pattern_image output to list with 'index' field"""
     cws = results.get('colorways', [])
-    for cw in cws:
-        cw['index'] = cw.pop('color_index', 1)
+    for pos, cw in enumerate(cws, start=1):
+        cw['index'] = pos
+        cw.pop('color_index', None)
         cw['color_name'] = cw.get('color_name', '')
         cw['sub_code'] = cw.get('sub_code', '')
-        cw['sku_code'] = cw.get('sku_code', '')
+        cw['sku_code'] = cw.get('sku_code', '') or cw.get('sub_code', '') or cw.get('color_name', '')
+        cw['ocr_text'] = cw.get('ocr_text', '')
     return cws
 
 
@@ -2441,8 +2481,8 @@ def _analyze_with_gemini(image_path):
     colorways = set_colorway_index(cw_results)
 
     return {
-        'pattern_no': '',
-        'cycle_size': '',
+        'pattern_no': cw_results.get('pattern_no', ''),
+        'cycle_size': cw_results.get('cycle_size', ''),
         'colorways': colorways
     }
 
@@ -2508,13 +2548,78 @@ def _analyze_with_qwen(image_path):
     colorways = set_colorway_index(cw_results)
 
     return {
-        'pattern_no': '',
-        'cycle_size': '',
+        'pattern_no': cw_results.get('pattern_no', ''),
+        'cycle_size': cw_results.get('cycle_size', ''),
         'colorways': colorways
     }
 
 
 # ── API: AI Analyze Pattern ──
+
+def _set_ai_job(job_id, progress=None, stage=None, status=None, message=None, result=None, error=None):
+    job = AI_ANALYSIS_JOBS.setdefault(job_id, {'created_at': time.time()})
+    if progress is not None:
+        job['progress'] = progress
+    if stage is not None:
+        job['stage'] = stage
+    if status is not None:
+        job['status'] = status
+    if message is not None:
+        job['message'] = message
+    if result is not None:
+        job['result'] = result
+    if error is not None:
+        job['error'] = error
+    job['updated_at'] = time.time()
+
+
+def _cleanup_ai_jobs():
+    cutoff = time.time() - 3600
+    for jid, job in list(AI_ANALYSIS_JOBS.items()):
+        if job.get('updated_at', job.get('created_at', 0)) < cutoff:
+            AI_ANALYSIS_JOBS.pop(jid, None)
+
+
+def _analyze_pattern_file(filepath, progress_cb=None):
+    def step(progress, stage, message):
+        if progress_cb:
+            progress_cb(progress, stage, message)
+
+    step(18, 'prepare', 'Preparing display image')
+    result = process_uploaded_image(filepath)
+    display_url = '/' + result['big_img']
+
+    step(32, 'ai', 'AI is locating swatches and reading labels')
+    if GEMINI_API_KEY:
+        analysis = _analyze_with_gemini(filepath)
+    elif QWEN_API_KEY:
+        analysis = _analyze_with_qwen(filepath)
+    else:
+        raise RuntimeError('AI API key is not configured. Set GEMINI_API_KEY or QWEN_API_KEY.')
+
+    step(84, 'crop', 'Cropping swatch images')
+    swatches = analysis['colorways']
+    for s in swatches:
+        cn = s.get('color_name', '')
+        s['sku_code'] = s.get('sku_code', '') or s.get('sub_code', '') or cn or ''
+
+    payload = {
+        'master_image': display_url,
+        'pattern_no': analysis.get('pattern_no', ''),
+        'cycle_size': analysis.get('cycle_size', ''),
+        'colorways': [{
+            'index': s['index'],
+            'color_name': s.get('color_name', ''),
+            'sub_code': s.get('sub_code', ''),
+            'sku_code': s.get('sku_code', ''),
+            'image_url': s.get('image_url', ''),
+            'dominant_color': s.get('dominant_color', ''),
+            'ocr_text': s.get('ocr_text', '')
+        } for s in swatches]
+    }
+    step(96, 'finalize', f"Found {len(swatches)} swatches")
+    return payload
+
 
 @app.route('/api/ai/analyze-pattern', methods=['POST'])
 @require_auth
@@ -2577,6 +2682,62 @@ def api_ai_analyze_pattern():
         print('AI analyze error:', e)
         import traceback; traceback.print_exc()
         return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+@app.route('/api/ai/analyze-pattern-job', methods=['POST'])
+@require_auth
+def api_ai_analyze_pattern_job():
+    """Start background pattern analysis and return a pollable job id."""
+    _cleanup_ai_jobs()
+    if 'file' not in request.files:
+        return jsonify({'error': 'no file'}), 400
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'empty filename'}), 400
+
+    ext = os.path.splitext(file.filename)[1] or '.jpg'
+    filename = 'ai_' + uuid.uuid4().hex + ext
+    filepath = os.path.join(PHOTO_DIR, filename)
+    file.save(filepath)
+
+    job_id = uuid.uuid4().hex
+    _set_ai_job(job_id, progress=12, stage='queued', status='running', message='Upload received')
+
+    def run():
+        started = time.time()
+        try:
+            def progress_cb(progress, stage, message):
+                elapsed = int(time.time() - started)
+                _set_ai_job(job_id, progress=progress, stage=stage, status='running', message=f'{message} ({elapsed}s)')
+
+            payload = _analyze_pattern_file(filepath, progress_cb=progress_cb)
+            _set_ai_job(
+                job_id,
+                progress=100,
+                stage='done',
+                status='success',
+                message=f"Done. Found {len(payload.get('colorways', []))} swatches.",
+                result={'status': 'success', 'data': payload}
+            )
+        except Exception as e:
+            print('AI job error:', e)
+            import traceback; traceback.print_exc()
+            _set_ai_job(job_id, progress=100, stage='failed', status='error', message=str(e), error=str(e))
+        finally:
+            try: os.remove(filepath)
+            except: pass
+
+    threading.Thread(target=run, daemon=True).start()
+    return jsonify({'status': 'running', 'job_id': job_id})
+
+
+@app.route('/api/ai/analyze-pattern-job/<job_id>', methods=['GET'])
+@require_auth
+def api_ai_analyze_pattern_job_status(job_id):
+    job = AI_ANALYSIS_JOBS.get(job_id)
+    if not job:
+        return jsonify({'status': 'error', 'error': 'job not found'}), 404
+    return jsonify(job)
 
 
 @app.route('/api/ai/confirm-pattern', methods=['POST'])

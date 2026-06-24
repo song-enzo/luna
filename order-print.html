@@ -40,6 +40,14 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .upload-zone .spinner{width:32px;height:32px;border:3px solid #EBE8E3;border-top-color:#C8A56D;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .upload-zone .loading-text{font-size:13px;color:#999}
+.ai-progress{display:none;margin-top:12px;padding:12px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.ai-progress.show{display:block}
+.ai-progress .progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:11px;color:#666}
+.ai-progress .progress-stage{font-weight:600;color:#1C1C1C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-progress .progress-percent{font-weight:700;color:#C8A56D}
+.ai-progress .progress-track{height:8px;background:#F0EDE8;border-radius:999px;overflow:hidden}
+.ai-progress .progress-bar{height:100%;width:0;background:#C8A56D;border-radius:999px;transition:width .25s ease}
+.ai-progress .progress-detail{margin-top:7px;font-size:10px;color:#999;line-height:1.4}
 .master-preview{margin:12px 0;padding:12px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
 .master-preview .mp-title{font-size:11px;color:#999;font-weight:500;margin-bottom:6px;display:flex;justify-content:space-between}
 .master-preview .mp-img-wrap{position:relative;cursor:pointer;border-radius:4px;overflow:hidden;background:#f0ede8}
@@ -162,6 +170,14 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
       <div class="sub-hint">自动切割色块 + Gemini 识别名称编号</div>
     </div>
     <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <div class="ai-progress" id="aiProgress">
+      <div class="progress-head">
+        <span class="progress-stage" id="aiProgressStage">准备上传</span>
+        <span class="progress-percent" id="aiProgressPercent">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-bar" id="aiProgressBar"></div></div>
+      <div class="progress-detail" id="aiProgressDetail">等待图片...</div>
+    </div>
   </div>
   <div id="analysisResult" style="display:none">
     <div class="master-preview">
@@ -303,7 +319,123 @@ function processImage(file){
   reader.readAsDataURL(file);
 }
 
-// ═══════════════════ 行列投影切割法 ═══════════════════
+// ═══════════════════ 行列投影切割法（改进版）═══════════════════
+function setAIProgress(percent,stage,detail){
+  var wrap=document.getElementById('aiProgress');
+  var bar=document.getElementById('aiProgressBar');
+  var pct=document.getElementById('aiProgressPercent');
+  var st=document.getElementById('aiProgressStage');
+  var de=document.getElementById('aiProgressDetail');
+  percent=Math.max(0,Math.min(100,Math.round(percent||0)));
+  wrap.classList.add('show');
+  bar.style.width=percent+'%';
+  pct.textContent=percent+'%';
+  st.textContent=stage||'处理中';
+  de.textContent=detail||'';
+}
+function resetUploadZone(text,sub){
+  var zone=document.getElementById('uploadZone');
+  zone.classList.remove('loading');
+  zone.innerHTML='<div class="icon">📷</div><div class="hint">'+esc(text||'点击上传新图片')+'</div><div class="sub-hint">'+esc(sub||'AI 自动识别色卡图和名称')+'</div>';
+}
+function applyAIAnalysis(data){
+  data=data||{};
+  colorways=(data.colorways||[]).map(function(c,i){
+    return {
+      index:c.index||i+1,
+      color_name:c.color_name||'',
+      sub_code:c.sub_code||'',
+      sku_code:c.sku_code||c.sub_code||c.color_name||'',
+      image_url:c.image_url||'',
+      dominant_color:c.dominant_color||'#888888',
+      ocr_text:c.ocr_text||''
+    };
+  });
+  selectedSwatches={};
+  patternNo=data.pattern_no||'';
+  if(patternNo)document.getElementById('patternNoInput').value=patternNo;
+  if(data.cycle_size)document.getElementById('cycleSizeInput').value=data.cycle_size;
+  if(data.master_image){
+    document.getElementById('masterPreviewImg').src=data.master_image;
+  }
+  document.getElementById('swatchCount').textContent='共 '+colorways.length+' 个色卡';
+  document.getElementById('analysisResult').style.display='block';
+  renderSwatches();
+}
+function pollAnalysisJob(jobId,startedAt){
+  fetch('/api/ai/analyze-pattern-job/'+encodeURIComponent(jobId))
+  .then(function(r){return r.json()})
+  .then(function(job){
+    if(job.status==='success'){
+      setAIProgress(100,'识别完成',job.message||'已生成色卡结果');
+      applyAIAnalysis(job.result&&job.result.data?job.result.data:{});
+      resetUploadZone('点击上传新图片','已识别 '+colorways.length+' 个色卡');
+      return;
+    }
+    if(job.status==='error'){
+      setAIProgress(100,'识别失败',job.error||job.message||'请重试或使用手动裁剪');
+      resetUploadZone('识别失败，点击重试','也可以使用手动裁剪补充');
+      showToast(job.error||job.message||'识别失败',true);
+      return;
+    }
+    var elapsed=Math.round((Date.now()-startedAt)/1000);
+    setAIProgress(job.progress||35,job.stage||'AI识别中',(job.message||'正在处理')+' · '+elapsed+'s');
+    setTimeout(function(){pollAnalysisJob(jobId,startedAt)},1000);
+  })
+  .catch(function(){
+    setAIProgress(100,'网络错误','无法读取识别进度，请检查服务是否运行');
+    resetUploadZone('网络错误，点击重试','请确认本地服务正常');
+  });
+}
+function processImage(file){
+  var zone=document.getElementById('uploadZone');
+  zone.classList.add('loading');
+  zone.innerHTML='<div class="spinner"></div><div class="loading-text">正在上传并识别...</div>';
+  setAIProgress(1,'读取图片','准备预览和上传');
+  var reader=new FileReader();
+  reader.onload=function(e){
+    masterImageDataUrl=e.target.result;
+    var img=new Image();masterImg=img;
+    img.onload=function(){
+      document.getElementById('masterPreviewImg').src=masterImageDataUrl;
+      document.getElementById('swatchCount').textContent='识别中...';
+      document.getElementById('analysisResult').style.display='block';
+    };
+    img.src=masterImageDataUrl;
+  };
+  reader.readAsDataURL(file);
+
+  var form=new FormData();
+  form.append('file',file);
+  var xhr=new XMLHttpRequest();
+  var startedAt=Date.now();
+  xhr.open('POST','/api/ai/analyze-pattern-job',true);
+  xhr.upload.onprogress=function(e){
+    if(e.lengthComputable){
+      var pct=Math.round((e.loaded/e.total)*100);
+      setAIProgress(Math.min(12,Math.round(pct*0.12)),'上传图片','已上传 '+pct+'%');
+    }
+  };
+  xhr.onload=function(){
+    var res={};
+    try{res=JSON.parse(xhr.responseText||'{}')}catch(e){}
+    if(xhr.status>=200&&xhr.status<300&&res.job_id){
+      setAIProgress(15,'排队分析','后端已收到图片');
+      pollAnalysisJob(res.job_id,startedAt);
+    }else{
+      setAIProgress(100,'启动失败',res.error||'无法启动 AI 识别');
+      resetUploadZone('启动失败，点击重试',res.error||'请检查 AI Key 和登录状态');
+      showToast(res.error||'无法启动 AI 识别',true);
+    }
+  };
+  xhr.onerror=function(){
+    setAIProgress(100,'上传失败','网络错误');
+    resetUploadZone('上传失败，点击重试','请确认本地服务正常');
+    showToast('上传失败',true);
+  };
+  xhr.send(form);
+}
+
 function detectSwatchesOnCanvas(img){
   var W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
   // 缩放到宽2000px做投影分析
@@ -313,24 +445,79 @@ function detectSwatchesOnCanvas(img){
   var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,useW,useH);
   var d=ctx.getImageData(0,0,useW,useH).data;
 
-  // 统计行列白色比例（RGB>248才视为白色）
+  // ① 统计"缝隙"（白/灰/米色背景）比例 —— 用饱和度判断而不是固定RGB阈值
+  // 缝隙特点: 高亮度 + 低饱和度（max-min差值小），避免浅色色卡被误判
   var rowW=new Array(useH).fill(0),colW=new Array(useW).fill(0);
   for(var y=0;y<useH;y++){for(var x=0;x<useW;x++){
     var idx=(y*useW+x)*4;
-    if(d[idx]>248&&d[idx+1]>248&&d[idx+2]>248){rowW[y]++;colW[x]++}
+    var r=d[idx],g=d[idx+1],b=d[idx+2];
+    var mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+    // 缝隙判断：低饱和度 + 高亮度，但排除过于鲜艳的颜色
+    // 调整：饱和度阈值从45降到60（更严格），亮度阈值从160降到200（只认纯白）
+    if(mx-mn<55&&mn>190){rowW[y]++;colW[x]++}
   }}
   for(var y=0;y<useH;y++)rowW[y]/=useW;
   for(var x=0;x<useW;x++)colW[x]/=useH;
 
-  // 找行/列分割线（95%以上白色即为分割间隙）
-  var th=0.90;
-  var xs=[],ys=[];
-  var inX=false,sx=0;
-  for(var x=0;x<useW;x++){if(colW[x]<th){if(!inX){sx=x;inX=true}}else{if(inX){xs.push({s:sx,e:x});inX=false}}}if(inX)xs.push({s:sx,e:useW});
-  var inY=false,sy=0;
-  for(var y=0;y<useH;y++){if(rowW[y]<th){if(!inY){sy=y;inY=true}}else{if(inY){ys.push({s:sy,e:y});inY=false}}}if(inY)ys.push({s:sy,e:useH});
+  // ② 平滑投影曲线，消除文字/噪点造成的毛刺
+  function smooth(arr,r){
+    var out=new Array(arr.length);
+    for(var i=0;i<arr.length;i++){
+      var s=0,c=0;
+      for(var j=-r;j<=r;j++){var k=i+j;if(k>=0&&k<arr.length){s+=arr[k];c++}}
+      out[i]=s/c;
+    }
+    return out;
+  }
+  rowW=smooth(rowW,3);
+  colW=smooth(colW,3);
 
-  // 组合网格
+  // ③ 自适应阈值：取投影值的中位数+偏移量，避免"白底标签区"被误判为间隙
+  function autoTh(profile){
+    var sorted=profile.slice().sort(function(a,b){return a-b});
+    var n=sorted.length;
+    // 找"内容区"和"间隙区"之间的最佳分割点（简化Otsu）
+    var best=0.85,bestScore=0;
+    for(var p=50;p<97;p++){
+      var th=p/100;
+      var below=[],above=[];
+      for(var i=0;i<n;i++){if(sorted[i]<=th)below.push(sorted[i]);else above.push(sorted[i])}
+      if(below.length<3||above.length<3)continue;
+      var mb=below.reduce(function(s,v){return s+v},0)/below.length;
+      var ma=above.reduce(function(s,v){return s+v},0)/above.length;
+      var score=(ma-mb)*(below.length/n)*(above.length/n);
+      if(score>bestScore){bestScore=score;best=th}
+    }
+    return Math.max(0.60,Math.min(0.95,best));
+  }
+  var th=(autoTh(rowW)+autoTh(colW))/2;
+
+  // ④ 提取内容区域（低白色比=色卡），并合并过近的区域
+  function findRanges(arr,threshold,minW){
+    var ranges=[],start=-1;
+    for(var i=0;i<arr.length;i++){
+      if(arr[i]<threshold){if(start<0)start=i}
+      else{if(start>=0){if(i-start>minW)ranges.push({s:start,e:i});start=-1}}
+    }
+    if(start>=0&&arr.length-start>minW)ranges.push({s:start,e:arr.length});
+    return ranges;
+  }
+  function merge(ranges,maxGap){
+    if(!ranges.length)return ranges;
+    var r=[ranges[0]];
+    for(var i=1;i<ranges.length;i++){
+      if(ranges[i].s-r[r.length-1].e<maxGap)r[r.length-1].e=ranges[i].e;
+      else r.push(ranges[i]);
+    }
+    return r;
+  }
+  var xs=merge(findRanges(colW,th,20),40);
+  var ys=merge(findRanges(rowW,th,20),40);
+  // 剔除过窄的残余噪声
+  xs=xs.filter(function(r){return r.e-r.s>30});
+  ys=ys.filter(function(r){return r.e-r.s>30});
+
+  // ⑤ 组合网格
   var rects=[];
   for(var yi=0;yi<ys.length;yi++){for(var xi=0;xi<xs.length;xi++){
     var rw=xs[xi].e-xs[xi].s,rh=ys[yi].e-ys[yi].s;
@@ -338,13 +525,13 @@ function detectSwatchesOnCanvas(img){
   }}
   rects.sort(function(a,b){return a.y-b.y||a.x-b.x});
 
-  // 还原原图尺寸裁剪
+  // ⑥ 还原原图尺寸裁剪
   var swatches=[];
   for(var ri=0;ri<rects.length;ri++){
     var r=rects[ri];
     var sx=Math.round(r.x/scale),sy=Math.round(r.y/scale),sw=Math.round(r.w/scale),sh=Math.round(r.h/scale);
-    // 向外扩2%保留边缘文字
-    var px=Math.round(sw*0.02),py=Math.round(sh*0.02);
+    // 向外扩1.5%保留边缘文字
+    var px=Math.max(2,Math.round(sw*0.015)),py=Math.max(2,Math.round(sh*0.015));
     sx=Math.max(0,sx-px);sy=Math.max(0,sy-py);
     sw=Math.min(W,sx+sw+px*2)-sx;sh=Math.min(H,sy+sh+py*2)-sy;
     if(sw<30||sh<30)continue;
