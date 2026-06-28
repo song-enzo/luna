@@ -58,6 +58,17 @@ a{text-decoration:none;color:inherit}
 .toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
 .toggle.on .knob{left:18px}
 .panel-msg{text-align:center;padding:60px 20px;color:#aaa;font-size:13px}
+.guest-select{position:relative;min-width:170px}
+.guest-select-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid #e8e2d9;border-radius:6px;background:#fff;color:#333;font-family:inherit;font-size:12px;cursor:pointer;text-align:left}
+.guest-select-btn:hover{border-color:#c9a96e}
+.guest-select-summary{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.guest-select-caret{color:#b8965a;font-size:10px;flex:0 0 auto}
+.guest-select-menu{display:none;position:absolute;left:0;top:calc(100% + 4px);width:240px;max-height:260px;overflow:auto;background:#fff;border:1px solid #e8e2d9;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.12);padding:6px;z-index:50}
+.guest-select.open .guest-select-menu{display:block}
+.guest-option{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:5px;font-size:12px;color:#333;cursor:pointer;line-height:1.3}
+.guest-option:hover{background:#faf8f5}
+.guest-option input{width:14px;height:14px;accent-color:#b8965a;flex:0 0 auto}
+.guest-option.all{font-weight:600;color:#8a6a36;border-bottom:1px solid #f0ede8;margin-bottom:4px}
 /* Toast */
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1c1c1c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
@@ -138,6 +149,7 @@ var SETTINGS = {
     localStorage.setItem(this.KEYS[key], JSON.stringify(data));
   }
 };
+var _suppressNextStyleRender = false;
 
 function toggleMenu() {
   document.getElementById('sideOverlay').classList.toggle('active');
@@ -150,6 +162,39 @@ function logout() {
 }
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function guestValue(g) { return String(g.id || g.username || g.name || ''); }
+function guestKeys(g) {
+  return [g.id, g.username, g.name, g.shop_name].filter(Boolean).map(String);
+}
+function guestLabel(g) {
+  var val = guestValue(g);
+  return (g.shop_name ? g.shop_name + ' - ' : '') + (g.name || g.username || val);
+}
+function guestIsVisible(g, visible) {
+  var keys = guestKeys(g);
+  for (var i = 0; i < keys.length; i++) {
+    if (visible.indexOf(keys[i]) !== -1) return true;
+  }
+  return false;
+}
+function selectedGuestValues(visible, guests) {
+  var values = [];
+  guests.forEach(function(g) {
+    var val = guestValue(g);
+    if (val && guestIsVisible(g, visible) && values.indexOf(val) === -1) values.push(val);
+  });
+  return values;
+}
+function visibleGuestSummary(visible, guests) {
+  if (!visible.length) return '全部客人';
+  var labels = [];
+  guests.forEach(function(g) {
+    if (guestIsVisible(g, visible)) labels.push(guestLabel(g));
+  });
+  if (!labels.length) return visible.length + ' 位客人';
+  return labels.length <= 2 ? labels.join('、') : labels.slice(0, 2).join('、') + ' +' + (labels.length - 2);
+}
 
 function showToast(msg) {
   var t = document.getElementById('toast');
@@ -158,7 +203,7 @@ function showToast(msg) {
   setTimeout(function(){ t.classList.remove('show'); }, 2500);
 }
 
-function renderStyles() {
+function renderStylesLegacy() {
   var styles = [];
   try { styles = LUNA.getStyles(); } catch(e) {}
   var guests = [];
@@ -177,6 +222,7 @@ function renderStyles() {
     var code = s.code;
     var isOn = toggles[code] !== false;
     var visible = (s.visibleGuests || []).map(String);
+    var selectedValues = selectedGuestValues(visible, guests);
     html += '<tr>';
     html += '<td><strong style="color:#c9a96e;font-size:13px">' + esc(code) + '</strong></td>';
     html += '<td style="text-align:right">€' + ((s.suggestedPrice||0).toFixed(2)) + '</td>';
@@ -212,6 +258,112 @@ function updateVisibleGuests(code, sel) {
   }
 }
 
+function renderStyles() {
+  var styles = [];
+  try { styles = LUNA.getStyles(); } catch(e) {}
+  var guests = [];
+  try { guests = LUNA.getGuests ? (LUNA.getGuests() || []) : []; } catch(e) {}
+  var toggles = SETTINGS.get('styleToggles') || {};
+  document.getElementById('countBadge').textContent = '(' + styles.length + ')';
+  var html = '';
+  if (styles.length === 0) {
+    document.getElementById('stylePanel').innerHTML = '<div class="panel-msg">No styles yet</div>';
+    return;
+  }
+  html += '<table class="proc-table">';
+  html += '<tr><th>编号</th><th style="width:70px;text-align:right">价格</th><th style="min-width:180px">可见客人</th><th style="text-align:center;width:44px">启用</th><th style="width:44px">操作</th></tr>';
+  styles.forEach(function(s) {
+    var code = s.code;
+    var isOn = toggles[code] !== false;
+    var visible = (s.visibleGuests || []).map(String);
+    var selectedValues = selectedGuestValues(visible, guests);
+    html += '<tr>';
+    html += '<td><strong style="color:#c9a96e;font-size:13px">' + esc(code) + '</strong></td>';
+    html += '<td style="text-align:right">EUR ' + ((s.suggestedPrice || 0).toFixed(2)) + '</td>';
+    html += '<td><div class="guest-select" data-code="' + escAttr(code) + '">';
+    html += '<button type="button" class="guest-select-btn" onclick="toggleGuestDropdown(this,event)"><span class="guest-select-summary">' + esc(visibleGuestSummary(selectedValues, guests)) + '</span><span class="guest-select-caret">v</span></button>';
+    html += '<div class="guest-select-menu" onclick="event.stopPropagation()">';
+    html += '<label class="guest-option all"><input type="checkbox" onchange="setAllVisibleGuests(this,event)"' + (selectedValues.length ? '' : ' checked') + '>全部客人</label>';
+    guests.forEach(function(g) {
+      var val = guestValue(g);
+      if (!val) return;
+      html += '<label class="guest-option"><input type="checkbox" data-value="' + escAttr(val) + '" onchange="updateVisibleGuestChoice(this,event)"' + (selectedValues.indexOf(val) !== -1 ? ' checked' : '') + '>' + esc(guestLabel(g)) + '</label>';
+    });
+    html += '</div></div></td>';
+    html += '<td style="text-align:center"><span class="toggle' + (isOn ? ' on' : '') + '" onclick="toggleStyle(\'' + escAttr(code) + '\')"><span class="knob"></span></span></td>';
+    html += '<td><a href="add-style.html?code=' + encodeURIComponent(code) + '" style="color:#c9a96e;font-size:11px;text-decoration:none">编辑</a></td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('stylePanel').innerHTML = html;
+}
+
+function toggleGuestDropdown(btn, event) {
+  event.stopPropagation();
+  var wrap = btn.closest('.guest-select');
+  var isOpen = wrap.classList.contains('open');
+  closeGuestDropdowns();
+  if (!isOpen) wrap.classList.add('open');
+}
+
+function closeGuestDropdowns() {
+  var open = document.querySelectorAll('.guest-select.open');
+  for (var i = 0; i < open.length; i++) open[i].classList.remove('open');
+}
+
+function currentGuestSelection(wrap) {
+  var selected = [];
+  var inputs = wrap.querySelectorAll('.guest-option input[data-value]');
+  for (var i = 0; i < inputs.length; i++) {
+    if (inputs[i].checked) selected.push(inputs[i].getAttribute('data-value'));
+  }
+  return selected;
+}
+
+function syncGuestSelect(wrap, selected) {
+  var guests = [];
+  try { guests = LUNA.getGuests ? (LUNA.getGuests() || []) : []; } catch(e) {}
+  var all = wrap.querySelector('.guest-option.all input');
+  var inputs = wrap.querySelectorAll('.guest-option input[data-value]');
+  var selectedMap = {};
+  selected.forEach(function(v) { selectedMap[String(v)] = true; });
+  for (var i = 0; i < inputs.length; i++) {
+    inputs[i].checked = !!selectedMap[inputs[i].getAttribute('data-value')];
+  }
+  if (all) all.checked = selected.length === 0;
+  var summary = wrap.querySelector('.guest-select-summary');
+  if (summary) summary.textContent = visibleGuestSummary(selected, guests);
+}
+
+function saveVisibleGuests(code, selected, wrap) {
+  var styles = LUNA.getStyles();
+  for (var j = 0; j < styles.length; j++) {
+    if (styles[j].code === code) {
+      styles[j].visibleGuests = selected;
+      _suppressNextStyleRender = true;
+      LUNA.saveStyles(styles);
+      syncGuestSelect(wrap, selected);
+      showToast(selected.length ? '已限制可见客人' : '已设为全部客人可见');
+      break;
+    }
+  }
+}
+
+function setAllVisibleGuests(input, event) {
+  event.stopPropagation();
+  var wrap = input.closest('.guest-select');
+  if (!input.checked) input.checked = true;
+  saveVisibleGuests(wrap.getAttribute('data-code'), [], wrap);
+}
+
+function updateVisibleGuestChoice(input, event) {
+  event.stopPropagation();
+  var wrap = input.closest('.guest-select');
+  var all = wrap.querySelector('.guest-option.all input');
+  if (all) all.checked = false;
+  saveVisibleGuests(wrap.getAttribute('data-code'), currentGuestSelection(wrap), wrap);
+}
+
 function toggleStyle(code) {
   var toggles = SETTINGS.get('styleToggles') || {};
   toggles[code] = toggles[code] === false ? true : false;
@@ -234,8 +386,13 @@ if (typeof window !== 'undefined') {
 }
 
 window.addEventListener('luna-data-changed', function() {
+  if (_suppressNextStyleRender) {
+    _suppressNextStyleRender = false;
+    return;
+  }
   renderStyles();
 });
+document.addEventListener('click', closeGuestDropdowns);
 </script>
 </body>
 </html>
