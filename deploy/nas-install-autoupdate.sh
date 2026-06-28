@@ -5,7 +5,7 @@ REPO_URL="${LUNA_REPO_URL:-https://github.com/song-enzo/luna.git}"
 APP_DIR="${LUNA_APP_DIR:-/opt/data/luna}"
 BRANCH="${LUNA_BRANCH:-main}"
 CRON_MARKER="# LUNA auto update from GitHub"
-CRON_LINE="* * * * * LUNA_APP_DIR=$APP_DIR LUNA_BRANCH=$BRANCH $APP_DIR/deploy/nas-auto-update.sh >/dev/null 2>&1"
+CRON_LINE="* * * * * LUNA_APP_DIR=$APP_DIR LUNA_BRANCH=$BRANCH bash $APP_DIR/deploy/nas-auto-update.sh >/dev/null 2>&1"
 
 echo "Installing LUNA auto update"
 echo "Repository: $REPO_URL"
@@ -30,7 +30,7 @@ git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
-chmod +x "$APP_DIR/deploy/nas-auto-update.sh"
+chmod +x "$APP_DIR/deploy/nas-auto-update.sh" 2>/dev/null || true
 
 if git ls-files --error-unmatch luna.db >/dev/null 2>&1; then
   git update-index --skip-worktree luna.db || true
@@ -55,6 +55,6 @@ crontab -l 2>/dev/null | grep -vF "$CRON_MARKER" | grep -vF "$APP_DIR/deploy/nas
 rm -f "$tmp_cron"
 
 mkdir -p "$APP_DIR/.service-logs"
-"$APP_DIR/deploy/nas-auto-update.sh"
+bash "$APP_DIR/deploy/nas-auto-update.sh"
 
 echo "Done. NAS will check GitHub every minute and restart LUNA after new commits."
