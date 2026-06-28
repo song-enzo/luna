@@ -20,6 +20,10 @@ protect_runtime_files() {
     git update-index --skip-worktree luna.db || true
   fi
 
+  if git ls-files --error-unmatch .service-logs/pids >/dev/null 2>&1; then
+    git update-index --skip-worktree .service-logs/pids || true
+  fi
+
   git ls-files photos | while IFS= read -r path; do
     [ -n "$path" ] || continue
     git update-index --skip-worktree "$path" || true
