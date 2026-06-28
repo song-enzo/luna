@@ -41,7 +41,16 @@ chmod +x deploy/nas-install-autoupdate.sh
 
 ## Normal local workflow
 
-On the local computer:
+Recommended one-command local sync:
+
+```powershell
+cd C:\Users\62016\luna\luna
+.\sync-luna.ps1 "Update LUNA"
+```
+
+The sync script automatically stages normal code files and skips runtime data such as `luna.db*`, `photos/`, logs, backups, virtualenvs, and temporary test output.
+
+Manual local workflow:
 
 ```bash
 git status
