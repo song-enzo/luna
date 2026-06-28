@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """LUNA ATELIER — Flask + SQLite 后端"""
 import json, os, sqlite3, uuid, re, base64, mimetypes, threading, time
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask import Flask, request, session, jsonify, send_from_directory, g
@@ -39,6 +39,10 @@ QWEN_API_BASE = os.environ.get('QWEN_API_BASE', 'https://dashscope.aliyuncs.com/
 # ── Gemini config (Google 视觉大模型) ──
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '') or _local_cfg.get('gemini_api_key', '')
 GEMINI_MODEL = 'gemini-2.5-flash'
+GEMINI_FALLBACK_MODELS = [
+    m.strip() for m in (os.environ.get('GEMINI_FALLBACK_MODELS', '') or _local_cfg.get('gemini_fallback_models', 'gemini-2.5-flash-lite,gemini-2.0-flash')).split(',')
+    if m.strip()
+]
 
 AI_ANALYSIS_JOBS = {}
 
@@ -84,6 +88,91 @@ def process_uploaded_image(file_storage, folder=None):
         'big_img': f'photos/{big_filename}',
         'thumb_img': f'photos/{thumb_filename}'
     }
+
+
+def normalize_photo_url(path):
+    """Return a safe relative photos/... path for local photo URLs, or ''. """
+    if not path:
+        return ''
+    path = str(path).strip()
+    if path.startswith('data:') or '://' in path:
+        return ''
+    path = path.split('?', 1)[0].split('#', 1)[0]
+    if path.startswith('/'):
+        path = path[1:]
+    path = path.replace('\\', '/')
+    if not path.startswith('photos/'):
+        return ''
+    rel = os.path.normpath(path).replace('\\', '/')
+    if rel.startswith('../') or rel == '..' or not rel.startswith('photos/'):
+        return ''
+    return rel
+
+
+def photo_abs_path(rel_path):
+    rel = normalize_photo_url(rel_path)
+    if not rel:
+        return ''
+    root = os.path.abspath(PHOTO_DIR)
+    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel))
+    if abs_path != root and not abs_path.startswith(root + os.sep):
+        return ''
+    return abs_path
+
+
+def db_photo_references(db, rel_path):
+    """Count known DB references to a photos/... path."""
+    rel = normalize_photo_url(rel_path)
+    if not rel:
+        return 0
+    variants = {rel, '/' + rel}
+    total = 0
+    tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    for t in tables:
+        table = t['name'] if isinstance(t, sqlite3.Row) else t[0]
+        try:
+            cols = db.execute(f"PRAGMA table_info({table})").fetchall()
+        except Exception:
+            continue
+        for c in cols:
+            col = c['name'] if isinstance(c, sqlite3.Row) else c[1]
+            ctype = (c['type'] if isinstance(c, sqlite3.Row) else c[2]) or ''
+            if 'CHAR' not in ctype.upper() and 'TEXT' not in ctype.upper() and 'CLOB' not in ctype.upper():
+                continue
+            try:
+                for v in variants:
+                    total += db.execute(
+                        f"SELECT COUNT(*) FROM {table} WHERE {col}=? OR {col} LIKE ?",
+                        (v, '%' + v + '%')
+                    ).fetchone()[0]
+            except Exception:
+                pass
+    return total
+
+
+def cleanup_photo_urls(urls, force=False):
+    db = get_db()
+    deleted, skipped = [], []
+    seen = set()
+    for url in urls or []:
+        rel = normalize_photo_url(url)
+        if not rel or rel in seen:
+            continue
+        seen.add(rel)
+        abs_path = photo_abs_path(rel)
+        if not abs_path or not os.path.exists(abs_path):
+            skipped.append({'url': rel, 'reason': 'missing'})
+            continue
+        refs = db_photo_references(db, rel)
+        if refs and not force:
+            skipped.append({'url': rel, 'reason': 'referenced', 'refs': refs})
+            continue
+        try:
+            os.remove(abs_path)
+            deleted.append(rel)
+        except Exception as e:
+            skipped.append({'url': rel, 'reason': str(e)})
+    return {'deleted': deleted, 'skipped': skipped}
 
 # ── Database helpers ──
 
@@ -268,6 +357,17 @@ def init_db():
         db.execute("ALTER TABLE users ADD COLUMN tax_id TEXT DEFAULT ''")
         db.execute("ALTER TABLE users ADD COLUMN shop_name TEXT DEFAULT ''")
         db.commit()
+    # Migration: add employee position/factory to users
+    try:
+        db.execute("SELECT employee_role FROM users LIMIT 1")
+    except:
+        db.execute("ALTER TABLE users ADD COLUMN employee_role TEXT DEFAULT ''")
+        db.commit()
+    try:
+        db.execute("SELECT factory FROM users LIMIT 1")
+    except:
+        db.execute("ALTER TABLE users ADD COLUMN factory TEXT DEFAULT ''")
+        db.commit()
     # Migration: create login_logs table
     try:
         db.execute("SELECT 1 FROM login_logs LIMIT 1")
@@ -318,6 +418,12 @@ def init_db():
         db.execute("SELECT loss_per_layer FROM fabrics LIMIT 1")
     except:
         db.execute("ALTER TABLE fabrics ADD COLUMN loss_per_layer REAL DEFAULT 6")
+        db.commit()
+    # Migration: per-style guest visibility
+    try:
+        db.execute("SELECT visible_guests FROM styles LIMIT 1")
+    except:
+        db.execute("ALTER TABLE styles ADD COLUMN visible_guests TEXT DEFAULT '[]'")
         db.commit()
     # Migration: add rapporto_cm, verso_unico to fabric_colors
     try:
@@ -569,14 +675,52 @@ def get_user():
         name = session.get('name')
         # Look up user id from db for guests
         user_id = uid
+        employee_role = session.get('employee_role', '')
+        factory = session.get('factory', '')
         if role != 'admin':
             try:
                 db = get_db()
-                row = db.execute("SELECT id FROM users WHERE username=?", (uid,)).fetchone()
-                if row: user_id = row['id']
+                row = db.execute("SELECT id, employee_role, factory FROM users WHERE username=?", (uid,)).fetchone()
+                if row:
+                    user_id = row['id']
+                    employee_role = normalize_employee_role(row['employee_role'] or employee_role)
+                    factory = row['factory'] or factory
             except: pass
-        return {'username': uid, 'role': role, 'name': name, 'id': user_id}
+        return {'username': uid, 'role': role, 'name': name, 'id': user_id, 'employee_role': employee_role, 'factory': factory}
     return None
+
+EMPLOYEE_ROLE_ALIASES = {
+    '裁剪': '裁剪员',
+    '车缝': '车工',
+    '发货': '发货员',
+    '排版': '排版师'
+}
+
+def normalize_employee_role(value):
+    value = (value or '').strip()
+    return EMPLOYEE_ROLE_ALIASES.get(value, value)
+
+EMPLOYEE_SCOPES = {
+    'cutting': {'裁剪员', '排版师'},
+    'cutting_history': {'裁剪员'},
+    'shipping': {'发货员'},
+    'marker': {'排版师'},
+    'pickup': {'车工'},
+    'factory': {'车工'}
+}
+
+def employee_can(scope, user=None):
+    user = user or get_user()
+    if not user:
+        return False
+    if user.get('role') == 'admin':
+        return True
+    if user.get('role') != 'employee':
+        return False
+    return normalize_employee_role(user.get('employee_role')) in EMPLOYEE_SCOPES.get(scope, set())
+
+def forbid():
+    return jsonify({'error': 'forbidden'}), 403
 
 def get_operator():
     """Get current operator name for logging"""
@@ -660,8 +804,11 @@ def get_settings_list(key):
         rows = db.execute("SELECT id, username, name, phone, enabled, parent_id, address, tax_id, shop_name FROM users WHERE role='guest'").fetchall()
         return rows_to_dicts(rows)
     elif key == 'employees':
-        rows = db.execute("SELECT id, username, name, phone, enabled FROM users WHERE role='employee'").fetchall()
-        return rows_to_dicts(rows)
+        rows = db.execute("SELECT id, username, name, phone, enabled, employee_role AS role, factory FROM users WHERE role='employee'").fetchall()
+        result = rows_to_dicts(rows)
+        for r in result:
+            r['role'] = normalize_employee_role(r.get('role', ''))
+        return result
     elif key == 'fabrics':
         rows = db.execute("SELECT * FROM fabrics ORDER BY name").fetchall()
         result = []
@@ -696,7 +843,7 @@ def get_settings_list(key):
             result.append(d)
         return result
     elif key == 'users':
-        rows = db.execute("SELECT id, username, name, role, phone, enabled, parent_id, address, tax_id, shop_name FROM users ORDER BY name").fetchall()
+        rows = db.execute("SELECT id, username, name, role, phone, enabled, parent_id, address, tax_id, shop_name, employee_role, factory FROM users ORDER BY name").fetchall()
         return rows_to_dicts(rows)
     else:
         rows = db.execute(f"SELECT * FROM {tbl} ORDER BY name").fetchall()
@@ -739,6 +886,21 @@ def save_settings_list(key, data):
                  item.get('parent_id', ''),
                  item.get('address', ''), item.get('tax_id', ''),
                  item.get('shop_name', ''))
+            )
+    elif key == 'employees':
+        db.execute("DELETE FROM users WHERE role='employee'")
+        for item in data:
+            pw = item.get('password', '')
+            if not pw:
+                pw = generate_password_hash('123456')
+            elif not pw.startswith(('scrypt:', 'pbkdf2:', 'bcrypt:', 'argon2:')):
+                pw = generate_password_hash(pw)
+            db.execute(
+                "INSERT OR REPLACE INTO users (id, username, password, name, role, phone, enabled, employee_role, factory) VALUES (?,?,?,?,?,?,?,?,?)",
+                (item.get('id', 'e-'+uuid.uuid4().hex[:6]), item.get('username',''),
+                 pw, item.get('name', ''), 'employee', item.get('phone', ''),
+                 item.get('enabled', 1), normalize_employee_role(item.get('role', '')),
+                 item.get('factory', ''))
             )
     elif key == 'categories':
         db.execute("DELETE FROM categories")
@@ -972,6 +1134,71 @@ def read_all_orders():
     ids = db.execute("SELECT id FROM orders ORDER BY id DESC").fetchall()
     return [read_order(r['id']) for r in ids]
 
+def order_belongs_to_guest(order, user):
+    if not order or not user:
+        return False
+    uname = user.get('username', '')
+    name = user.get('name', '')
+    return order.get('customer') in (uname, name) or order.get('sub_customer') in (uname, name)
+
+def order_factory(order):
+    pickup = order.get('pickup_complete') or {}
+    if isinstance(pickup, dict):
+        return pickup.get('factory', '') or pickup.get('factoryName', '')
+    return ''
+
+def filter_orders_for_user(orders, user=None):
+    user = user or get_user()
+    if not user:
+        return []
+    if user.get('role') == 'admin':
+        return orders
+    if user.get('role') == 'guest':
+        return [o for o in orders if order_belongs_to_guest(o, user)]
+    if user.get('role') == 'employee':
+        erole = normalize_employee_role(user.get('employee_role'))
+        if erole in ('裁剪员', '排版师', '发货员'):
+            return orders
+        if erole == '车工':
+            factory = user.get('factory', '')
+            return [o for o in orders if factory and order_factory(o) == factory]
+    return []
+
+PRICE_KEYS = {'price', 'amount', 'cost', 'subtotal', 'total_cost', 'suggested_price',
+              'suggestedPrice', 'laborCost', 'ironCost', 'labor_cost', 'iron_cost',
+              'pricePerM', 'price_per_m', 'pricePerUnit', 'price_per_unit',
+              'factory_price', 'factoryPrice'}
+
+def strip_price_fields(value):
+    if isinstance(value, list):
+        return [strip_price_fields(v) for v in value]
+    if isinstance(value, dict):
+        clean = {}
+        for k, v in value.items():
+            lower = str(k).lower()
+            if k in PRICE_KEYS or 'price' in lower or 'amount' in lower or 'cost' in lower or 'subtotal' in lower:
+                continue
+            clean[k] = strip_price_fields(v)
+        return clean
+    return value
+
+def build_factory_order(order):
+    clean = strip_price_fields(json.loads(json.dumps(order, ensure_ascii=False)))
+    for item in clean.get('items', []):
+        style = read_style(item.get('code', '')) or {}
+        item['style_notes'] = {
+            'processingNote': style.get('processingNote', ''),
+            'edgeNote': style.get('edgeNote', ''),
+            'name': style.get('name', '')
+        }
+        item['style_images'] = style.get('images', [])
+    return clean
+
+def is_factory_work_order(order):
+    cutting = order.get('cutting_complete') or {}
+    shipping = order.get('shipping_complete') or {}
+    return bool(cutting.get('completed')) and not bool(shipping.get('completed'))
+
 def save_single_style(style):
     """Save a style with all nested data"""
     db = get_db()
@@ -979,13 +1206,14 @@ def save_single_style(style):
     db.execute("""INSERT OR REPLACE INTO styles
         (code, name, category, type, labor_cost, iron_cost,
          edge_note, processing_note, total_cost, suggested_price,
-         created_at, enabled, main_photo)
-        VALUES (?,?,?,?,?,?, ?,?,?,?, ?,?,?)""",
+         created_at, enabled, main_photo, visible_guests)
+        VALUES (?,?,?,?,?,?, ?,?,?,?, ?,?,?,?)""",
         (s.get('code',''), s.get('name',''), s.get('category',''),
          s.get('type','solid'), s.get('laborCost',0), s.get('ironCost',0),
          s.get('edgeNote',''), s.get('processingNote',''),
          s.get('totalCost',0) or 0, s.get('suggestedPrice',0) or 0,
-         s.get('createdAt',''), 1, int(s.get('mainPhoto', 0) or 0)))
+         s.get('createdAt',''), 1, int(s.get('mainPhoto', 0) or 0),
+         json.dumps(s.get('visibleGuests', []), ensure_ascii=False)))
     # Fabrics
     db.execute("DELETE FROM style_fabrics WHERE style_code=?", (s['code'],))
     for f in s.get('fabrics', []):
@@ -1047,6 +1275,7 @@ def read_style(code):
         'suggestedPrice': d['suggested_price'],
         'createdAt': d['created_at'],
         'mainPhoto': int(d['main_photo']) if d['main_photo'] != '' else 0,
+        'visibleGuests': json.loads(d.get('visible_guests') or '[]'),
         'fabrics': [],
         'accessories': [],
         'images': []
@@ -1083,6 +1312,29 @@ def read_all_styles():
     db = get_db()
     codes = db.execute("SELECT code FROM styles ORDER BY code").fetchall()
     return [read_style(r['code']) for r in codes if read_style(r['code'])]
+
+def style_visible_to_user(style, user=None):
+    if not style:
+        return False
+    visible = style.get('visibleGuests') or []
+    if not visible:
+        return True
+    user = user or get_user()
+    if not user:
+        return False
+    if user.get('role') == 'admin':
+        return True
+    if user.get('role') == 'employee':
+        return True
+    keys = {str(user.get('id', '')), str(user.get('username', '')), str(user.get('name', ''))}
+    keys.discard('')
+    return any(str(v) in keys for v in visible)
+
+def filter_styles_for_user(styles, user=None):
+    user = user or get_user()
+    if user and user.get('role') in ('admin', 'employee'):
+        return styles
+    return [s for s in styles if style_visible_to_user(s, user)]
 
 # ── API Routes ──
 
@@ -1124,7 +1376,16 @@ def api_login():
     session['user_id'] = ud['username']
     session['role'] = ud['role']
     session['name'] = ud['name']
-    return jsonify({'username': ud['username'], 'role': ud['role'], 'name': ud['name'], 'id': ud['id']})
+    session['employee_role'] = normalize_employee_role(ud.get('employee_role', ''))
+    session['factory'] = ud.get('factory', '')
+    return jsonify({
+        'username': ud['username'],
+        'role': ud['role'],
+        'name': ud['name'],
+        'id': ud['id'],
+        'employee_role': session.get('employee_role', ''),
+        'factory': session.get('factory', '')
+    })
 
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
@@ -1160,13 +1421,20 @@ def api_change_password():
 
 @app.route('/api/data/<key>', methods=['GET'])
 def api_data_get(key):
+    if key in ('guests', 'employees', 'users'):
+        u = get_user()
+        if not u or u.get('role') != 'admin':
+            return forbid()
     if key in ('categories', 'procacc', 'factories', 'fabrics', 'guests', 'employees', 'users'):
         result = get_settings_list(key)
         return jsonify(result if result else [])
     elif key == 'styles':
-        return jsonify(read_all_styles())
+        return jsonify(filter_styles_for_user(read_all_styles()))
     elif key == 'orders':
-        return jsonify(read_all_orders())
+        u = get_user()
+        if not u:
+            return jsonify({'error': 'unauthorized'}), 401
+        return jsonify(filter_orders_for_user(read_all_orders(), u))
     elif key == 'cart':
         sid = session.get('cart_id', 'anon')
         db = get_db()
@@ -1185,8 +1453,13 @@ def api_data_get(key):
         return jsonify([])
 
 @app.route('/api/data/<key>', methods=['POST'])
-@require_auth
 def api_data_save(key):
+    if key in ('categories', 'procacc', 'factories', 'fabrics', 'guests', 'employees'):
+        # Skip admin check for fabrics (allows cross-browser sync)
+        if key != 'fabrics':
+            u = get_user()
+            if not u or u.get('role') != 'admin':
+                return forbid()
     if key in ('categories', 'procacc', 'factories', 'fabrics', 'guests', 'employees'):
         data = request.get_json(silent=True) or []
         ok = save_settings_list(key, data)
@@ -1197,10 +1470,10 @@ def api_data_save(key):
 
 @app.route('/api/styles', methods=['GET'])
 def api_styles_list():
-    return jsonify(read_all_styles())
+    return jsonify(filter_styles_for_user(read_all_styles()))
 
 @app.route('/api/styles', methods=['POST'])
-@require_auth
+@require_admin
 def api_styles_save():
     data = request.get_json(silent=True) or {}
     if not data.get('code'):
@@ -1216,10 +1489,12 @@ def api_styles_get(code):
     style = read_style(code)
     if not style:
         return jsonify({'error': 'not found'}), 404
+    if not style_visible_to_user(style):
+        return forbid()
     return jsonify(style)
 
 @app.route('/api/styles/<code>', methods=['DELETE'])
-@require_auth
+@require_admin
 def api_styles_delete(code):
     db = get_db()
     db.execute("DELETE FROM style_images WHERE style_code=?", (code,))
@@ -1606,10 +1881,15 @@ def api_print_warehouse_get(pid):
 def api_print_warehouse_delete(pid):
     """Delete a print record"""
     db = get_db()
-    db.execute("DELETE FROM print_warehouse WHERE id=?", (pid,))
+    row = db.execute("SELECT big_img, thumb_img FROM print_warehouse WHERE id=?", (pid,)).fetchone()
+    cleanup_urls = []
+    if row:
+        cleanup_urls = [row['big_img'], row['thumb_img']]
     db.execute("DELETE FROM style_prints WHERE print_id=?", (pid,))
+    db.execute("DELETE FROM print_warehouse WHERE id=?", (pid,))
     db.commit()
-    return jsonify({'ok': True})
+    cleanup = cleanup_photo_urls(cleanup_urls)
+    return jsonify({'ok': True, 'cleanup': cleanup})
 
 # ── Print warehouse: groups & by-style ──
 
@@ -1617,48 +1897,175 @@ def api_print_warehouse_delete(pid):
 def api_print_warehouse_groups():
     """Return distinct print_code groups with counts and latest thumbnail"""
     db = get_db()
-    rows = db.execute("""
-        SELECT pw.print_code,
-               COUNT(pw.id) as print_count,
-               MAX(pw.updated_at) as last_updated,
-               (SELECT pw2.thumb_img FROM print_warehouse pw2
-                WHERE pw2.print_code = pw.print_code AND pw2.thumb_img != ''
-                ORDER BY pw2.id DESC LIMIT 1) as thumb
-        FROM print_warehouse pw
-        WHERE pw.print_code != ''
-        GROUP BY pw.print_code
-        ORDER BY last_updated DESC
-    """).fetchall()
+    style_code = request.args.get('style_code', '').strip()
+    if style_code:
+        rows = db.execute("""
+            SELECT pw.print_code,
+                   COUNT(pw.id) as print_count,
+                   MAX(pw.updated_at) as last_updated,
+                   (SELECT pw2.thumb_img FROM print_warehouse pw2
+                    JOIN style_prints sp2 ON sp2.print_id = pw2.id
+                    WHERE sp2.style_code = ? AND pw2.print_code = pw.print_code AND pw2.thumb_img != ''
+                    ORDER BY pw2.id DESC LIMIT 1) as thumb
+            FROM print_warehouse pw
+            JOIN style_prints sp ON sp.print_id = pw.id
+            WHERE sp.style_code = ? AND pw.print_code != ''
+            GROUP BY pw.print_code
+            ORDER BY last_updated DESC
+        """, (style_code, style_code)).fetchall()
+    else:
+        rows = db.execute("""
+            SELECT pw.print_code,
+                   COUNT(pw.id) as print_count,
+                   MAX(pw.updated_at) as last_updated,
+                   (SELECT pw2.thumb_img FROM print_warehouse pw2
+                    WHERE pw2.print_code = pw.print_code AND pw2.thumb_img != ''
+                    ORDER BY pw2.id DESC LIMIT 1) as thumb
+            FROM print_warehouse pw
+            WHERE pw.print_code != ''
+            GROUP BY pw.print_code
+            ORDER BY last_updated DESC
+        """).fetchall()
     return jsonify([dict(r) for r in rows])
 
 @app.route('/api/print-warehouse/by-style/<style_code>', methods=['GET'])
 def api_print_warehouse_by_style(style_code):
-    """Return all prints for a given style code (print_code=style_code) with total ordered qty"""
+    """Return all colorway prints for a style, optionally scoped to one print_code."""
     db = get_db()
+    print_code = request.args.get('print_code', '').strip()
+    params = [style_code]
+    where = "WHERE sp.style_code=?"
+    if print_code:
+        where += " AND pw.print_code=?"
+        params.append(print_code)
     rows = db.execute(
-        "SELECT pw.*, lsi.id as image_id FROM print_warehouse pw "
-        "LEFT JOIN luna_style_images lsi ON lsi.style_code=pw.print_code AND lsi.image_url=pw.big_img "
-        "WHERE pw.print_code=? ORDER BY pw.updated_at DESC",
-        (style_code,)
+        "SELECT pw.*, sp.last_used, lsi.id as image_id FROM style_prints sp "
+        "JOIN print_warehouse pw ON pw.id=sp.print_id "
+        "LEFT JOIN luna_style_images lsi ON lsi.style_code=sp.style_code AND lsi.image_url=pw.big_img "
+        f"{where} ORDER BY pw.id ASC",
+        tuple(params)
     ).fetchall()
     result = []
     for r in rows:
         d = dict(r)
-        # Calculate total historical ordered qty from order_items
-        order_items = db.execute(
-            "SELECT qty_data FROM order_items WHERE stampa_id=?",
-            (d['id'],)
-        ).fetchall()
-        total_qty = 0
-        for oi in order_items:
-            try:
-                qty = json.loads(oi['qty_data'])
-                total_qty += sum(v for v in qty.values() if isinstance(v, (int, float)))
-            except:
-                pass
-        d['total_ordered'] = total_qty
+        d['total_ordered'] = _print_order_total(db, style_code, d)
         result.append(d)
     return jsonify(result)
+
+def _print_notes_dict(notes):
+    try:
+        parsed = json.loads(notes or '{}')
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+def _print_order_total(db, style_code, row_dict):
+    total_qty = 0
+    params = [row_dict.get('id', 0)]
+    where = ["stampa_id=?"]
+    img_url = row_dict.get('big_img') or ''
+    print_code = row_dict.get('print_code') or ''
+    if style_code and print_code and img_url:
+        where.append("(code=? AND stampa_code=? AND stampa_img_url=?)")
+        params.extend([style_code, print_code, img_url])
+    rows = db.execute(
+        "SELECT qty_data FROM order_items WHERE " + " OR ".join(where),
+        tuple(params)
+    ).fetchall()
+    for oi in rows:
+        try:
+            qty = json.loads(oi['qty_data'] or '{}')
+            total_qty += sum(v for v in qty.values() if isinstance(v, (int, float)))
+        except Exception:
+            pass
+    return total_qty
+
+@app.route('/api/print-warehouse/tree', methods=['GET'])
+def api_print_warehouse_tree():
+    """Return style folders -> master images -> colorway swatches with order totals."""
+    db = get_db()
+    q = request.args.get('q', '').strip().lower()
+    unused_only = request.args.get('unused', '').strip() in ('1', 'true', 'yes')
+    rows = db.execute("""
+        SELECT sp.style_code, s.name as style_name, pw.*, sp.last_used
+        FROM style_prints sp
+        JOIN print_warehouse pw ON pw.id = sp.print_id
+        LEFT JOIN styles s ON s.code = sp.style_code
+        ORDER BY sp.style_code, pw.print_code, pw.id
+    """).fetchall()
+    tree = []
+    style_map = {}
+    master_maps = {}
+    for r in rows:
+        d = dict(r)
+        style_code = d.get('style_code') or ''
+        if q and q not in style_code.lower() and q not in (d.get('print_code') or '').lower() and q not in (d.get('style_name') or '').lower():
+            continue
+        notes = _print_notes_dict(d.get('notes'))
+        d['notes_data'] = notes
+        d['color_name'] = notes.get('color_name', '')
+        d['sub_code'] = notes.get('sub_code', '')
+        d['style_code'] = style_code
+        d['total_ordered'] = _print_order_total(db, style_code, d)
+        if unused_only and d['total_ordered'] > 0:
+            continue
+        master_img = notes.get('master_image') or d.get('thumb_img') or d.get('big_img') or ''
+        master_key = (d.get('print_code') or '') + '|' + master_img
+        if style_code not in style_map:
+            folder = {
+                'style_code': style_code,
+                'style_name': d.get('style_name') or '',
+                'print_count': 0,
+                'total_ordered': 0,
+                'masters': []
+            }
+            style_map[style_code] = folder
+            master_maps[style_code] = {}
+            tree.append(folder)
+        folder = style_map[style_code]
+        if master_key not in master_maps[style_code]:
+            master = {
+                'print_code': d.get('print_code') or '',
+                'master_image': master_img,
+                'colorway_count': 0,
+                'total_ordered': 0,
+                'colorways': []
+            }
+            master_maps[style_code][master_key] = master
+            folder['masters'].append(master)
+        master = master_maps[style_code][master_key]
+        master['colorways'].append(d)
+        master['colorway_count'] += 1
+        master['total_ordered'] += d['total_ordered']
+        folder['print_count'] += 1
+        folder['total_ordered'] += d['total_ordered']
+    return jsonify(tree)
+
+@app.route('/api/print-warehouse/group', methods=['DELETE'])
+def api_print_warehouse_delete_group():
+    """Delete one saved print group for a style."""
+    style_code = request.args.get('style_code', '').strip()
+    print_code = request.args.get('print_code', '').strip()
+    if not style_code or not print_code:
+        return jsonify({'error': 'style_code and print_code required'}), 400
+    db = get_db()
+    rows = db.execute(
+        "SELECT pw.id FROM print_warehouse pw JOIN style_prints sp ON sp.print_id=pw.id WHERE sp.style_code=? AND pw.print_code=?",
+        (style_code, print_code)
+    ).fetchall()
+    ids = [r['id'] for r in rows]
+    cleanup_urls = []
+    for pid in ids:
+        db.execute("DELETE FROM style_prints WHERE style_code=? AND print_id=?", (style_code, pid))
+        still_used = db.execute("SELECT 1 FROM style_prints WHERE print_id=? LIMIT 1", (pid,)).fetchone()
+        if not still_used:
+            row = db.execute("SELECT big_img, thumb_img FROM print_warehouse WHERE id=?", (pid,)).fetchone()
+            if row:
+                cleanup_urls.extend([row['big_img'], row['thumb_img']])
+            db.execute("DELETE FROM print_warehouse WHERE id=?", (pid,))
+    db.commit()
+    cleanup = cleanup_photo_urls(cleanup_urls)
+    return jsonify({'ok': True, 'deleted': len(ids), 'cleanup': cleanup})
 
 # ── Luna Stickers CRUD (框选反单系统) ──
 
@@ -1790,11 +2197,26 @@ def api_style_prints_bind():
 
 @app.route('/api/orders', methods=['GET'])
 def api_orders_list():
-    return jsonify(read_all_orders())
+    u = get_user()
+    if not u:
+        return jsonify({'error': 'unauthorized'}), 401
+    if u.get('role') == 'employee' and not normalize_employee_role(u.get('employee_role')):
+        return forbid()
+    return jsonify(filter_orders_for_user(read_all_orders(), u))
 
 @app.route('/api/orders', methods=['POST'])
 @require_auth
 def api_orders_save():
+    u = get_user()
+    if not u:
+        return jsonify({'error': 'unauthorized'}), 401
+    if u.get('role') == 'guest':
+        return forbid()
+    if u.get('role') == 'employee' and not (
+        employee_can('marker', u) or employee_can('cutting', u) or
+        employee_can('shipping', u) or employee_can('pickup', u)
+    ):
+        return forbid()
     data = request.get_json(silent=True) or {}
     # 支持批量保存（saveOrders 传入整个数组）
     if isinstance(data, list):
@@ -1817,10 +2239,51 @@ def api_orders_save():
 
 @app.route('/api/orders/<order_id>', methods=['GET'])
 def api_orders_get(order_id):
+    u = get_user()
+    if not u:
+        return jsonify({'error': 'unauthorized'}), 401
     order = read_order(order_id)
     if not order:
         return jsonify({'error': 'not found'}), 404
+    if order not in filter_orders_for_user([order], u):
+        return forbid()
     return jsonify(order)
+
+@app.route('/api/workflow/<scope>/orders', methods=['GET'])
+@require_auth
+def api_workflow_orders(scope):
+    allowed_scopes = {'marker', 'cutting', 'cutting_history', 'pickup', 'shipping'}
+    if scope not in allowed_scopes:
+        return jsonify({'error': 'unsupported scope'}), 404
+    u = get_user()
+    if not employee_can(scope, u):
+        return forbid()
+    return jsonify(filter_orders_for_user(read_all_orders(), u))
+
+@app.route('/api/factory/orders', methods=['GET'])
+@require_auth
+def api_factory_orders():
+    u = get_user()
+    if not employee_can('factory', u):
+        return forbid()
+    orders = filter_orders_for_user(read_all_orders(), u)
+    orders = [o for o in orders if is_factory_work_order(o)]
+    return jsonify([build_factory_order(o) for o in orders])
+
+@app.route('/api/factory/orders/<order_id>', methods=['GET'])
+@require_auth
+def api_factory_order_get(order_id):
+    u = get_user()
+    if not employee_can('factory', u):
+        return forbid()
+    order = read_order(order_id)
+    if not order:
+        return jsonify({'error': 'not found'}), 404
+    if order not in filter_orders_for_user([order], u):
+        return forbid()
+    if not is_factory_work_order(order):
+        return forbid()
+    return jsonify(build_factory_order(order))
 
 @app.route('/api/orders/<order_id>', methods=['DELETE'])
 @require_admin
@@ -1864,6 +2327,9 @@ def api_cart():
     if action == 'add':
         qty = data.get('qty', {})
         code = data.get('code','')
+        style = read_style(code)
+        if not style or not style_visible_to_user(style):
+            return forbid()
         color = data.get('color','')
         components = data.get('components', [])
         note = data.get('note', '')
@@ -1933,6 +2399,11 @@ def api_cart():
 
 @app.route('/api/checkout', methods=['POST'])
 def api_checkout():
+    u = get_user()
+    if not u:
+        return jsonify({'error': 'unauthorized'}), 401
+    if u.get('role') == 'employee':
+        return forbid()
     sid = session.get('cart_id', 'anon')
     db = get_db()
     rows = db.execute("SELECT * FROM cart_items WHERE session_id=? ORDER BY id", (sid,)).fetchall()
@@ -1946,11 +2417,17 @@ def api_checkout():
     customer = order_customer if order_customer else session.get('name', sid)
     order_note = body.get('note', '')
     order_sub_customer = body.get('sub_customer', '')
+    if u.get('role') == 'guest':
+        customer = u.get('name') or u.get('username') or customer
+        order_sub_customer = ''
 
     # Group cart items by style code → separate orders
     groups = {}  # code -> items list
     for r in rows:
         code = r['code']
+        style = read_style(code)
+        if not style or not style_visible_to_user(style, u):
+            return forbid()
         if code not in groups: groups[code] = []
         groups[code].append(r)
 
@@ -2132,6 +2609,17 @@ def api_upload():
         print('Error in api_upload:', e)
         return jsonify({'error': '图片处理失败'}), 500
 
+
+@app.route('/api/photos/cleanup-urls', methods=['POST'])
+def api_photos_cleanup_urls():
+    """Delete unreferenced local photos by URL. Refuses files still referenced in DB."""
+    data = request.get_json(silent=True) or {}
+    urls = data.get('urls') or []
+    if not isinstance(urls, list):
+        return jsonify({'error': 'urls must be a list'}), 400
+    result = cleanup_photo_urls(urls, force=bool(data.get('force')))
+    return jsonify({'ok': True, **result})
+
 # ── Login logs & user control ──
 
 @app.route('/api/login-logs', methods=['GET'])
@@ -2268,7 +2756,7 @@ QWEN_ANALYSIS_PROMPT = """你是一个精通面料印花分色文件的视觉专
 
 QWEN_ANALYSIS_PROMPT = """You are digitizing a fabric print color-card sheet for an ordering system.
 
-Find the usable fabric color swatches and the main print pattern preview. Ignore model photos, lifestyle photos, handwritten marks, white inventory quantity stickers, size stickers, arrows, logos, and decorative text that is not part of a swatch label.
+Find every usable/orderable fabric color swatch. Some sheets contain one large preview swatch with a visible color name/code; count it as a colorway too. Ignore model photos, lifestyle photos, handwritten marks, white inventory quantity stickers, size stickers, arrows, logos, and decorative text that is not part of a swatch label.
 
 Return strict JSON only, no markdown:
 {
@@ -2290,7 +2778,7 @@ Return strict JSON only, no markdown:
 
 Coordinates must be relative 0-1000 in [ymin, xmin, ymax, xmax] order.
 Colorways must be sorted top-to-bottom, left-to-right.
-Do not include the big main pattern as a colorway unless it is the only usable swatch.
+Include large labeled preview swatches as colorways when they represent a selectable color. Do not include unlabeled decorative previews as colorways.
 Do not include model/lifestyle images as colorways.
 If a white sticker only shows numbers like 20 or 30, ignore that sticker and still read the swatch name/code around it.
 Make sure every visible usable small swatch is included."""
@@ -2340,6 +2828,349 @@ def refine_and_crop(img, box_1000):
     return img.crop((left, top, right, bottom))  
 
 
+def detect_small_swatch_boxes(image_path):
+    """Detect independent image panels on catalog sheets.
+
+    Prefer recall over precision: large preview swatches, small swatches and
+    model panels are all returned so the user can delete extras manually.
+    """
+    try:
+        import cv2 as _cv2
+        import numpy as _np
+    except Exception:
+        return []
+
+    try:
+        raw = _np.fromfile(image_path, dtype=_np.uint8)
+        img = _cv2.imdecode(raw, _cv2.IMREAD_COLOR)
+        if img is None:
+            img = _cv2.imread(image_path)
+        if img is None:
+            return []
+    except Exception:
+        return []
+
+    h, w = img.shape[:2]
+    hsv = _cv2.cvtColor(img, _cv2.COLOR_BGR2HSV)
+    # White page background has low saturation and high value. Colored panels,
+    # photos and black borders stay in this mask.
+    mask = (((hsv[:, :, 1] > 25) | (hsv[:, :, 2] < 230)).astype('uint8')) * 255
+    contours, _ = _cv2.findContours(mask, _cv2.RETR_EXTERNAL, _cv2.CHAIN_APPROX_SIMPLE)
+
+    boxes = []
+    img_area = float(w * h)
+    for c in contours:
+        x, y, bw, bh = _cv2.boundingRect(c)
+        if bw <= 0 or bh <= 0:
+            continue
+        rel = (bw * bh) / img_area
+        ratio = bw / float(bh)
+        if rel < 0.006 or rel > 0.45:
+            continue
+        if ratio < 0.16 or ratio > 2.4:
+            continue
+        if bw < w * 0.035 or bh < h * 0.045:
+            continue
+        boxes.append({'x': x, 'y': y, 'w': bw, 'h': bh, 'rel': rel})
+
+    return normalize_independent_image_boxes(boxes)
+
+
+def crop_box_with_padding(img, box, pad_ratio=0.01):
+    img_w, img_h = img.size
+    left = int(box['x'])
+    top = int(box['y'])
+    right = int(box['x'] + box['w'])
+    bottom = int(box['y'] + box['h'])
+    pad_x = max(1, int((right - left) * pad_ratio))
+    pad_y = max(1, int((bottom - top) * pad_ratio))
+    left = max(0, left - pad_x)
+    top = max(0, top - pad_y)
+    right = min(img_w, right + pad_x)
+    bottom = min(img_h, bottom + pad_y)
+    return img.crop((left, top, right, bottom))
+
+
+def sort_boxes_in_visual_rows(boxes):
+    if not boxes:
+        return []
+    median_h = sorted([b['h'] for b in boxes])[len(boxes) // 2]
+    row_tol = max(8, median_h * 0.25)
+    rows = []
+    for box in sorted(boxes, key=lambda b: (b['y'], b['x'])):
+        placed = False
+        cy = box['y'] + box['h'] / 2
+        for row in rows:
+            if abs(cy - row['cy']) <= row_tol:
+                row['items'].append(box)
+                row['cy'] = sum(i['y'] + i['h'] / 2 for i in row['items']) / len(row['items'])
+                placed = True
+                break
+        if not placed:
+            rows.append({'cy': cy, 'items': [box]})
+    out = []
+    for row in sorted(rows, key=lambda r: r['cy']):
+        out.extend(sorted(row['items'], key=lambda b: b['x']))
+    return out
+
+
+def normalize_swatch_boxes(boxes):
+    if not boxes:
+        return []
+    widths = sorted([b['w'] for b in boxes])
+    heights = sorted([b['h'] for b in boxes])
+    median_w = widths[len(widths) // 2]
+    median_h = heights[len(heights) // 2]
+    tall_boxes = [b for b in boxes if b['h'] >= median_h * 0.82 and b['w'] >= median_w * 0.65]
+    row_tops = sorted({b['y'] for b in tall_boxes})
+
+    normalized = []
+    for box in boxes:
+        b = dict(box)
+        if b['h'] < median_h * 0.75:
+            candidate = None
+            for row_top in row_tops:
+                if row_top <= b['y'] <= row_top + median_h * 0.72:
+                    candidate = row_top
+                    break
+            if candidate is not None:
+                b['y'] = int(candidate)
+                b['h'] = int(median_h)
+
+        if b['w'] < median_w * 0.62 or b['w'] > median_w * 1.45:
+            continue
+        if b['h'] < median_h * 0.75 or b['h'] > median_h * 1.45:
+            continue
+        normalized.append(b)
+
+    deduped = []
+    for box in sort_boxes_in_visual_rows(normalized):
+        duplicate = False
+        for kept in deduped:
+            cx = box['x'] + box['w'] / 2
+            cy = box['y'] + box['h'] / 2
+            kx = kept['x'] + kept['w'] / 2
+            ky = kept['y'] + kept['h'] / 2
+            if abs(cx - kx) < median_w * 0.25 and abs(cy - ky) < median_h * 0.25:
+                duplicate = True
+                break
+        if not duplicate:
+            deduped.append(box)
+    return deduped
+
+
+def box_intersection_area(a, b):
+    left = max(a['x'], b['x'])
+    top = max(a['y'], b['y'])
+    right = min(a['x'] + a['w'], b['x'] + b['w'])
+    bottom = min(a['y'] + a['h'], b['y'] + b['h'])
+    if right <= left or bottom <= top:
+        return 0
+    return (right - left) * (bottom - top)
+
+
+def normalize_independent_image_boxes(boxes):
+    if not boxes:
+        return []
+    deduped = []
+    for box in sort_boxes_in_visual_rows([dict(b) for b in boxes]):
+        duplicate = False
+        area = box['w'] * box['h']
+        for kept in deduped:
+            kept_area = kept['w'] * kept['h']
+            inter = box_intersection_area(box, kept)
+            if inter >= min(area, kept_area) * 0.92 and max(area, kept_area) <= min(area, kept_area) * 1.2:
+                duplicate = True
+                break
+        if not duplicate:
+            deduped.append(box)
+    return complete_missing_grid_boxes(deduped)
+
+
+def complete_missing_grid_boxes(boxes):
+    if len(boxes) < 3:
+        return boxes
+    heights = sorted([b['h'] for b in boxes])
+    widths = sorted([b['w'] for b in boxes])
+    median_h = heights[len(heights) // 2]
+    median_w = widths[len(widths) // 2]
+    candidates = [
+        b for b in boxes
+        if median_w * 0.45 <= b['w'] <= median_w * 1.7 and median_h * 0.45 <= b['h'] <= median_h * 1.7
+    ]
+    additions = []
+    for box in candidates:
+        col = [
+            b for b in candidates
+            if abs((b['x'] + b['w'] / 2) - (box['x'] + box['w'] / 2)) <= max(12, median_w * 0.22)
+        ]
+        col = sorted(col, key=lambda b: b['y'])
+        for a, b in zip(col, col[1:]):
+            step = b['y'] - a['y']
+            expected = max(a['h'], b['h'])
+            if step <= expected * 1.45 or step >= expected * 2.55:
+                continue
+            new_box = {
+                'x': int(round((a['x'] + b['x']) / 2)),
+                'y': int(round(a['y'] + step / 2)),
+                'w': int(round((a['w'] + b['w']) / 2)),
+                'h': int(round((a['h'] + b['h']) / 2)),
+                'rel': a.get('rel', 0)
+            }
+            new_area = new_box['w'] * new_box['h']
+            duplicate = False
+            for old in boxes + additions:
+                old_area = old['w'] * old['h']
+                if max(new_area, old_area) > min(new_area, old_area) * 1.8:
+                    continue
+                if box_intersection_area(new_box, old) >= min(new_area, old_area) * 0.5:
+                    duplicate = True
+                    break
+            if duplicate:
+                continue
+            additions.append(new_box)
+    return sort_boxes_in_visual_rows(boxes + additions)
+
+
+def ai_box_center_pixels(cw, img_w, img_h):
+    box = cw.get('box_2d') or []
+    if len(box) != 4:
+        return None
+    ymin, xmin, ymax, xmax = box
+    return ((xmin + xmax) * 0.5 / 1000.0 * img_w, (ymin + ymax) * 0.5 / 1000.0 * img_h)
+
+
+def ai_box_pixels(cw, img_w, img_h):
+    box = cw.get('box_2d') or []
+    if len(box) != 4:
+        return None
+    ymin, xmin, ymax, xmax = box
+    left = max(0, int(xmin / 1000.0 * img_w))
+    top = max(0, int(ymin / 1000.0 * img_h))
+    right = min(img_w, int(xmax / 1000.0 * img_w))
+    bottom = min(img_h, int(ymax / 1000.0 * img_h))
+    if right <= left or bottom <= top:
+        return None
+    return {'x': left, 'y': top, 'w': right - left, 'h': bottom - top}
+
+
+def point_inside_box(point, box, pad_ratio=0.08):
+    if not point:
+        return False
+    px, py = point
+    pad_x = box['w'] * pad_ratio
+    pad_y = box['h'] * pad_ratio
+    return (
+        box['x'] - pad_x <= px <= box['x'] + box['w'] + pad_x and
+        box['y'] - pad_y <= py <= box['y'] + box['h'] + pad_y
+    )
+
+
+def pair_colorways_to_detected_boxes(colorways, detected_boxes, img_w, img_h):
+    used = set()
+    pairs = []
+    for box in detected_boxes:
+        bx = box['x'] + box['w'] / 2
+        by = box['y'] + box['h'] / 2
+        best_i = None
+        best_score = None
+        for i, cw in enumerate(colorways):
+            if i in used:
+                continue
+            center = ai_box_center_pixels(cw, img_w, img_h)
+            if not center:
+                continue
+            cx, cy = center
+            dx = (cx - bx) / max(1, box['w'])
+            dy = (cy - by) / max(1, box['h'])
+            score = dx * dx + dy * dy
+            if best_score is None or score < best_score:
+                best_i = i
+                best_score = score
+        if best_i is not None and best_score is not None and best_score < 4.0:
+            used.add(best_i)
+            pairs.append((colorways[best_i], box))
+        else:
+            pairs.append(({}, box))
+    return pairs
+
+
+def recognize_swatch_contact_sheet(image_paths):
+    if not GEMINI_API_KEY or not image_paths:
+        return {}
+    try:
+        import io
+        import requests as req
+    except Exception:
+        return {}
+
+    thumbs = []
+    cell_w, cell_h = 180, 260
+    cols = min(4, max(1, len(image_paths)))
+    rows = (len(image_paths) + cols - 1) // cols
+    sheet = Image.new('RGB', (cols * cell_w, rows * cell_h), 'white')
+    draw = ImageDraw.Draw(sheet)
+    for i, path in enumerate(image_paths):
+        try:
+            im = Image.open(path).convert('RGB')
+        except Exception:
+            continue
+        im.thumbnail((145, 210))
+        x = (i % cols) * cell_w
+        y = (i // cols) * cell_h
+        draw.text((x + 8, y + 8), str(i + 1), fill=(220, 0, 0))
+        sheet.paste(im, (x + (cell_w - im.width) // 2, y + 36))
+
+    buf = io.BytesIO()
+    sheet.save(buf, 'JPEG', quality=88)
+    img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    prompt = """This is a numbered contact sheet of cropped fabric color swatches.
+For each red number, read the printed color name and code on that same swatch.
+Ignore large white stock stickers that only show numbers like 20 or 30.
+Return strict JSON only:
+[
+  {"index": 1, "color_name": "Cacao", "sub_code": "W845V4", "ocr_text": "W845V4 Cacao"}
+]
+If a value is not visible, return an empty string. Keep the same index numbers."""
+
+    payload = {
+        'contents': [{
+            'parts': [
+                {'inlineData': {'mimeType': 'image/jpeg', 'data': img_b64}},
+                {'text': prompt}
+            ]
+        }],
+        'generationConfig': {'responseMimeType': 'application/json'}
+    }
+    model_chain = []
+    for model_name in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        if model_name and model_name not in model_chain:
+            model_chain.append(model_name)
+
+    transient_codes = {429, 500, 502, 503, 504}
+    for model_name in model_chain:
+        for attempt in range(2):
+            try:
+                resp = req.post(
+                    f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}',
+                    headers={'Content-Type': 'application/json'},
+                    json=payload,
+                    timeout=90
+                )
+                if resp.status_code == 200:
+                    content = resp.json()['candidates'][0]['content']['parts'][0]['text']
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict):
+                        parsed = parsed.get('colorways', [])
+                    return {int(item.get('index', 0)): item for item in parsed if item.get('index')}
+                if resp.status_code not in transient_codes:
+                    break
+                time.sleep(1.0 * (attempt + 1))
+            except Exception:
+                time.sleep(1.0 * (attempt + 1))
+    return {}
+
+
 def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):  
     """  
     处理大图，同时提取主花版图和所有小色卡  
@@ -2375,14 +3206,55 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
         colorways,
         key=lambda cw: ((cw.get("box_2d") or [0, 0, 0, 0])[0], (cw.get("box_2d") or [0, 0, 0, 0])[1])
     )
-    for cw in colorways:  
-        idx = cw.get("color_index", 1)  
-        box = cw.get("box_2d", [])  
-        if len(box) != 4: continue  
+    detected_boxes = detect_small_swatch_boxes(image_path)
+    use_detected_boxes = (
+        detected_boxes and colorways and
+        len(detected_boxes) >= max(1, int(len(colorways) * 0.75)) and
+        len(detected_boxes) <= max(len(colorways) + 4, int(len(colorways) * 1.35))
+    )
+    crop_items = []
+    if use_detected_boxes:
+        paired = pair_colorways_to_detected_boxes(colorways, detected_boxes, img.size[0], img.size[1])
+        for pos, (cw, detected_box) in enumerate(paired):
+            crop_items.append((cw, detected_box, pos + 1))
+        for cw in colorways:
+            center = ai_box_center_pixels(cw, img.size[0], img.size[1])
+            if any(point_inside_box(center, b) for b in detected_boxes):
+                continue
+            ai_box = ai_box_pixels(cw, img.size[0], img.size[1])
+            if not ai_box:
+                continue
+            area_ratio = (ai_box['w'] * ai_box['h']) / float(img.size[0] * img.size[1])
+            aspect = ai_box['w'] / float(max(1, ai_box['h']))
+            if area_ratio < 0.01 or area_ratio > 0.38:
+                continue
+            if aspect < 0.22 or aspect > 1.35:
+                continue
+            crop_items.append((cw, None, len(crop_items) + 1))
+        def item_sort_key(item):
+            cw, detected_box, _ = item
+            box = detected_box or ai_box_pixels(cw, img.size[0], img.size[1]) or {'x': 0, 'y': 0}
+            return (box['y'], box['x'])
+        crop_items = sorted(crop_items, key=item_sort_key)
+        crop_items = [(cw, box, pos + 1) for pos, (cw, box, _) in enumerate(crop_items)]
+    else:
+        for pos, cw in enumerate(colorways):
+            crop_items.append((cw, None, pos + 1))
 
-        cw_img = refine_and_crop(img, box)  
+    saved_crop_paths = []
+    for cw, detected_box, fallback_idx in crop_items:  
+        idx = cw.get("color_index", fallback_idx)  
+        box = cw.get("box_2d", [])  
+        if detected_box:
+            cw_img = crop_box_with_padding(img, detected_box)
+            idx = fallback_idx
+        else:
+            if len(box) != 4: continue
+            cw_img = refine_and_crop(img, box)  
         cw_filename = f"{base_name}_cw_{idx}.jpg"  
-        cw_img.convert("RGB").save(os.path.join(output_dir, cw_filename), "JPEG", quality=95)  
+        cw_path = os.path.join(output_dir, cw_filename)
+        cw_img.convert("RGB").save(cw_path, "JPEG", quality=95)  
+        saved_crop_paths.append(cw_path)
 
         # 计算平均色  
         avg_rgb = None  
@@ -2406,6 +3278,20 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
             "image_url": f"/photos/{cw_filename}",  
             "confirmed": True  
         })  
+
+    if use_detected_boxes and saved_crop_paths:
+        contact_ocr = recognize_swatch_contact_sheet(saved_crop_paths)
+        for pos, item in enumerate(results["colorways"], start=1):
+            ocr = contact_ocr.get(pos)
+            if not ocr:
+                continue
+            if ocr.get("color_name"):
+                item["color_name"] = ocr.get("color_name", "")
+            if ocr.get("sub_code"):
+                item["sub_code"] = ocr.get("sub_code", "")
+            if ocr.get("ocr_text"):
+                item["ocr_text"] = ocr.get("ocr_text", "")
+            item["sku_code"] = item.get("sub_code") or item.get("color_name") or item.get("sku_code", "")
 
     if not results["colorways"] and not results["main_pattern_url"]:  
         raise RuntimeError('AI 没有识别到任何色卡坐标')  
@@ -2453,25 +3339,46 @@ def _analyze_with_gemini(image_path):
         if image_path.lower().endswith('.png'): mime = 'image/png'
         elif image_path.lower().endswith('.webp'): mime = 'image/webp'
 
-    resp = req.post(
-        f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}',
-        headers={'Content-Type': 'application/json'},
-        json={
-            'contents': [{
-                'parts': [
-                    {'inlineData': {'mimeType': mime, 'data': img_b64}},
-                    {'text': QWEN_ANALYSIS_PROMPT}
-                ]
-            }],
-            'generationConfig': {
-                'responseMimeType': 'application/json'
-            }
-        },
-        timeout=180
-    )
+    payload = {
+        'contents': [{
+            'parts': [
+                {'inlineData': {'mimeType': mime, 'data': img_b64}},
+                {'text': QWEN_ANALYSIS_PROMPT}
+            ]
+        }],
+        'generationConfig': {
+            'responseMimeType': 'application/json'
+        }
+    }
 
-    if resp.status_code != 200:
-        raise RuntimeError(f'Gemini API error {resp.status_code}: {resp.text}')
+    model_chain = []
+    for model_name in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        if model_name and model_name not in model_chain:
+            model_chain.append(model_name)
+
+    last_error = ''
+    transient_codes = {429, 500, 502, 503, 504}
+    resp = None
+    for model_name in model_chain:
+        for attempt in range(3):
+            resp = req.post(
+                f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}',
+                headers={'Content-Type': 'application/json'},
+                json=payload,
+                timeout=180
+            )
+            if resp.status_code == 200:
+                last_error = ''
+                break
+            last_error = f'Gemini {model_name} error {resp.status_code}: {resp.text}'
+            if resp.status_code not in transient_codes:
+                break
+            time.sleep(1.5 * (attempt + 1))
+        if resp is not None and resp.status_code == 200:
+            break
+
+    if resp is None or resp.status_code != 200:
+        raise RuntimeError(last_error or 'Gemini API error')
 
     result = resp.json()
     content = result['candidates'][0]['content']['parts'][0]['text']
@@ -2581,44 +3488,53 @@ def _cleanup_ai_jobs():
 
 
 def _analyze_pattern_file(filepath, progress_cb=None):
+    generated_urls = []
     def step(progress, stage, message):
         if progress_cb:
             progress_cb(progress, stage, message)
 
-    step(18, 'prepare', 'Preparing display image')
-    result = process_uploaded_image(filepath)
-    display_url = '/' + result['big_img']
+    try:
+        step(18, 'prepare', 'Preparing display image')
+        result = process_uploaded_image(filepath)
+        display_url = '/' + result['big_img']
+        generated_urls.extend([result.get('big_img', ''), result.get('thumb_img', '')])
 
-    step(32, 'ai', 'AI is locating swatches and reading labels')
-    if GEMINI_API_KEY:
-        analysis = _analyze_with_gemini(filepath)
-    elif QWEN_API_KEY:
-        analysis = _analyze_with_qwen(filepath)
-    else:
-        raise RuntimeError('AI API key is not configured. Set GEMINI_API_KEY or QWEN_API_KEY.')
+        step(32, 'ai', 'AI is locating swatches and reading labels')
+        if GEMINI_API_KEY:
+            analysis = _analyze_with_gemini(filepath)
+        elif QWEN_API_KEY:
+            analysis = _analyze_with_qwen(filepath)
+        else:
+            raise RuntimeError('AI API key is not configured. Set GEMINI_API_KEY or QWEN_API_KEY.')
 
-    step(84, 'crop', 'Cropping swatch images')
-    swatches = analysis['colorways']
-    for s in swatches:
-        cn = s.get('color_name', '')
-        s['sku_code'] = s.get('sku_code', '') or s.get('sub_code', '') or cn or ''
+        step(84, 'crop', 'Cropping swatch images')
+        swatches = analysis['colorways']
+        for s in swatches:
+            cn = s.get('color_name', '')
+            s['sku_code'] = s.get('sku_code', '') or s.get('sub_code', '') or cn or ''
+            if s.get('image_url'):
+                generated_urls.append(s.get('image_url'))
 
-    payload = {
-        'master_image': display_url,
-        'pattern_no': analysis.get('pattern_no', ''),
-        'cycle_size': analysis.get('cycle_size', ''),
-        'colorways': [{
-            'index': s['index'],
-            'color_name': s.get('color_name', ''),
-            'sub_code': s.get('sub_code', ''),
-            'sku_code': s.get('sku_code', ''),
-            'image_url': s.get('image_url', ''),
-            'dominant_color': s.get('dominant_color', ''),
-            'ocr_text': s.get('ocr_text', '')
-        } for s in swatches]
-    }
-    step(96, 'finalize', f"Found {len(swatches)} swatches")
-    return payload
+        payload = {
+            'master_image': display_url,
+            'pattern_no': analysis.get('pattern_no', ''),
+            'cycle_size': analysis.get('cycle_size', ''),
+            'generated_urls': generated_urls,
+            'colorways': [{
+                'index': s['index'],
+                'color_name': s.get('color_name', ''),
+                'sub_code': s.get('sub_code', ''),
+                'sku_code': s.get('sku_code', ''),
+                'image_url': s.get('image_url', ''),
+                'dominant_color': s.get('dominant_color', ''),
+                'ocr_text': s.get('ocr_text', '')
+            } for s in swatches]
+        }
+        step(96, 'finalize', f"Found {len(swatches)} swatches")
+        return payload
+    except Exception:
+        cleanup_photo_urls(generated_urls, force=True)
+        raise
 
 
 @app.route('/api/ai/analyze-pattern', methods=['POST'])
@@ -2685,7 +3601,6 @@ def api_ai_analyze_pattern():
 
 
 @app.route('/api/ai/analyze-pattern-job', methods=['POST'])
-@require_auth
 def api_ai_analyze_pattern_job():
     """Start background pattern analysis and return a pollable job id."""
     _cleanup_ai_jobs()
@@ -2732,7 +3647,6 @@ def api_ai_analyze_pattern_job():
 
 
 @app.route('/api/ai/analyze-pattern-job/<job_id>', methods=['GET'])
-@require_auth
 def api_ai_analyze_pattern_job_status(job_id):
     job = AI_ANALYSIS_JOBS.get(job_id)
     if not job:
@@ -2750,6 +3664,7 @@ def api_ai_confirm_pattern():
     cycle_size = data.get('cycle_size', '')
     colorways = data.get('colorways', [])
     style_code = data.get('style_code', '')
+    master_image = data.get('master_image', '')
 
     saved = []
     db = get_db()
@@ -2758,12 +3673,23 @@ def api_ai_confirm_pattern():
         sku = cw.get('sku_code', '') or pattern_no
         color_name = cw.get('color_name', '')
         sub_code = cw.get('sub_code', '')
-        notes = json.dumps({'color_name': color_name, 'sub_code': sub_code, 'cycle_size': cycle_size}, ensure_ascii=False)
+        notes = json.dumps({
+            'color_name': color_name,
+            'sub_code': sub_code,
+            'cycle_size': cycle_size,
+            'style_code': style_code,
+            'master_image': master_image
+        }, ensure_ascii=False)
         db.execute(
             "INSERT INTO print_warehouse (print_code, big_img, thumb_img, notes) VALUES (?, ?, ?, ?)",
-            (pattern_no, cw.get('image_url',''), cw.get('image_url',''), notes)
+            (pattern_no, cw.get('image_url',''), master_image or cw.get('image_url',''), notes)
         )
         pid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        if style_code:
+            db.execute(
+                "INSERT OR IGNORE INTO style_prints (style_code, print_id, last_used) VALUES (?, ?, datetime('now','localtime'))",
+                (style_code, pid)
+            )
         saved.append({'id': pid, 'sku': sku, 'image_url': cw.get('image_url',''), 'color_name': color_name, 'sub_code': sub_code})
     db.commit()
     return jsonify({'status': 'success', 'saved': saved})

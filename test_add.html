@@ -47,7 +47,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .fabric-card:hover{border-color:#dcc8a8;box-shadow:0 6px 20px rgba(30,25,18,.055)}
 .fabric-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;margin-bottom:12px}
 .fabric-name-wrap{display:flex;align-items:center;gap:8px;min-width:0}
-.fabric-name{font-size:18px;font-weight:600;color:#2f2a24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fabric-name{font-size:18px;font-weight:850;color:#1f1b16;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fabric-delete{width:28px;height:28px;border-radius:7px!important;padding:0!important;display:flex;align-items:center;justify-content:center}
 .fabric-metrics{display:flex;gap:8px;align-items:end;flex-wrap:wrap;justify-content:flex-end}
 .fabric-row{display:flex;gap:8px;align-items:end;margin-bottom:8px;flex-wrap:wrap}
@@ -100,11 +100,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .fabric-ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .fabric-ai-title{font-size:16px;font-weight:850;color:#1a1a1a}
 .fabric-ai-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-      options +
-    '</select>' +
 .fabric-ai-controls select{height:34px;border:1px solid #d8d1c5;border-radius:5px;background:#fff;padding:0 10px;font-size:12px;font-family:inherit;color:#333}
-      options +
-    '</select>' +
 .fabric-ai-btn{height:34px;border:none;border-radius:5px;padding:0 14px;background:#C8A56D;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
 .fabric-ai-btn.secondary{background:#f4efe6;color:#8a6f3c;border:1px solid #e1d5bf}
 .fabric-ai-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -415,14 +411,24 @@ var SETTINGS = {
     }
     return null;
   },
-  save: function(key, data) {    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
-    // 异步同步已禁用 - 仅保存到本地存储
-    try {
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/data/" + key, true);
-      xhr.setRequestHeader("Content-Type", "application/json");xhr.withCredentials=true;
-      xhr.send(JSON.stringify(data));
-    } catch(e) { console.log("XHR POST failed:", e.message); }
+  save: function(key, data) {
+    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+    // 异步轻量同步（仅同步当前 key，不阻塞 UI）
+    var pathMap = {
+      fabrics: '/api/data/fabrics',
+      factories: '/api/data/factories',
+      procacc: '/api/data/procacc',
+      categories: '/api/data/categories',
+      guests: '/api/data/guests'
+    };
+    var path = pathMap[key];
+    if (path) {
+      fetch(path, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      }).catch(function(){});
+    }
   }
 };
 
@@ -472,12 +478,6 @@ var DEFAULTS = {
 var _userData = {};
 var fabricAiState = {jobId:'', timer:null, result:null, startedAt:0};
 
-function hasFabricColors(list) {
-  return Array.isArray(list) && list.some(function(f) {
-    return f && Array.isArray(f.colors) && f.colors.length > 0;
-  });
-}
-
 // ===== INIT =====
 function initSettings() {
   var keys = ['fabrics','factories','procacc','categories','guests'];
@@ -507,7 +507,7 @@ function initSettings() {
     if (v && Array.isArray(v) && v.length > 0) {
       var existing = SETTINGS.get(keys[i]);
       // 只在 localStorage 还是默认值时覆盖，用户修改过的保留
-      if (keys[i] === 'fabrics' && existing && hasFabricColors(existing)) { /* keep user fabric data */ } else if (!existing || keys[i] === 'fabrics' || JSON.stringify(existing) === JSON.stringify(DEFAULTS[keys[i]])) {
+      if (!existing || JSON.stringify(existing) === JSON.stringify(DEFAULTS[keys[i]])) {
         localStorage.setItem(lsKeys[i], JSON.stringify(v));
       }
       gotServer = true;
@@ -519,7 +519,6 @@ function initSettings() {
   keys.forEach(function(k) {
     var d = SETTINGS.get(k);
     if (d && JSON.stringify(d) !== JSON.stringify(DEFAULTS[k])) {
-      if (k === 'fabrics' && !hasFabricColors(d)) return;
       _userData[k] = JSON.parse(JSON.stringify(d));
     }
   });
@@ -534,7 +533,7 @@ function initSettings() {
         var v = LUNA.get(k);
         if (v && Array.isArray(v) && v.length > 0) {
           var existing = SETTINGS.get(keys[i]);
-          if (keys[i] === 'fabrics' && existing && hasFabricColors(existing)) { /* keep user fabric data */ } else if (!existing || keys[i] === 'fabrics' || JSON.stringify(existing) === JSON.stringify(DEFAULTS[keys[i]])) {
+          if (!existing || JSON.stringify(existing) === JSON.stringify(DEFAULTS[keys[i]])) {
             localStorage.setItem(lsKeys[i], JSON.stringify(v));
           }
           found = true;
@@ -561,24 +560,6 @@ function renderAll() {
 var _idCounters = {fabrics:3,factories:4,procacc:8,categories:8,guests:2};
 function genId(prefix) {
   return prefix + (_idCounters[prefix]++);
-}
-
-function nextFabricId(fabrics) {
-  var used = {};
-  (fabrics || []).forEach(function(f) { if (f && f.id) used[f.id] = true; });
-  var n = 1;
-  while (used['fabrics' + n] || used['fabric' + n] || used['f' + n]) n++;
-  return 'fabrics' + n;
-}
-
-function saveFabricsData(fabrics) {
-  if (typeof _userData !== 'undefined') {
-    _userData.fabrics = JSON.parse(JSON.stringify(fabrics || []));
-  }
-  SETTINGS.save('fabrics', fabrics || []);
-  if (typeof LUNA !== 'undefined' && LUNA.saveFabrics) {
-    LUNA.saveFabrics(fabrics || []);
-  }
 }
 
 // ========== 1. WAREHOUSE (面料仓库) ==========
@@ -620,9 +601,8 @@ function renderWarehouse() {
     (f.colors||[]).forEach(function(c, ci) {
       var hex = c.hex || '#eee';
       var borderStyle = (hex === '#f5f5f0' || hex === '#ffffff') ? ';border:1px solid #ddd' : '';
-      var imgSrc = c.img || c.img_path || c.image_url || c.thumb_img || '';
-      var bgStyle = imgSrc ? 'url(' + escAttr(imgSrc) + ') center/cover no-repeat' : hex;
-      var lbSrc = imgSrc ? escAttr(imgSrc) : hex;
+      var bgStyle = c.img ? 'url(' + escAttr(c.img) + ') center/cover no-repeat' : hex;
+      var lbSrc = c.img ? escAttr(c.img) : hex;
       listHtml += '<div class="color-entry" data-fabric="' + fi + '" data-color="' + ci + '">';
       listHtml += '<div class="color-box" style="background:' + bgStyle + borderStyle + '" ondblclick="openLightbox(\'' + lbSrc + '\',\'' + escAttr(c.name) + '\')"></div>';
       listHtml += '<div class="color-name">' + esc(c.name) + '</div>';
@@ -644,7 +624,7 @@ function renderWarehouse() {
   html += '</div>';
   html += '<button class="fabric-add-btn" onclick="addNewFabric()">＋ 添加新面料</button>';
   el.innerHTML = html;
-  for (var ri = 0; ri < (fabrics || []).length; ri++) { try { renderComp(ri); } catch(e) { console.log("XHR POST failed:", e.message); } }
+  for (var ri = 0; ri < (fabrics || []).length; ri++) { try { renderComp(ri); } catch(e) {} }
   if (fabricAiState.result) renderFabricAiResult();
 }
 
@@ -687,7 +667,8 @@ function saveComp(fi) {
   var raw = SETTINGS.get("fabrics");
   if (!raw || fi >= raw.length) return;
   raw[fi].composition = compData(fi);
-  saveFabricsData(raw);
+  SETTINGS.save("fabrics", raw);
+  if (typeof _userData !== "undefined") _userData.fabrics = JSON.parse(JSON.stringify(raw));
 }function renderComp(fi) {
   var wrap = document.getElementById("comp-wrap-" + fi);
   if (!wrap) return;
@@ -723,11 +704,10 @@ function saveComp(fi) {
 }
 
 function fabricMatchesQuery(f, query) {
-  var parts = [f.name, typeof f.composition === 'string' ? f.composition.replace(/[{}:"\[\]]/g,' ') : '']; try { var cp = typeof f.composition === 'string' ? JSON.parse(f.composition) : []; if (Array.isArray(cp)) cp.forEach(function(c){ parts.push(c.it || '', c.en || ''); }); } catch(e) { console.log("XHR POST failed:", e.message); }
+  var parts = [f.name, typeof f.composition === 'string' ? f.composition.replace(/[{}:"\[\]]/g,' ') : '']; try { var cp = typeof f.composition === 'string' ? JSON.parse(f.composition) : []; if (Array.isArray(cp)) cp.forEach(function(c){ parts.push(c.it || '', c.en || ''); }); } catch(e) {}
   (f.colors || []).forEach(function(c) { parts.push(c.name, c.hex); });
   return parts.join(' ').toLowerCase().indexOf(query) >= 0;
 }
-
 function renderFabricAiPanel(fabrics) {
   var options = fabrics.map(function(f, i) {
     return '<option value="' + i + '">' + esc(f.name || ('面料' + (i + 1))) + '</option>';
@@ -736,10 +716,6 @@ function renderFabricAiPanel(fabrics) {
     '<div class="fabric-ai-head">' +
       '<div><div class="fabric-ai-title">AI 色卡识别</div><div style="font-size:11px;color:#9f9488;margin-top:2px">上传整张面料色卡图，自动切割并保存到指定面料</div></div>' +
       '<div class="fabric-ai-controls">' +
-      '<select id="fabricAiTarget" style="height:34px;border:1px solid #d8d1c5;border-radius:5px;background:#fff;padding:0 10px;font-size:12px;font-family:inherit;color:#333">' +
-        options +
-      '</select>' +
-      
         '<button class="fabric-ai-btn secondary" onclick="document.getElementById(\'fabricAiFile\').click()">上传大图</button>' +
         '<input id="fabricAiFile" type="file" accept="image/*" style="display:none" onchange="startFabricAi(this.files&&this.files[0]);this.value=\'\'">' +
       '</div>' +
@@ -758,7 +734,6 @@ function startFabricAi(file) {
   var fabrics = SETTINGS.get('fabrics') || [];
   var target = document.getElementById('fabricAiTarget');
   if (!fabrics.length || !target || target.value === '') { showToast('请先选择面料'); return; }
-  if (fabricAiState.result) cleanupFabricAiResult(fabricAiState.result);
   fabricAiState.result = null;
   fabricAiState.startedAt = Date.now();
   setFabricAiProgress(5, '上传图片', '图片识别中，倒计时 60 秒');
@@ -809,64 +784,6 @@ function normalizeFabricAiResult(res) {
   return result || {};
 }
 
-function normalizePhotoUrl(url) {
-  if (!url || typeof url !== 'string') return '';
-  if (url.indexOf('data:') === 0 || url.indexOf('://') >= 0) return '';
-  url = url.split('?')[0].split('#')[0].replace(/\\/g, '/');
-  if (url.charAt(0) === '/') url = url.slice(1);
-  return url.indexOf('photos/') === 0 ? url : '';
-}
-
-function fabricAiResultUrls(result) {
-  var urls = [];
-  if (!result) return urls;
-  if (Array.isArray(result.generated_urls)) urls = urls.concat(result.generated_urls);
-  if (result.master_image) urls.push(result.master_image);
-  (result.colorways || []).forEach(function(c) {
-    if (c.image_url) urls.push(c.image_url);
-    if (c.thumb_img) urls.push(c.thumb_img);
-  });
-  var seen = {};
-  return urls.filter(function(u) {
-    var n = normalizePhotoUrl(u);
-    if (!n || seen[n]) return false;
-    seen[n] = true;
-    return true;
-  });
-}
-
-function cleanupPhotoUrls(urls) {
-  urls = (urls || []).filter(Boolean);
-  if (!urls.length) return Promise.resolve();
-  return fetch('/api/photos/cleanup-urls', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({urls: urls})
-  }).then(function(r){ return r.json(); }).catch(function(){});
-}
-
-function cleanupFabricAiResult(result, keepUrls) {
-  var keep = {};
-  (keepUrls || []).forEach(function(u) {
-    var n = normalizePhotoUrl(u);
-    if (n) keep[n] = true;
-  });
-  var doomed = fabricAiResultUrls(result).filter(function(u) {
-    return !keep[normalizePhotoUrl(u)];
-  });
-  return cleanupPhotoUrls(doomed);
-}
-
-function discardFabricAiResult() {
-  var old = fabricAiState.result;
-  fabricAiState.result = null;
-  clearTimeout(fabricAiState.timer);
-  cleanupFabricAiResult(old).then(function() {
-    renderWarehouse();
-    showToast('已取消并清理未保存图片');
-  });
-}
-
 function setFabricAiProgress(pct, stage, sub) {
   var box = document.getElementById('fabricAiProgress');
   if (box) box.classList.add('active');
@@ -900,7 +817,7 @@ function renderFabricAiResult() {
       '<input type="text" value="' + escAttr(name) + '" placeholder="色卡名称">' +
     '</div>';
   }).join('') + '</div>' +
-  '<div class="fabric-ai-save-row"><span class="count">识别到 ' + list.length + ' 个色卡，可取消不需要的色卡</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="fabric-ai-btn secondary" onclick="discardFabricAiResult()">取消结果</button><button class="fabric-ai-btn" onclick="saveFabricAiSwatches()">保存到选中面料</button></div></div>';
+  '<div class="fabric-ai-save-row"><span class="count">识别到 ' + list.length + ' 个色卡，可取消不需要的色卡</span><button class="fabric-ai-btn" onclick="saveFabricAiSwatches()">保存到选中面料</button></div>';
 }
 
 function saveFabricAiSwatches() {
@@ -911,7 +828,6 @@ function saveFabricAiSwatches() {
   if (!fabrics[fi].colors) fabrics[fi].colors = [];
   var cards = Array.prototype.slice.call(document.querySelectorAll('.fabric-ai-card'));
   var saved = 0;
-  var keepUrls = [];
   cards.forEach(function(card) {
     var keep = card.querySelector('.keep');
     if (keep && !keep.checked) return;
@@ -920,7 +836,6 @@ function saveFabricAiSwatches() {
     var img = card.getAttribute('data-img') || '';
     var hex = card.getAttribute('data-hex') || '#cccccc';
     if (!name || !img) return;
-    keepUrls.push(img);
     var existing = (fabrics[fi].colors || []).find(function(c){ return (c.name || '').trim() === name; });
     if (existing) {
       existing.hex = hex;
@@ -930,9 +845,8 @@ function saveFabricAiSwatches() {
     }
     saved++;
   });
-  if (!saved) { discardFabricAiResult(); return; }
-  saveFabricsData(fabrics);
-  cleanupFabricAiResult(fabricAiState.result, keepUrls);
+  if (!saved) { showToast('没有选择要保存的色卡'); return; }
+  SETTINGS.save('fabrics', fabrics);
   fabricAiState.result = null;
   renderWarehouse();
   showToast('已保存 ' + saved + ' 个色卡到 ' + (fabrics[fi].name || '面料'));
@@ -942,7 +856,7 @@ function updateFabric(idx, field, val) {
   var fabrics = SETTINGS.get('fabrics');
   if (!fabrics || idx >= fabrics.length) return;
   fabrics[idx][field] = val;
-  saveFabricsData(fabrics);
+  SETTINGS.save('fabrics', fabrics);
 }
 
 function addStock(idx) {
@@ -951,7 +865,7 @@ function addStock(idx) {
   var add = parseInt(document.getElementById('stockAdd-' + idx).value) || 0;
   if (add <= 0) { alert('请输入正数'); return; }
   fabrics[idx].stock = (fabrics[idx].stock || 0) + add;
-  saveFabricsData(fabrics);
+  SETTINGS.save('fabrics', fabrics);
   renderWarehouse();
 }
 
@@ -959,7 +873,7 @@ function deleteFabric(idx) {
   LUNA.showConfirm('确定删除此面料？', function() {
     var fabrics = SETTINGS.get('fabrics');
     fabrics.splice(idx, 1);
-    saveFabricsData(fabrics);
+    SETTINGS.save('fabrics', fabrics);
     renderWarehouse();
   });
 }
@@ -968,7 +882,8 @@ function deleteColor(fi, ci) {
   var fabrics = SETTINGS.get('fabrics');
   if (!fabrics[fi] || !fabrics[fi].colors) return;
   fabrics[fi].colors.splice(ci, 1);
-  saveFabricsData(fabrics);
+  SETTINGS.save('fabrics', fabrics);
+  if (typeof LUNA !== 'undefined' && LUNA.saveFabrics) LUNA.saveFabrics(fabrics);
   renderWarehouse();
 }
 
@@ -979,53 +894,27 @@ function updateColorName(fi, ci, val) {
   var oldName = fabrics[fi].colors[ci].name;
   fabrics[fi].colors[ci].name = val;
   localStorage.setItem(SETTINGS.KEYS.fabrics, JSON.stringify(fabrics));
-  if (typeof _userData !== 'undefined') _userData.fabrics = JSON.parse(JSON.stringify(fabrics));
   // 异步服务端同步
   var fid = fabrics[fi].id;
   fetch('/api/fabrics/update-color', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({fabric_id: fid, old_name: oldName, name: val})
-  }).catch(function(e){showToast('保存失败: '+e.message);});
+  }).catch(function(){});
 }
 
 function addNewFabric() {
-  var overlay = document.getElementById("addFabricModal");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "addFabricModal";
-    overlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center";
-    overlay.onclick = function(e) { if (e.target === overlay) closeAddFabricModal(); };
-    overlay.innerHTML = "<div style='background:#fff;border-radius:10px;padding:20px;width:300px;max-width:88vw'>" +
-      "<div style='font-size:15px;font-weight:700;margin-bottom:14px;color:#1a1a1a'>添加新面料</div>" +
-      "<div style='margin-bottom:10px'><label style='font-size:10px;color:#888;display:block;margin-bottom:3px'>面料名称</label>" +
-      "<input id='afName' type='text' style='width:100%;padding:8px 10px;border:1px solid #e8e5e0;border-radius:5px;font-size:13px;font-family:inherit;box-sizing:border-box' placeholder='请输入面料名称'></div>" +
-      "<div style='margin-bottom:16px'><label style='font-size:10px;color:#888;display:block;margin-bottom:3px'>价格 &euro;/m</label>" +
-      "<input id='afPrice' type='number' value='10' style='width:100%;padding:8px 10px;border:1px solid #e8e5e0;border-radius:5px;font-size:13px;font-family:inherit;box-sizing:border-box'></div>" +
-      "<div style='display:flex;gap:8px;justify-content:flex-end'>" +
-      "<button onclick='closeAddFabricModal()' style='padding:8px 16px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:#f5f5f5;color:#888;border:1px solid #e0e0e0'>取消</button>" +
-      "<button onclick='confirmAddFabric()' style='padding:8px 16px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:#1a1a1a;color:#fff;border:none'>确认添加</button></div></div>";
-    document.body.appendChild(overlay);
-  }
-  document.getElementById("afName").value = "";
-  document.getElementById("afPrice").value = "10";
-  overlay.style.display = "flex";
-}
-function closeAddFabricModal() {
-  var o = document.getElementById("addFabricModal");
-  if (o) o.style.display = "none";
-}
-function confirmAddFabric() {
-  var name = document.getElementById("afName").value.trim();
-  if (!name) { alert("请输入面料名称"); return; }
-  var price = parseFloat(document.getElementById("afPrice").value) || 10;
-  var fabrics = SETTINGS.get("fabrics") || [];
-  fabrics.push({id: nextFabricId(fabrics), name: name, pricePerM: price, composition: "[{\"pct\":0,\"it\":\"POLIESTERE\",\"en\":\"POLYESTER\"},{\"pct\":0,\"it\":\"ELASTICO\",\"en\":\"ELASTANO\"}]", stock: 0, lossPerLayer: 6, colors: []});
-  saveFabricsData(fabrics);
-  closeAddFabricModal();
+  var name = prompt('输入新面料名称：');
+  if (!name) return;
+  var price = parseFloat(prompt('输入价格 €/m：', '10')) || 10;
+  var fabrics = SETTINGS.get('fabrics');
+  fabrics.push({id: genId('fabrics'), name: name, pricePerM: price, composition: '[{"pct":95,"it":"POLIESTERE","en":"POLYESTER"},{"pct":5,"it":"ELASTICO","en":"ELASTANO"}]', stock: 0, lossPerLayer: 6, colors: []});
+  SETTINGS.save('fabrics', fabrics);
   renderWarehouse();
-  showToast('已添加面料「' + name + '」');
-}function renderFactories() {
+}
+
+// ========== 2. FACTORIES (加工工厂) ==========
+function renderFactories() {
   var container = document.getElementById('panel-factories');
   if (!container) return;
   var factories = SETTINGS.get('factories') || [];
@@ -1275,7 +1164,7 @@ function renderStyles() {
   var container = document.getElementById('panel-styles');
   if (!container) return;
   var styles = [];
-  try { styles = LUNA.getStyles(); } catch(e) { console.log("XHR POST failed:", e.message); }
+  try { styles = LUNA.getStyles(); } catch(e) {}
   var toggles = SETTINGS.get('styleToggles') || {};
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   html += '<span style="font-size:13px;font-weight:600;color:#1a1a1a">📋 全部款式 <span style="color:#999;font-weight:400">(' + styles.length + '款)</span></span>';
@@ -1319,7 +1208,7 @@ function loadBilling() {
   var container = document.getElementById('panel-export');
   if (!container) return;
   var invoices = [];
-  try { invoices = LUNA.getInvoices(); } catch(e) { console.log("XHR POST failed:", e.message); }
+  try { invoices = LUNA.getInvoices(); } catch(e) {}
   var customerFilter = document.getElementById('exportCustomer') ? document.getElementById('exportCustomer').value : 'all';
   var monthFilter = document.getElementById('exportMonth') ? document.getElementById('exportMonth').value : 'all';
 
@@ -1397,7 +1286,7 @@ function loadBilling() {
 
 function exportExcel() {
   var invoices = [];
-  try { invoices = LUNA.getInvoices(); } catch(e) { console.log("XHR POST failed:", e.message); }
+  try { invoices = LUNA.getInvoices(); } catch(e) {}
   var customerFilter = document.getElementById('exportCustomer') ? document.getElementById('exportCustomer').value : 'all';
   var monthFilter = document.getElementById('exportMonth') ? document.getElementById('exportMonth').value : 'all';
   var filtered = invoices.filter(function(inv) {
@@ -1461,7 +1350,7 @@ var _qcEditMode = false;
 // ── Quick color palette management ──
 function getQuickColors() {
   var raw = localStorage.getItem(SETTINGS.KEYS.quickColors);
-  if (raw) { try { return JSON.parse(raw); } catch(e) { console.log("XHR POST failed:", e.message); } }
+  if (raw) { try { return JSON.parse(raw); } catch(e) {} }
   var defs = DEFAULTS.quickColors;
   localStorage.setItem(SETTINGS.KEYS.quickColors, JSON.stringify(defs));
   return defs;
@@ -1763,12 +1652,10 @@ function saveQuickColor() {
 
   function doSave(hexVal, imgUrl) {
     var color = {name:name, hex:hexVal};
-    if (imgUrl) {
-      color.img = imgUrl;
-      color.img_path = imgUrl;
-    }
+    if (imgUrl) color.img = imgUrl;
     fabrics[addTargetFabric].colors.push(color);
-    saveFabricsData(fabrics);
+    SETTINGS.save('fabrics', fabrics);
+    LUNA.addFabricColor(fabrics[addTargetFabric].id, name, hexVal, imgUrl||'', {});
     closeAddColor();
     renderWarehouse();
     showToast('✅ 颜色「'+name+'」已保存');
@@ -1869,7 +1756,6 @@ function updateColorHex(fi, ci, val) {
   if (!fabrics || !fabrics[fi] || !fabrics[fi].colors || !fabrics[fi].colors[ci]) return;
   fabrics[fi].colors[ci].hex = val;
   localStorage.setItem(SETTINGS.KEYS.fabrics, JSON.stringify(fabrics));
-  if (typeof _userData !== 'undefined') _userData.fabrics = JSON.parse(JSON.stringify(fabrics));
   renderWarehouse();
   // 异步服务端同步
   var fid = fabrics[fi].id;
@@ -1878,7 +1764,7 @@ function updateColorHex(fi, ci, val) {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({fabric_id: fid, old_name: cname, hex: val})
-  }).catch(function(e){showToast('保存失败: '+e.message);});
+  }).catch(function(){});
 }
 
 // ===== SIDE MENU =====
@@ -1962,4 +1848,3 @@ window.closeLightbox = function() { var o = document.getElementById('lightboxOve
 </script>
 </body>
 </html>
-

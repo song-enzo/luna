@@ -48,7 +48,16 @@
 .matrix-dot:hover{transform:scale(1.3)}
 .matrix-qty{font-family:'SF Mono',Monaco,'Cascadia Code',monospace;font-weight:700;font-size:14px;color:var(--text)}
 .matrix-estimate{font-size:12px;color:var(--text-muted)}
+.print-swatches{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
+.print-chip{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:var(--text)}
+.print-chip img{width:34px;height:44px;object-fit:contain;border-radius:4px;background:#f7f6f3;border:1px solid #eee}
+.print-chip b{color:var(--gold);font-size:12px}
+.print-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:99999;align-items:center;justify-content:center;flex-direction:column;padding:18px}
+.print-lightbox.show{display:flex}
+.print-lightbox img{max-width:92vw;max-height:82vh;object-fit:contain;background:#fff;border-radius:8px}
+.print-lightbox-name{color:#fff;font-size:14px;margin-top:12px}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <header class="luna-header">
@@ -136,6 +145,8 @@ function renderHero() {
 
 // ====== 订单内容（矩阵显示 + 裁剪详情）======
 function getColorStyle(fabricName, colorName) {
+  var printImg = findPrintVisual(colorName);
+  if (printImg) return 'background-image:url(' + esc(printImg) + ');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f7f6f3';
   var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
   for (var fi = 0; fi < allFabrics.length; fi++) {
     var cols = allFabrics[fi].colors || [];
@@ -147,6 +158,55 @@ function getColorStyle(fabricName, colorName) {
     }
   }
   return 'background:#ccc';
+}
+
+function getColorPreviewSource(fabricName, colorName) {
+  var printImg = findPrintVisual(colorName);
+  if (printImg) return printImg;
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName && cols[ci].img) return cols[ci].img;
+    }
+  }
+  return '';
+}
+
+function openColorPreview(fabricName, colorName) {
+  var src = getColorPreviewSource(fabricName, colorName);
+  if (src && LUNA.openImagePreview) LUNA.openImagePreview(src, colorName + (fabricName ? ' · ' + fabricName : ''));
+}
+
+function findPrintVisual(colorName) {
+  var needle = String(colorName || '').trim().toLowerCase();
+  var orders = LUNA.getOrders ? LUNA.getOrders() : [];
+  for (var oi = 0; oi < orders.length; oi++) {
+    var items = orders[oi].items || [];
+    for (var ii = 0; ii < items.length; ii++) {
+      var item = items[ii];
+      if (!item.stampa_img_url) continue;
+      var names = [item.color, item.stampa_code, item.sku_code, item.name].map(function(v) {
+        return String(v || '').trim().toLowerCase();
+      }).filter(Boolean);
+      for (var ni = 0; ni < names.length; ni++) {
+        if (names[ni] === needle || (needle && names[ni].indexOf(needle) >= 0) || (needle && needle.indexOf(names[ni]) >= 0)) return item.stampa_img_url;
+      }
+    }
+  }
+  return '';
+}
+
+function getOrderItemFabric(item) {
+  var f = (item && item.fabric ? item.fabric : '').trim();
+  if (f) return f;
+  var style = (item && item.code && LUNA.findStyle) ? LUNA.findStyle(item.code) : null;
+  var fabrics = (style && style.fabrics) || [];
+  if (fabrics.length) {
+    var first = fabrics[0];
+    return (typeof first === 'string' ? first : (first.name || '')) || '默认面料';
+  }
+  return '默认面料';
 }
 
 // Size alias: support both old (3XL) and new (XXXL) naming
@@ -179,7 +239,7 @@ function renderContent() {
   // Group items by fabric
   var fabricGroups = {};
   items.forEach(function(item) {
-    var fabricNames = (item.fabric || '默认面料').split(/\s*,\s*/);
+    var fabricNames = getOrderItemFabric(item).split(/\s*,\s*/);
     fabricNames.forEach(function(fName) {
       if (!fabricGroups[fName]) fabricGroups[fName] = [];
       fabricGroups[fName].push(item);
@@ -226,7 +286,7 @@ function renderContent() {
 
     colorNames.forEach(function(c) {
       var sizes = colorSizes[c] || {};
-      html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '"></span>' + esc(c) + '</div></td>';
+      html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '" onclick="openColorPreview(\'' + escJs(fName) + '\',\'' + escJs(c) + '\')" title="点击放大"></span>' + esc(c) + '</div></td>';
       activeSizes.forEach(function(sz) {
         var v = sizes[sz] || 0;
         html += '<td>' + (v > 0 ? '<span class="matrix-qty">' + v + '</span>' : '—') + '</td>';
@@ -272,7 +332,7 @@ function renderContent() {
           for (var ci = 0; ci < item.components.length; ci++) {
             if (item.components[ci].part === fName) { belongs = true; break; }
           }
-        } else if ((item.fabric || '默认面料').split(/\s*,\s*/).indexOf(fName) >= 0) {
+        } else if (getOrderItemFabric(item).split(/\s*,\s*/).indexOf(fName) >= 0) {
           belongs = true;
         }
         if (belongs) {
@@ -297,7 +357,7 @@ function renderContent() {
             var lossM = (parseFloat(lossCm) || 6) / 100;
             perUsage = Math.round((parseFloat(patternLen) + lossM) * layers * 100) / 100;
           }
-          html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '"></span>' + esc(c) + '</div></td>' +
+          html += '<tr><td><div class="matrix-color"><span class="matrix-dot" style="' + getColorStyle(fName, c) + '" onclick="openColorPreview(\'' + escJs(fName) + '\',\'' + escJs(c) + '\')" title="点击放大"></span>' + esc(c) + '</div></td>' +
             '<td>' + ordTotal + '</td>' +
             '<td>' + (layers > 0 ? layers : '—') + '</td>' +
             '<td><span class="matrix-qty">' + (cutTotal > 0 ? cutTotal : '—') + '</span></td>' +
@@ -409,6 +469,24 @@ function confirmEdit(type) {
 }
 
 function esc(s) { var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function escJs(s) { return (s || '').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+function isPrintItem(item) { return !!(item && (item.stampa_img_url || item.item_type === 'stampa')); }
+function itemTotal(item) {
+  var total = 0, qty = item.qty || {};
+  Object.keys(qty).forEach(function(k) { total += Number(qty[k] || 0); });
+  return total;
+}
+function renderPrintSwatches(order) {
+  var prints = (order.items || []).filter(isPrintItem);
+  if (!prints.length) return '';
+  return '<div class="order-info-card"><h4 style="margin-bottom:12px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">印花色卡</h4><div class="print-swatches">' +
+    prints.map(function(item) {
+      var label = item.stampa_code || item.color || '印花色卡';
+      var img = item.stampa_img_url || '';
+      return '<div class="print-chip" onclick="LUNA.openImagePreview(\'' + escJs(img) + '\',\'' + escJs(label) + '\')" title="点击放大">' +
+        '<img src="' + esc(img) + '" alt=""><span>' + esc(label) + '</span><b>' + itemTotal(item) + '件</b></div>';
+    }).join('') + '</div></div>';
+}
 
 // 等服务器数据加载完再渲染
 function onDataReady() { init(); }

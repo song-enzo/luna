@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工厂页面 - LUNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="luna-data.js?v=31"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f8f6f2;color:#26231f;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.header{height:56px;background:#fff;border-bottom:1px solid #eee8df;display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:sticky;top:0;z-index:20}
+.logo{font-family:"Playfair Display",Georgia,serif;font-weight:700;letter-spacing:2px;color:#1d1a17;text-decoration:none}
+.user{font-size:12px;color:#9d8c70}
+.container{max-width:1120px;margin:0 auto;padding:20px 14px 42px}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:10px 0 18px}
+h1{font-family:"Playfair Display",Georgia,serif;font-size:26px;margin:0;color:#2d2924}
+.sub{font-size:12px;color:#9d8c70;margin-top:4px}
+.refresh{border:0;background:#c8a56d;color:#fff;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer}
+.list{display:grid;gap:14px}
+.card{background:#fff;border:1px solid #e9e1d6;border-radius:10px;overflow:hidden}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid #f0ebe3}
+.order-id{font-weight:700;color:#b28d52;font-size:15px}
+.meta{font-size:12px;color:#8d8378;display:flex;gap:12px;flex-wrap:wrap;margin-top:5px}
+.badge{font-size:11px;color:#5c553a;background:#f4ead8;border-radius:20px;padding:4px 9px;white-space:nowrap}
+.summary{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.pill{font-size:12px;background:#f8f3e9;color:#7a6032;border-radius:6px;padding:5px 8px}
+.items{padding:12px 16px 16px;display:grid;gap:12px}
+.item{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:12px;border:1px solid #f0ebe3;border-radius:8px;background:#fffdf9}
+.item-full{grid-column:1/-1}
+.photo{width:96px;height:126px;border-radius:8px;background:#eee8df;object-fit:contain;cursor:pointer}
+.no-photo{display:flex;align-items:center;justify-content:center;color:#b7afa4;font-size:12px}
+.code{font-weight:700;color:#2c2823;margin-bottom:5px}
+.line{font-size:13px;color:#544d45;margin:3px 0}
+.print-swatches{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px;padding-top:4px}
+.print-chip{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #eadfce;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;color:#3f3932}
+.print-chip img{width:42px;height:54px;object-fit:contain;border-radius:5px;background:#f7f6f3;border:1px solid #eee}
+.print-chip b{color:#b28d52;font-size:12px}
+.matrix-wrap{overflow-x:auto;margin-top:10px;border:1px solid #eadfce;border-radius:8px}
+.matrix{width:100%;border-collapse:collapse;min-width:360px;font-size:12px}
+.matrix th{background:#f7f1e7;color:#6c5a3d;font-weight:700;padding:7px 8px;border-bottom:1px solid #eadfce;text-align:center}
+.matrix td{padding:7px 8px;border-bottom:1px solid #f1eadf;text-align:center;color:#3f3932}
+.matrix tr:last-child td{border-bottom:none}
+.matrix .left{text-align:left;font-weight:600;white-space:nowrap}
+.matrix-color{display:flex;align-items:center;gap:7px}
+.matrix-dot{display:inline-block;width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.1);background-size:cover;background-position:center;cursor:pointer;flex:0 0 auto}
+.matrix .total{font-weight:800;color:#b28d52}
+.notes{margin-top:10px;border-top:1px dashed #e1d8ca;padding-top:8px;display:grid;gap:5px}
+.note{font-size:12px;color:#6e6459;line-height:1.5}
+.empty{background:#fff;border:1px solid #e9e1d6;border-radius:10px;padding:42px 18px;text-align:center;color:#aaa}
+.viewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200000;align-items:center;justify-content:center;flex-direction:column;padding:18px}
+.viewer.open{display:flex}
+.viewer img{max-width:92vw;max-height:82vh;width:auto;height:auto;object-fit:contain;border-radius:8px;background:#fff}
+.viewer-title{color:#fff;margin-top:10px;font-size:13px}
+.viewer-close,.viewer-nav{position:fixed;border:0;background:rgba(255,255,255,.16);color:#fff;cursor:pointer}
+.viewer-close{top:14px;right:14px;width:40px;height:40px;border-radius:50%;font-size:24px}
+.viewer-nav{top:50%;width:42px;height:56px;margin-top:-28px;border-radius:8px;font-size:30px}
+.viewer-prev{left:16px}.viewer-next{right:16px}
+@media(max-width:640px){.item{grid-template-columns:76px 1fr}.photo{width:76px;height:102px}.card-head{flex-direction:column}.badge{align-self:flex-start}.print-chip{width:100%}}
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="logo" href="dashboard.html">LUNA <span>A</span></a>
+  <div class="user" id="userLine"></div>
+</div>
+<main class="container">
+  <div class="topbar">
+    <div>
+      <h1>工厂页面</h1>
+      <div class="sub">显示已裁剪、未发货的生产单。</div>
+    </div>
+    <button class="refresh" onclick="loadFactoryOrders()">刷新</button>
+  </div>
+  <div class="list" id="orders"></div>
+</main>
+<div class="viewer" id="imageViewer" onclick="if(event.target===this)closeViewer()">
+  <button class="viewer-close" onclick="closeViewer()">×</button>
+  <button class="viewer-nav viewer-prev" onclick="stepViewer(-1)">‹</button>
+  <img id="viewerImg" alt="">
+  <button class="viewer-nav viewer-next" onclick="stepViewer(1)">›</button>
+  <div class="viewer-title" id="viewerTitle"></div>
+</div>
+<script>
+var user = LUNA.checkAuth();
+if (user) document.getElementById('userLine').textContent = (user.name || user.username || '') + (user.factory ? ' · ' + user.factory : '');
+var viewerImages = [];
+var viewerIndex = 0;
+
+function esc(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+function escAttr(s){return esc(s).replace(/"/g,'&quot;');}
+function apiGet(url){
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, false);
+  xhr.withCredentials = true;
+  xhr.send(null);
+  try { return JSON.parse(xhr.responseText || '{}'); } catch(e) { return {error:'parse'}; }
+}
+function getOrderItemFabric(item) {
+  var f = (item && item.fabric ? item.fabric : '').trim();
+  if (f) return f;
+  var style = (item && item.code && LUNA.findStyle) ? LUNA.findStyle(item.code) : null;
+  var fabrics = (style && style.fabrics) || [];
+  if (fabrics.length) {
+    var first = fabrics[0];
+    return (typeof first === 'string' ? first : (first.name || '')) || '';
+  }
+  return '';
+}
+function isImagePath(value) {
+  value = String(value || '');
+  return value.indexOf('/photos/') === 0 || value.indexOf('photos/') === 0 || value.indexOf('http') === 0 || value.indexOf('data:image') === 0;
+}
+function itemImages(item){
+  var list = [];
+  (item.style_images || []).forEach(function(img){ if (img && list.indexOf(img) < 0) list.push(img); });
+  if (!list.length && isImagePath(item.color)) list.push(item.color);
+  return list;
+}
+function swatchImages(item){
+  var list = [];
+  if (item.stampa_img_url) list.push(item.stampa_img_url);
+  if (isImagePath(item.color) && list.indexOf(item.color) < 0) list.push(item.color);
+  var solidImg = getFabricColorImage(getOrderItemFabric(item), item.color || '');
+  if (solidImg && list.indexOf(solidImg) < 0) list.push(solidImg);
+  return list;
+}
+function getFabricColorImage(fabricName, colorName){
+  var all = [];
+  try { all = LUNA.getFabrics ? (LUNA.getFabrics() || []) : []; } catch(e) {}
+  var names = (fabricName || '').split(/\s*,\s*/);
+  for (var fi = 0; fi < all.length; fi++) {
+    if (names.length && names[0] && all[fi].name !== names[0] && all[fi].id !== names[0]) continue;
+    var cols = all[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName && (cols[ci].img || cols[ci].img_path)) return cols[ci].img || cols[ci].img_path;
+    }
+  }
+  for (var fj = 0; fj < all.length; fj++) {
+    var cols2 = all[fj].colors || [];
+    for (var cj = 0; cj < cols2.length; cj++) {
+      if (cols2[cj].name === colorName && (cols2[cj].img || cols2[cj].img_path)) return cols2[cj].img || cols2[cj].img_path;
+    }
+  }
+  return '';
+}
+function getFabricColorHex(fabricName, colorName){
+  var all = [];
+  try { all = LUNA.getFabrics ? (LUNA.getFabrics() || []) : []; } catch(e) {}
+  var names = (fabricName || '').split(/\s*,\s*/);
+  for (var fi = 0; fi < all.length; fi++) {
+    if (names.length && names[0] && all[fi].name !== names[0] && all[fi].id !== names[0]) continue;
+    var cols = all[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName && cols[ci].hex) return cols[ci].hex;
+    }
+  }
+  for (var fj = 0; fj < all.length; fj++) {
+    var cols2 = all[fj].colors || [];
+    for (var cj = 0; cj < cols2.length; cj++) {
+      if (cols2[cj].name === colorName && cols2[cj].hex) return cols2[cj].hex;
+    }
+  }
+  return '';
+}
+function fallbackColorHex(name) {
+  var palette = {'黑':'#1f1f1f','白':'#f7f4ee','红':'#b83242','酒':'#7e2434','蓝':'#3f6fa8','绿':'#5f8462','黄':'#d8b84b','灰':'#9a9a9a','粉':'#df8aa6','紫':'#8b5a9d','橙':'#d47a4c','咖':'#7a5b42','棕':'#6f4b37','米':'#e8dbc6','杏':'#e6c2a2','卡':'#b9a17a'};
+  name = String(name || '');
+  for (var k in palette) if (name.indexOf(k) >= 0) return palette[k];
+  return '#d8c7a8';
+}
+function swatchFallbackColor(item) {
+  return getFabricColorHex(getOrderItemFabric(item), item.color || '') || fallbackColorHex(item.color || item.stampa_code || '');
+}
+function swatchColorDataUrl(color, title) {
+  color = color || '#d8c7a8';
+  title = title || '';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200"><rect width="900" height="1200" rx="42" fill="' + color + '"/><rect x="42" y="42" width="816" height="1116" rx="32" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="8"/><text x="450" y="610" text-anchor="middle" font-family="Arial, sans-serif" font-size="68" font-weight="700" fill="rgba(0,0,0,.62)">' + esc(title) + '</text></svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+function openViewer(images, idx, title){
+  viewerImages = images || [];
+  viewerIndex = idx || 0;
+  if (!viewerImages.length) return;
+  document.getElementById('imageViewer').classList.add('open');
+  renderViewer(title || '');
+}
+function renderViewer(title){
+  var img = document.getElementById('viewerImg');
+  img.src = viewerImages[viewerIndex] || '';
+  document.getElementById('viewerTitle').textContent = (title || '') + '  ' + (viewerIndex + 1) + '/' + viewerImages.length;
+}
+function stepViewer(delta){
+  if (!viewerImages.length) return;
+  viewerIndex = (viewerIndex + delta + viewerImages.length) % viewerImages.length;
+  renderViewer('');
+}
+function closeViewer(){document.getElementById('imageViewer').classList.remove('open');}
+document.addEventListener('keydown', function(e){
+  if (!document.getElementById('imageViewer').classList.contains('open')) return;
+  if (e.key === 'Escape') closeViewer();
+  if (e.key === 'ArrowLeft') stepViewer(-1);
+  if (e.key === 'ArrowRight') stepViewer(1);
+});
+function itemQtyTotal(item){
+  var total = 0;
+  Object.keys(item.qty || {}).forEach(function(size){ total += Number(item.qty[size] || 0); });
+  return total;
+}
+function orderCutTotal(order){
+  var cc = order.cutting_complete || {};
+  if (Number(cc.total_cut || 0) > 0) return Number(cc.total_cut || 0);
+  var total = 0;
+  var fabrics = cc.fabrics || {};
+  Object.keys(fabrics).forEach(function(fn){
+    var colors = (fabrics[fn] && fabrics[fn].colors) || {};
+    Object.keys(colors).forEach(function(c){ total += Number(colors[c].total || 0); });
+  });
+  return total || Number(order.total_qty || 0);
+}
+function itemCutQty(order, item){
+  var color = item.stampa_code || item.color || '';
+  var cc = order.cutting_complete || {};
+  var total = 0;
+  var fabrics = cc.fabrics || {};
+  Object.keys(fabrics).forEach(function(fn){
+    var colors = (fabrics[fn] && fabrics[fn].colors) || {};
+    if (colors[color]) total += Number(colors[color].total || 0);
+    if (item.color && item.color !== color && colors[item.color]) total += Number(colors[item.color].total || 0);
+  });
+  return total || itemQtyTotal(item);
+}
+function colorDotStyle(item){
+  var img = (swatchImages(item) || [])[0] || '';
+  if (img) return 'background-image:url(' + escAttr(img) + ');background-size:cover;background-position:center;background-color:#f7f6f3';
+  return 'background:' + swatchFallbackColor(item);
+}
+function openSwatch(itemData){
+  var images = itemData.images || [];
+  if (!images.length && itemData.fallbackColor) images = [swatchColorDataUrl(itemData.fallbackColor, itemData.title || '')];
+  if (images.length) openViewer(images, 0, itemData.title || '');
+}
+function matrixHtml(order, item){
+  var sizes = Object.keys(item.qty || {}).filter(function(size){ return Number(item.qty[size] || 0) > 0; });
+  if (!sizes.length) return '<div class="matrix-wrap"><table class="matrix"><tr><td>未填数量</td></tr></table></div>';
+  var html = '<div class="matrix-wrap item-full"><table class="matrix"><thead><tr><th class="left">颜色</th><th>裁剪数</th>';
+  sizes.forEach(function(size){ html += '<th>'+esc(size)+'</th>'; });
+  var dotData = escAttr(JSON.stringify({images: swatchImages(item), title: item.stampa_code || item.color || '', fallbackColor: swatchFallbackColor(item)}));
+  html += '<th>合计</th></tr></thead><tbody><tr><td class="left"><div class="matrix-color"><span class="matrix-dot" style="'+colorDotStyle(item)+'" data-swatch="'+dotData+'" onclick="openSwatch(JSON.parse(this.dataset.swatch))" title="点击放大"></span>'+esc(item.stampa_code || item.color || '')+'</div></td><td class="total">'+itemCutQty(order, item)+'</td>';
+  var total = 0;
+  sizes.forEach(function(size){
+    var n = Number(item.qty[size] || 0);
+    total += n;
+    html += '<td>'+n+'</td>';
+  });
+  html += '<td class="total">'+total+'</td></tr></tbody></table></div>';
+  return html;
+}
+function render(orders){
+  var box = document.getElementById('orders');
+  orders = (orders || []).filter(function(o){
+    var factory = o.pickup_complete && o.pickup_complete.factory;
+    var shipped = o.shipping_complete && Number(o.shipping_complete.completed || 0) === 1;
+    return !!factory && !shipped;
+  });
+  if (!orders || !orders.length) {
+    box.innerHTML = '<div class="empty">暂无工厂订单</div>';
+    return;
+  }
+  var html = '';
+  orders.forEach(function(o){
+    html += '<section class="card"><div class="card-head"><div><div class="order-id">'+esc(o.id)+'</div><div class="meta"><span>'+esc(o.customer)+'</span><span>'+esc(o.date)+'</span><span>下单 '+esc(o.total_qty||0)+' 件</span></div></div><span class="badge">'+esc((o.pickup_complete&&o.pickup_complete.factory)||'')+'</span></div><div class="items">';
+    (o.items || []).forEach(function(item){
+      var images = itemImages(item);
+      var img = images[0] || '';
+      var imagesJson = escAttr(JSON.stringify(images));
+      html += '<article class="item">';
+      if (img) html += '<img class="photo" src="'+escAttr(img)+'" onclick="openViewer(JSON.parse(this.dataset.images),0,\''+escAttr(item.code)+'\')" data-images="'+imagesJson+'">';
+      else html += '<div class="photo no-photo">无图</div>';
+      html += '<div><div class="code">ART-'+esc(item.code)+'</div>';
+      html += '<div class="line">'+esc(item.name || (item.style_notes && item.style_notes.name) || '')+'</div>';
+      html += '<div class="line">'+esc(getOrderItemFabric(item) || item.fabric || '')+'</div></div>';
+      html += matrixHtml(o, item);
+      html += '<div class="notes item-full">';
+      html += '<div class="note">订单备注：'+esc(o.note || '无')+'</div>';
+      html += '<div class="note">款式工艺备注：'+esc((item.style_notes && item.style_notes.processingNote) || '无')+'</div>';
+      html += '<div class="note">款式边工备注：'+esc((item.style_notes && item.style_notes.edgeNote) || '无')+'</div>';
+      html += '</div></article>';
+    });
+    html += '</div></section>';
+  });
+  box.innerHTML = html;
+}
+function loadFactoryOrders(){
+  var data = apiGet('/api/factory/orders');
+  if (data && data.error) {
+    document.getElementById('orders').innerHTML = '<div class="empty">无权限或登录已失效</div>';
+    return;
+  }
+  render(data);
+}
+loadFactoryOrders();
+</script>
+</body>
+</html>

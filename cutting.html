@@ -18,8 +18,9 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
 .page-title { font-size: 13px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.5px; }
 
 /* Stats bar */
-.stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stats-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
 .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; text-align: center; }
+.stat-card:has(#todayCount){display:none}
 .stat-num { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--gold); }
 .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 1px; letter-spacing: 0.5px; }
 
@@ -70,6 +71,10 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
 .matrix-dot { display: inline-block; width: 20px; height: 20px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; cursor: pointer; transition: transform .1s; }
 .matrix-dot:hover { transform: scale(1.2); }
 .matrix-qty { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 13px; font-weight: 600; }
+.print-swatches{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.print-chip{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:var(--text)}
+.print-chip img{width:34px;height:44px;object-fit:contain;border-radius:4px;background:#f7f6f3;border:1px solid #eee}
+.print-chip b{color:var(--gold);font-size:12px}
 
 .layer-ctrl { display: flex; align-items: center; gap: 6px; }
 .layer-btn {
@@ -138,6 +143,8 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
 .btn-gold:hover { background: #b8963e; }
 .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-done { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); cursor: default; width: 100%; }
+.history-link{display:flex;align-items:center;justify-content:center;height:44px;margin:18px 0 8px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--gold);font-size:13px;font-weight:700;text-decoration:none}
+.history-link:hover{border-color:var(--gold);background:#fffaf1}
 
 /* Empty state */
 .empty-state { text-align: center; padding: 60px 20px; color: #ccc; }
@@ -156,7 +163,7 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
   .fabric-matrix tbody td { padding: 6px 4px; }
   .layer-row { flex-wrap: wrap; gap: 6px; }
   .layer-right { width: 100%; justify-content: flex-end; }
-  .stats-bar { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 6px; }
 /* Custom dialog */
 .dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}
 .dialog-box{background:#fff;border-radius:10px;padding:24px;max-width:360px;width:85vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
@@ -171,6 +178,7 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
 .cp-swatch{width:180px;height:180px;border-radius:6px;border:2px solid #eee;margin:0 auto 12px;background-size:cover;background-position:center}
 .cp-label{font-size:14px;color:var(--text);margin-bottom:14px;font-weight:500}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
@@ -188,6 +196,7 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
   </div>
 
   <div id="orderList"></div>
+  <a class="history-link" href="cutting_history.html">裁剪历史</a>
   <div id="emptyState" class="empty-state" style="display:none">
     <div class="icon">✂️</div>
     <div>暂无待裁剪订单</div>
@@ -232,7 +241,7 @@ function getFabric1Cut(order) {
   var fabrics = order.cutting_complete.fabrics;
   var items = order.items || [];
   var f1 = '';
-  if (items.length > 0) { var ff = items[0].fabric || ''; f1 = ff.split(',')[0].trim(); }
+  if (items.length > 0) { var ff = getOrderItemFabric(items[0]); f1 = ff.split(',')[0].trim(); }
   var total = 0;
   for (var fn in fabrics) {
     if (f1 && fn !== f1 && fn !== '默认面料') continue;
@@ -291,7 +300,7 @@ function renderCard(order) {
   // Group items by fabric
   var fabricGroups = {};
   items.forEach(function(item) {
-    var fabricNames = (item.fabric || '默认面料').split(/\s*,\s*/);
+    var fabricNames = getOrderItemFabric(item).split(/\s*,\s*/);
     fabricNames.forEach(function(fName) {
       if (!fabricGroups[fName]) fabricGroups[fName] = [];
       fabricGroups[fName].push(item);
@@ -542,7 +551,21 @@ function getItemColor(item, fabricName) {
   return item.color || '默认';
 }
 
+function getOrderItemFabric(item) {
+  var f = (item && item.fabric ? item.fabric : '').trim();
+  if (f) return f;
+  var style = (item && item.code && LUNA.findStyle) ? LUNA.findStyle(item.code) : null;
+  var fabrics = (style && style.fabrics) || [];
+  if (fabrics.length) {
+    var first = fabrics[0];
+    return (typeof first === 'string' ? first : (first.name || '')) || '默认面料';
+  }
+  return '默认面料';
+}
+
 function getColorStyle(fabricName, colorName) {
+  var printImg = findPrintVisual(colorName);
+  if (printImg) return 'background-image:url(' + esc(printImg) + ');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f7f6f3';
   var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
   for (var fi = 0; fi < allFabrics.length; fi++) {
     if (allFabrics[fi].name === fabricName) {
@@ -571,9 +594,78 @@ function getColorStyle(fabricName, colorName) {
   return 'background:hsl(' + (Math.abs(hash) % 360) + ',50%,70%)';
 }
 
+function findPrintVisual(colorName) {
+  var needle = String(colorName || '').trim().toLowerCase();
+  var orders = LUNA.getOrders ? LUNA.getOrders() : [];
+  for (var oi = 0; oi < orders.length; oi++) {
+    var items = orders[oi].items || [];
+    for (var ii = 0; ii < items.length; ii++) {
+      var item = items[ii];
+      if (!item.stampa_img_url) continue;
+      var names = [item.color, item.stampa_code, item.sku_code, item.name].map(function(v) {
+        return String(v || '').trim().toLowerCase();
+      }).filter(Boolean);
+      for (var ni = 0; ni < names.length; ni++) {
+        if (names[ni] === needle || (needle && names[ni].indexOf(needle) >= 0) || (needle && needle.indexOf(names[ni]) >= 0)) return item.stampa_img_url;
+      }
+    }
+  }
+  return '';
+}
+
+function getColorPreviewSource(fabricName, colorName) {
+  var printImg = findPrintVisual(colorName);
+  if (printImg) return printImg;
+  var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
+  for (var fi = 0; fi < allFabrics.length; fi++) {
+    var cols = allFabrics[fi].colors || [];
+    for (var ci = 0; ci < cols.length; ci++) {
+      if (cols[ci].name === colorName && (cols[ci].img || cols[ci].img_path)) return cols[ci].img || cols[ci].img_path;
+    }
+  }
+  return '';
+}
+
+function isPrintItem(item) {
+  return !!(item && (item.stampa_img_url || item.item_type === 'stampa'));
+}
+
+function itemTotal(item) {
+  var total = 0, qty = item.qty || {};
+  Object.keys(qty).forEach(function(k) { total += Number(qty[k] || 0); });
+  return total;
+}
+
+function renderPrintSwatches(order) {
+  var prints = (order.items || []).filter(isPrintItem);
+  if (!prints.length) return '';
+  return '<div class="print-swatches">' + prints.map(function(item) {
+    var label = item.stampa_code || item.color || '印花色卡';
+    var img = item.stampa_img_url || '';
+    return '<div class="print-chip" onclick="showPrintPreview(\'' + escJs(img) + '\',\'' + escJs(label) + '\')" title="点击放大">' +
+      '<img src="' + esc(img) + '" alt="">' +
+      '<span>' + esc(label) + '</span><b>' + itemTotal(item) + '件</b></div>';
+  }).join('') + '</div>';
+}
+
+function showPrintPreview(img, name) {
+  if (img && LUNA.openImagePreview) {
+    LUNA.openImagePreview(img, name || '印花色卡');
+    return;
+  }
+  document.getElementById('cpSwatch').style.cssText = 'background-image:url(' + esc(img) + ');background-size:contain;background-position:center;background-repeat:no-repeat;width:180px;height:240px;border-radius:6px;border:2px solid #eee;background-color:#f7f6f3';
+  document.getElementById('cpLabel').textContent = name || '印花色卡';
+  document.getElementById('cpOverlay').style.display = 'flex';
+}
+
 function showColorPreview(fabricName, colorName) {
+  var src = getColorPreviewSource(fabricName, colorName);
+  if (src && LUNA.openImagePreview) {
+    LUNA.openImagePreview(src, colorName + (fabricName ? ' · ' + fabricName : ''));
+    return;
+  }
   var bg = getColorStyle(fabricName, colorName);
-  document.getElementById('cpSwatch').style.cssText = bg + ';width:180px;height:180px;border-radius:6px;border:2px solid #eee';
+  document.getElementById('cpSwatch').style.cssText = bg + ';width:180px;height:220px;border-radius:6px;border:2px solid #eee;background-position:center;background-repeat:no-repeat';
   document.getElementById('cpLabel').textContent = colorName + ' · ' + fabricName;
   document.getElementById('cpOverlay').style.display = 'flex';
 }
@@ -623,7 +715,7 @@ function confirmCutting(orderId) {
   var items = order.items || [];
   var fabric1 = '';
   if (items.length > 0) {
-    var ff = items[0].fabric || '';
+    var ff = getOrderItemFabric(items[0]);
     fabric1 = ff.split(',')[0].trim();
   }
   var checkedTotal = 0;

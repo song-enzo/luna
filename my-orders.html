@@ -57,6 +57,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hamburger{font-size:22px;cursor:pointer;padding:4px 8px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
 .hamburger:hover{color:#1a1a1a}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
@@ -131,13 +132,14 @@ function renderOrders() {
   // 客人只看自己的订单，管理员看全部
   if (user.role !== 'admin') {
     var userName = user.name || user.username || '';
+    var loginName = user.username || '';
     orders = orders.filter(function(o) {
-      return o.customer === userName;
+      return o.customer === userName || o.customer === loginName || o.sub_customer === userName || o.sub_customer === loginName;
     });
   }
 
   var html = '';
-  var stepLabels = ['📋 确认', '✂️ 裁剪', '🧵 车缝', '📦 完成'];
+  var stepLabels = ['裁剪', '车缝中', '已发货'];
   
   orders.forEach(function(order) {
     var sk = LUNA.getOrderStatus(order);
@@ -147,13 +149,13 @@ function renderOrders() {
     else if (sk === 'shipped') statusIdx = 2;
 
     var segs = [false, false, false];
-    var labels = ['✂️ 裁剪', '🧵 车缝', '📦 完成'];
+    var labels = ['裁剪', '车缝中', '已发货'];
     var actives = [false, false, false];
 
-    if (sk === 'cutting') { segs[0] = true; actives[0] = true; }
-    else if (sk === 'pickup') { segs[0] = true; actives[1] = true; }
+    if (sk === 'cutting' || sk === 'confirmed') { segs[0] = true; actives[0] = true; }
+    else if (sk === 'pickup') { segs[0] = true; segs[1] = true; actives[1] = true; }
     else if (sk === 'sewing') { segs[0] = true; segs[1] = true; actives[1] = true; }
-    else if (sk === 'shipped') { segs[0] = true; segs[1] = true; actives[2] = true; }
+    else if (sk === 'shipped') { segs[0] = true; segs[1] = true; segs[2] = true; actives[2] = true; }
     else if (sk === 'completed') { segs = [true, true, true]; actives[2] = true; }
 
     var stepsHtml = '';
@@ -163,7 +165,7 @@ function renderOrders() {
     }
     
     var segHtml = '';
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 3; i++) {
       var cls = segs[i] ? 'done' : '';
       segHtml += '<div class="seg ' + cls + '"></div>';
     }

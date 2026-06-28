@@ -66,6 +66,7 @@ a{text-decoration:none;color:inherit}
   .proc-table th,.proc-table td{padding:8px}
 }
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 
@@ -160,6 +161,8 @@ function showToast(msg) {
 function renderStyles() {
   var styles = [];
   try { styles = LUNA.getStyles(); } catch(e) {}
+  var guests = [];
+  try { guests = LUNA.getGuests ? (LUNA.getGuests() || []) : []; } catch(e) {}
   var toggles = SETTINGS.get('styleToggles') || {};
   document.getElementById('countBadge').textContent = '(' + styles.length + ')';
   var html = '';
@@ -169,19 +172,44 @@ function renderStyles() {
     return;
   }
   html += '<table class="proc-table">';
-  html += '<tr><th>编号</th><th style="width:70px;text-align:right">价格</th><th style="text-align:center;width:44px">启用</th><th style="width:44px">操作</th></tr>';
+  html += '<tr><th>编号</th><th style="width:70px;text-align:right">价格</th><th style="min-width:150px">可见客人</th><th style="text-align:center;width:44px">启用</th><th style="width:44px">操作</th></tr>';
   styles.forEach(function(s) {
     var code = s.code;
     var isOn = toggles[code] !== false;
+    var visible = (s.visibleGuests || []).map(String);
     html += '<tr>';
     html += '<td><strong style="color:#c9a96e;font-size:13px">' + esc(code) + '</strong></td>';
     html += '<td style="text-align:right">€' + ((s.suggestedPrice||0).toFixed(2)) + '</td>';
+    html += '<td><select multiple size="3" onchange="updateVisibleGuests(\'' + esc(code) + '\',this)" style="min-width:140px;font-size:11px"><option value=""' + (visible.length ? '' : ' selected') + '>全部客人</option>';
+    guests.forEach(function(g) {
+      var val = String(g.id || g.username || g.name || '');
+      var label = (g.shop_name ? g.shop_name + ' · ' : '') + (g.name || g.username || val);
+      html += '<option value="' + esc(val) + '"' + (visible.indexOf(val) !== -1 ? ' selected' : '') + '>' + esc(label) + '</option>';
+    });
+    html += '</select></td>';
     html += '<td style="text-align:center"><span class="toggle' + (isOn ? ' on' : '') + '" onclick="toggleStyle(\'' + code + '\')"><span class="knob"></span></span></td>';
     html += '<td><a href="add-style.html?code=' + code + '" style="color:#c9a96e;font-size:11px;text-decoration:none">编辑</a></td>';
     html += '</tr>';
   });
   html += '</table>';
   document.getElementById('stylePanel').innerHTML = html;
+}
+
+function updateVisibleGuests(code, sel) {
+  var styles = LUNA.getStyles();
+  var selected = [];
+  for (var i = 0; i < sel.options.length; i++) {
+    var opt = sel.options[i];
+    if (opt.selected && opt.value) selected.push(opt.value);
+  }
+  for (var j = 0; j < styles.length; j++) {
+    if (styles[j].code === code) {
+      styles[j].visibleGuests = selected;
+      LUNA.saveStyles(styles);
+      showToast(selected.length ? '已限制可见客人' : '已设为全部客人可见');
+      break;
+    }
+  }
 }
 
 function toggleStyle(code) {

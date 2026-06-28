@@ -59,6 +59,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .empty-state{text-align:center;padding:60px 20px;color:#ccc;font-size:13px}
 @media(max-width:600px){.page{padding:10px}.oc-header{padding:8px 12px}.oc-body{padding:8px 12px}}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
@@ -98,24 +99,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="filter-btn" data-status="sewing" onclick="setFilter('sewing',this)">车缝中</button>
     <button class="filter-btn" data-status="shipped" onclick="setFilter('shipped',this)">已发货</button>
     <input class="search-bar" id="searchInput" placeholder="搜索单号、客人、款号..." oninput="renderOrders()">
-    <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="recentOnly" checked onchange="renderOrders()"> 近15天</label>
+    <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="recentOnly" onchange="renderOrders()"> 近15天</label>
     <select id="customerFilter" onchange="renderOrders()" style="padding:6px 10px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;font-family:inherit;outline:none;background:#fff;color:#666;cursor:pointer"><option value="">全部客人</option></select>
     <select id="factoryFilter" onchange="renderOrders()" style="padding:6px 10px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;font-family:inherit;outline:none;background:#fff;color:#666;cursor:pointer"><option value="">全部工厂</option></select>
   </div>
   <div class="stats" id="statsBar"></div>
   <div id="orderList"></div>
 </div>
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=27"></script>
 <script>LUNA.renderNav();</script>
 <script>
-/* 🔍 DEBUG */ window._dbgEl = document.createElement('div'); window._dbgEl.id='dbgBar'; window._dbgEl.style.cssText='position:fixed;top:50px;right:10px;z-index:99999;background:#ff0;color:#000;font-size:12px;padding:6px;border-radius:4px;max-width:350px;font-family:monospace;white-space:pre-wrap;word-break:break-all'; var _dbg=window._dbgEl; document.body.appendChild(_dbg); _dbg.textContent = '⏳ loading...'; window.addEventListener('error',function(e){_dbg.textContent='❌ '+e.message+' at '+e.filename+':'+e.lineno;});
 function toggleMenu(){document.getElementById('sideMenu').classList.toggle('open');document.getElementById('sideOverlay').classList.toggle('active')}
 function logout(){LUNA.clearUser();window.location.href='index.html'}
 var currentFilter='all';
 var user=LUNA.getUser();
 var isAdmin=user&&user.role==='admin';
-if(window._dbgEl)window._dbgEl.textContent='user='+(user?user.username+'('+user.role+')':'null');
-if(!isAdmin){if(window._dbgEl)window._dbgEl.textContent+=' → not admin';setTimeout(function(){window.location.href='index.html'},200);return;}
+if(!isAdmin){setTimeout(function(){window.location.href='index.html'},200);}
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
 function getStatusName(s){var m={confirmed:'打唛架中',cutting:'裁剪中',pickup:'待拿货',sewing:'车缝中',shipped:'已发货',completed:'已完成'};return m[s]||s}
 function setFilter(s,el){currentFilter=s;document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});if(el)el.classList.add('active');renderOrders()}
@@ -144,7 +143,6 @@ function populateFactoryFilter() {
 }
 function renderOrders(){
   var orders=LUNA.getOrders();
-  if(window._dbgEl)window._dbgEl.textContent='orders='+(orders?orders.length:0)+' filter='+currentFilter;
   var search=(document.getElementById('searchInput').value||'').toLowerCase();
   var recentOnly=document.getElementById('recentOnly').checked;
   var selCustomer=document.getElementById('customerFilter').value;

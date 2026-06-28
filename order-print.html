@@ -32,11 +32,13 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .product-name{font-family:'Playfair Display',serif;font-size:22px;margin-top:4px;color:#1C1C1C}
 .upload-section{margin:12px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
 .upload-section .section-title{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:10px}
-.upload-zone{border:2px dashed #ddd;border-radius:8px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .15s;background:#faf9f7}
+.upload-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.upload-actions button,.upload-actions .upload-zone{border:none;border-radius:6px;padding:12px 10px;text-align:center;cursor:pointer;transition:all .15s;font-family:inherit;font-size:13px;font-weight:700;min-height:44px;display:flex;align-items:center;justify-content:center}
+.upload-zone{background:#C8A56D;color:#fff}
 .upload-zone:hover,.upload-zone.drag-over{border-color:#C8A56D;background:#faf6ee}
-.upload-zone .icon{font-size:36px;margin-bottom:6px}
-.upload-zone .hint{font-size:12px;color:#999}
-.upload-zone .sub-hint{font-size:10px;color:#ccc;margin-top:2px}
+.upload-zone:hover,.upload-zone.drag-over{background:#b8963e;color:#fff}
+.upload-zone .icon,.upload-zone .sub-hint{display:none}
+.upload-zone .hint{font-size:13px;color:inherit}
 .upload-zone .spinner{width:32px;height:32px;border:3px solid #EBE8E3;border-top-color:#C8A56D;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .upload-zone .loading-text{font-size:13px;color:#999}
@@ -63,14 +65,17 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .color-card{cursor:pointer;border-radius:6px;overflow:hidden;background:#fff;border:1.5px solid #EBE8E3;transition:all .15s;position:relative}
 .color-card:hover{border-color:#C8A56D}
 .color-card.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
-.color-card .swatch-area{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f0ede8}
-.color-card .swatch-area img{width:100%;height:100%;object-fit:cover}
+.color-card .swatch-area{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f7f6f3}
+.color-card .swatch-area img{width:100%;height:100%;object-fit:contain}
 .color-card .color-label{padding:4px 2px;text-align:center;font-size:10px;font-weight:500;color:#1C1C1C;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .color-card .color-sub{font-size:8px;color:#C8A56D;text-align:center;padding:0 2px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .swatch-del-btn{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(196,30,58,.9);color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;font-family:inherit}
 .action-row{display:flex;gap:8px;margin:12px 0}
 .action-row button{flex:1;padding:10px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .1s}
 .save-btn{background:#1C1C1C;color:#fff}
+.upload-actions .save-btn{background:#C8A56D;color:#fff}
+.upload-actions .save-btn:hover:not(:disabled){background:#b8963e}
+.save-btn:disabled{opacity:.5;cursor:default}
 .save-btn:hover{background:#333}
 .add-cart-btn{background:#C8A56D;color:#fff}
 .add-cart-btn:hover{background:#b8963e}
@@ -104,7 +109,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .cart-code-header .cc-price{color:#C8A56D;font-weight:600;font-size:12px}
 .cart-color-item{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-top:1px solid #EBE8E3}
 .cart-color-item:first-of-type{border-top:none}
-.cart-color-swatch{width:26px;height:26px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;margin-top:2px;background-size:cover;background-position:center}
+.cart-color-swatch{width:26px;height:34px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;margin-top:2px;background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f7f6f3}
 .cart-color-info{flex:1;min-width:0}
 .cart-color-name{font-size:11px;font-weight:600;color:#555;margin-bottom:1px}
 .cart-qty-ctrl{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
@@ -129,9 +134,9 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .history-title{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:8px;display:flex;justify-content:space-between}
 .history-title .action{font-size:10px;color:#C8A56D;cursor:pointer}
 .history-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.history-card{border:1px solid #EBE8E3;border-radius:6px;overflow:hidden;cursor:pointer;transition:all .15s;background:#fff}
+.history-card{border:1px solid #EBE8E3;border-radius:6px;overflow:hidden;cursor:pointer;transition:all .15s;background:#fff;position:relative}
 .history-card:hover{border-color:#C8A56D}
-.history-card .h-thumb{width:100%;aspect-ratio:1;object-fit:cover;background:#f0ede8;display:block}
+.history-card .h-thumb{width:100%;aspect-ratio:3/4;object-fit:contain;background:#f7f6f3;display:block}
 .history-card .h-info{padding:4px 5px}
 .history-card .h-code{font-size:9px;color:#C8A56D;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #cropCanvas{display:none}
@@ -151,7 +156,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 </head>
 <body>
 <div class="header">
-  <a class="back" href="javascript:history.back()">←</a>
+  <a class="back" href="javascript:history.back()">&larr;</a>
   <span class="logo">LUNA <span>A</span></span>
   <button class="cart-icon" onclick="toggleCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
 </div>
@@ -162,12 +167,15 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
     <div class="carousel-counter" id="carouselCounter"></div>
   </div>
   <div class="product-info" id="productInfo"></div>
-  <div class="upload-section">
-    <div class="section-title">① 上传大图色卡</div>
-    <div class="upload-zone" id="uploadZone">
-      <div class="icon">📸</div>
-      <div class="hint">点击上传 / 拖拽色卡图片</div>
-      <div class="sub-hint">自动切割色块 + Gemini 识别名称编号</div>
+<div class="upload-section">
+    <div class="section-title">① 花版图片</div>
+    <div class="upload-actions">
+      <button type="button" class="upload-zone" id="uploadZone">
+        <span class="icon">📸</span>
+        <span class="hint">上传新图片</span>
+        <span class="sub-hint"></span>
+      </button>
+      <button type="button" class="save-btn" id="saveBtn" onclick="saveToWarehouse()" disabled>保存到图库</button>
     </div>
     <input type="file" id="fileInput" accept="image/*" style="display:none">
     <div class="ai-progress" id="aiProgress">
@@ -191,12 +199,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
       </div>
       <div class="pattern-fields">
         <div class="field-group"><label>花版编号</label><input type="text" id="patternNoInput" placeholder="Gemini 识别中..."></div>
-        <div class="field-group"><label>循环尺寸</label><input type="text" id="cycleSizeInput" placeholder="如 W69"></div>
       </div>
-    </div>
-    <div class="action-row">
-      <button class="save-btn" id="saveBtn" onclick="saveToWarehouse()">💾 保存到花版仓库</button>
-      <button class="add-cart-btn" onclick="document.getElementById('addToCartBtn').click()">🛒 加入购物车</button>
     </div>
   </div>
   <div class="opt-block">
@@ -211,7 +214,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
       <input type="number" class="qty-select" id="qtyInput" value="1" min="1" onclick="this.select()" style="width:70px">
     </div>
     <div class="order-note"><textarea id="orderNoteInput" placeholder="订单备注（选填）" rows="2"></textarea></div>
-    <button class="add-btn" id="addToCartBtn" disabled>🛒 加入购物车 <span class="sub" id="addSub">— 请选择色卡</span></button>
+    <button class="add-btn" id="addToCartBtn" disabled>加入购物车 <span class="sub" id="addSub">— 请选择色卡</span></button>
   </div>
   <div class="history-section" id="historySection" style="display:none">
     <div class="history-title"><span>📂 历史花版</span><span class="action" onclick="loadHistory()">🔄 刷新</span></div>
@@ -222,7 +225,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 <div class="cart-backdrop" id="cartBackdrop" onclick="toggleCart()"></div>
 <div class="cart-float" id="cartFloat" onclick="toggleCart()">🛒<span class="badge" id="floatBadge">0</span></div>
 <div class="cart-modal" id="cartModal">
-  <div class="cm-header"><span class="cm-title">🛒 购物车</span><button class="cm-close" onclick="toggleCart()">✕</button></div>
+  <div class="cm-header"><span class="cm-title">购物车</span><button class="cm-close" onclick="toggleCart()">×</button></div>
   <div class="cm-body" id="cartBody"><div class="cart-empty">购物车是空的</div></div>
   <div class="cm-footer">
     <select class="guest-select" id="guestSelect"><option value="">— 选择客人 —</option></select>
@@ -230,31 +233,31 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
   </div>
 </div>
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <button class="lb-close" onclick="closeLightbox()">×</button>
   <img class="lb-img" id="lightboxImg" src="" alt="">
   <div class="lb-name" id="lightboxName"></div>
 </div>
 <!-- 手动裁剪全屏弹窗 -->
 <div class="crop-modal" id="cropModal">
   <div class="cm-header">
-    <span class="cm-title">✏️ 框选色卡区域</span>
-    <button style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;padding:4px;font-family:inherit" onclick="closeCropModal()">✕</button>
+    <span class="cm-title">框选色卡区域</span>
+    <button style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;padding:4px;font-family:inherit" onclick="closeCropModal()">×</button>
   </div>
   <div class="cm-body"><canvas id="cropModalCanvas"></canvas></div>
   <div class="cm-footer">
     <button class="cancel-btn" onclick="closeCropModal()">取消</button>
-    <button class="done-btn" onclick="cropModalDone()">✅ 确认添加</button>
+    <button class="done-btn" onclick="cropModalDone()">确认添加</button>
   </div>
   <img id="cropModalImg" class="cm-img-bg">
 </div>
 <div class="toast" id="toast"></div>
-<script src="luna-data.js?v=27"></script>
+<script src="luna-data.js?v=26"></script>
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
 var style, styleCode, colorways=[], selectedSwatches={}, ALL_SIZES=['XS','S','M','L','XL','XXL','XXXL','UNICA'];
-var masterImageDataUrl='', patternNo='', masterImg=null;
+var masterImageDataUrl='', masterImageUrl='', patternNo='', masterImg=null;
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
-function showToast(m,err){var t=document.getElementById('toast');t.textContent=(err?'❌ ':'✅ ')+m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},3000)}
+function showToast(m,err){var t=document.getElementById('toast');t.textContent=(err?'× ':'✓ ')+m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},3000)}
 
 function init(){
   styleCode=new URLSearchParams(location.search).get('code');
@@ -264,8 +267,18 @@ function init(){
   if(style.type!=='stampa'&&style.type!=='print'){
     window.location.href='order-page.html?code='+encodeURIComponent(styleCode);return
   }
-  renderCarousel();renderInfo();setupUpload();loadHistory();
+  renderCarousel();renderInfo();setupUpload();moveHistoryUnderCarousel();loadHistory();
   renderCartBody();updateBadge();renderGuestDropdown();renderSizes();
+}
+
+function moveHistoryUnderCarousel(){
+  var history=document.getElementById('historySection');
+  var carousel=document.getElementById('carouselWrap');
+  if(history&&carousel&&history.parentNode!==carousel.parentNode){
+    carousel.insertAdjacentElement('afterend',history);
+  }else if(history&&carousel){
+    carousel.insertAdjacentElement('afterend',history);
+  }
 }
 
 function renderCarousel(){
@@ -278,7 +291,7 @@ function renderCarousel(){
   if(wrap._swiper)wrap._swiper.destroy(true,true);
   wrap._swiper=new Swiper('#carouselSwiper',{loop:true,speed:400,grabCursor:true,slidesPerView:1,pagination:{el:'#carouselDots',clickable:true},navigation:{nextEl:'.swiper-button-next',prevEl:'.swiper-button-prev'},on:{init:function(){ct.textContent='1/'+imgs.length},slideChange:function(){ct.textContent=(this.realIndex+1)+'/'+imgs.length}}});
 }
-function renderInfo(){document.getElementById('productInfo').innerHTML='<div class="product-code-line"><span class="product-code">#'+esc(style.code)+'</span><span class="product-price">€'+(style.suggestedPrice||0).toFixed(2)+'</span></div><div class="product-name">'+esc(style.name||'')+'</div>';}
+function renderInfo(){document.getElementById('productInfo').innerHTML='<div class="product-code-line"><span class="product-code">#'+esc(style.code)+'</span><span class="product-price">&euro;'+(style.suggestedPrice||0).toFixed(2)+'</span></div><div class="product-name">'+esc(style.name||'')+'</div>';}
 
 function setupUpload(){
   var zone=document.getElementById('uploadZone'),input=document.getElementById('fileInput');
@@ -287,13 +300,13 @@ function setupUpload(){
   zone.ondragover=function(e){e.preventDefault();zone.classList.add('drag-over')};
   zone.ondragleave=function(){zone.classList.remove('drag-over')};
   zone.ondrop=function(e){e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files&&e.dataTransfer.files[0])processImage(e.dataTransfer.files[0])};
-  document.getElementById('masterPreviewImg').onclick=function(){openLightbox(masterImageDataUrl,'大图色卡')};
+  document.querySelector('.mp-img-wrap').onclick=function(){openLightbox(masterImageUrl||masterImageDataUrl,'大图色卡')};
 }
 
 function processImage(file){
   var zone=document.getElementById('uploadZone');
   zone.classList.add('loading');
-  zone.innerHTML='<div class="spinner"></div><div class="loading-text">🔍 分析图片中…</div>';
+  zone.innerHTML='<div class="spinner"></div><div class="loading-text">分析图片中...</div>';
   var reader=new FileReader();
   reader.onload=function(e){
     masterImageDataUrl=e.target.result;
@@ -302,7 +315,7 @@ function processImage(file){
       var swatches=detectSwatchesOnCanvas(img);
       if(swatches.length<1){
         zone.classList.remove('loading');
-        zone.innerHTML='<div class="icon">📸</div><div class="hint">未检测到色块</div><div class="sub-hint">点击重试，或用"手动裁剪"添加</div>';
+        zone.innerHTML='<div class="icon"></div><div class="hint">未检测到色块</div><div class="sub-hint">点击重试，或用“手动裁剪”添加</div>';
         return;
       }
       colorways=swatches;selectedSwatches={};
@@ -311,7 +324,7 @@ function processImage(file){
       document.getElementById('analysisResult').style.display='block';
       renderSwatches();
       zone.classList.remove('loading');
-      zone.innerHTML='<div class="icon">📸</div><div class="hint">点击上传新图片</div><div class="sub-hint">切割 '+colorways.length+' 个色卡</div>';
+      zone.innerHTML='<div class="icon"></div><div class="hint">点击上传新图片</div><div class="sub-hint">切割 '+colorways.length+' 个色卡</div>';
       recognizeWithGemini();
     };
     img.src=masterImageDataUrl;
@@ -319,7 +332,6 @@ function processImage(file){
   reader.readAsDataURL(file);
 }
 
-// ═══════════════════ 行列投影切割法（改进版）═══════════════════
 function setAIProgress(percent,stage,detail){
   var wrap=document.getElementById('aiProgress');
   var bar=document.getElementById('aiProgressBar');
@@ -333,10 +345,20 @@ function setAIProgress(percent,stage,detail){
   st.textContent=stage||'处理中';
   de.textContent=detail||'';
 }
+function progressStageText(stage,status){
+  if(status==='success'||stage==='done')return '识别完成';
+  if(status==='error'||stage==='failed')return '识别失败';
+  if(stage==='queued')return '排队分析';
+  if(stage==='prepare')return '准备图片';
+  if(stage==='ai')return '图片识别中';
+  if(stage==='crop')return '切割色卡';
+  if(stage==='finalize')return '整理结果';
+  return '图片识别中';
+}
 function resetUploadZone(text,sub){
   var zone=document.getElementById('uploadZone');
   zone.classList.remove('loading');
-  zone.innerHTML='<div class="icon">📷</div><div class="hint">'+esc(text||'点击上传新图片')+'</div><div class="sub-hint">'+esc(sub||'AI 自动识别色卡图和名称')+'</div>';
+  zone.innerHTML='<div class="icon"></div><div class="hint">'+esc(text||'点击上传新图片')+'</div><div class="sub-hint">'+esc(sub||'AI 自动识别色卡图和名称')+'</div>';
 }
 function applyAIAnalysis(data){
   data=data||{};
@@ -354,10 +376,12 @@ function applyAIAnalysis(data){
   selectedSwatches={};
   patternNo=data.pattern_no||'';
   if(patternNo)document.getElementById('patternNoInput').value=patternNo;
-  if(data.cycle_size)document.getElementById('cycleSizeInput').value=data.cycle_size;
   if(data.master_image){
+    masterImageUrl=data.master_image;
     document.getElementById('masterPreviewImg').src=data.master_image;
   }
+  var saveBtn=document.getElementById('saveBtn');
+  if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='保存到图库';saveBtn.style.background='#C8A56D'}
   document.getElementById('swatchCount').textContent='共 '+colorways.length+' 个色卡';
   document.getElementById('analysisResult').style.display='block';
   renderSwatches();
@@ -367,19 +391,19 @@ function pollAnalysisJob(jobId,startedAt){
   .then(function(r){return r.json()})
   .then(function(job){
     if(job.status==='success'){
-      setAIProgress(100,'识别完成',job.message||'已生成色卡结果');
+      setAIProgress(100,'识别完成','识别完成');
       applyAIAnalysis(job.result&&job.result.data?job.result.data:{});
       resetUploadZone('点击上传新图片','已识别 '+colorways.length+' 个色卡');
       return;
     }
     if(job.status==='error'){
-      setAIProgress(100,'识别失败',job.error||job.message||'请重试或使用手动裁剪');
+      setAIProgress(100,'识别失败','识别失败，请重试或使用手动裁剪');
       resetUploadZone('识别失败，点击重试','也可以使用手动裁剪补充');
       showToast(job.error||job.message||'识别失败',true);
       return;
     }
     var elapsed=Math.round((Date.now()-startedAt)/1000);
-    setAIProgress(job.progress||35,job.stage||'AI识别中',(job.message||'正在处理')+' · '+elapsed+'s');
+    setAIProgress(job.progress||35,progressStageText(job.stage,job.status),'图片识别中，已用时 '+elapsed+' 秒');
     setTimeout(function(){pollAnalysisJob(jobId,startedAt)},1000);
   })
   .catch(function(){
@@ -389,6 +413,9 @@ function pollAnalysisJob(jobId,startedAt){
 }
 function processImage(file){
   var zone=document.getElementById('uploadZone');
+  var saveBtn=document.getElementById('saveBtn');
+  if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='保存到图库';saveBtn.style.background='#C8A56D'}
+  masterImageUrl='';
   zone.classList.add('loading');
   zone.innerHTML='<div class="spinner"></div><div class="loading-text">正在上传并识别...</div>';
   setAIProgress(1,'读取图片','准备预览和上传');
@@ -438,28 +465,24 @@ function processImage(file){
 
 function detectSwatchesOnCanvas(img){
   var W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
-  // 缩放到宽2000px做投影分析
   var useW=Math.min(W,2000),scale=useW/W,useH=Math.round(H*scale);
   var canvas=document.getElementById('cropCanvas');
   canvas.width=useW;canvas.height=useH;
   var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,useW,useH);
   var d=ctx.getImageData(0,0,useW,useH).data;
 
-  // ① 统计"缝隙"（白/灰/米色背景）比例 —— 用饱和度判断而不是固定RGB阈值
-  // 缝隙特点: 高亮度 + 低饱和度（max-min差值小），避免浅色色卡被误判
   var rowW=new Array(useH).fill(0),colW=new Array(useW).fill(0);
   for(var y=0;y<useH;y++){for(var x=0;x<useW;x++){
     var idx=(y*useW+x)*4;
     var r=d[idx],g=d[idx+1],b=d[idx+2];
     var mx=Math.max(r,g,b),mn=Math.min(r,g,b);
     // 缝隙判断：低饱和度 + 高亮度，但排除过于鲜艳的颜色
-    // 调整：饱和度阈值从45降到60（更严格），亮度阈值从160降到200（只认纯白）
+    // 当前阈值：饱和度 55，亮度 190
     if(mx-mn<55&&mn>190){rowW[y]++;colW[x]++}
   }}
   for(var y=0;y<useH;y++)rowW[y]/=useW;
   for(var x=0;x<useW;x++)colW[x]/=useH;
 
-  // ② 平滑投影曲线，消除文字/噪点造成的毛刺
   function smooth(arr,r){
     var out=new Array(arr.length);
     for(var i=0;i<arr.length;i++){
@@ -472,11 +495,10 @@ function detectSwatchesOnCanvas(img){
   rowW=smooth(rowW,3);
   colW=smooth(colW,3);
 
-  // ③ 自适应阈值：取投影值的中位数+偏移量，避免"白底标签区"被误判为间隙
+  // 自适应阈值：取投影值的分割点，避免白底标签被误判为间隙
   function autoTh(profile){
     var sorted=profile.slice().sort(function(a,b){return a-b});
     var n=sorted.length;
-    // 找"内容区"和"间隙区"之间的最佳分割点（简化Otsu）
     var best=0.85,bestScore=0;
     for(var p=50;p<97;p++){
       var th=p/100;
@@ -492,7 +514,7 @@ function detectSwatchesOnCanvas(img){
   }
   var th=(autoTh(rowW)+autoTh(colW))/2;
 
-  // ④ 提取内容区域（低白色比=色卡），并合并过近的区域
+  // 提取内容区域，并合并过近的区域
   function findRanges(arr,threshold,minW){
     var ranges=[],start=-1;
     for(var i=0;i<arr.length;i++){
@@ -513,11 +535,10 @@ function detectSwatchesOnCanvas(img){
   }
   var xs=merge(findRanges(colW,th,20),40);
   var ys=merge(findRanges(rowW,th,20),40);
-  // 剔除过窄的残余噪声
   xs=xs.filter(function(r){return r.e-r.s>30});
   ys=ys.filter(function(r){return r.e-r.s>30});
 
-  // ⑤ 组合网格
+  // 组合网格
   var rects=[];
   for(var yi=0;yi<ys.length;yi++){for(var xi=0;xi<xs.length;xi++){
     var rw=xs[xi].e-xs[xi].s,rh=ys[yi].e-ys[yi].s;
@@ -525,19 +546,18 @@ function detectSwatchesOnCanvas(img){
   }}
   rects.sort(function(a,b){return a.y-b.y||a.x-b.x});
 
-  // ⑥ 还原原图尺寸裁剪
+  // 还原原图尺寸裁剪
   var swatches=[];
   for(var ri=0;ri<rects.length;ri++){
     var r=rects[ri];
     var sx=Math.round(r.x/scale),sy=Math.round(r.y/scale),sw=Math.round(r.w/scale),sh=Math.round(r.h/scale);
-    // 向外扩1.5%保留边缘文字
+    // 向外 1.5% 保留边缘文字
     var px=Math.max(2,Math.round(sw*0.015)),py=Math.max(2,Math.round(sh*0.015));
     sx=Math.max(0,sx-px);sy=Math.max(0,sy-py);
     sw=Math.min(W,sx+sw+px*2)-sx;sh=Math.min(H,sy+sh+py*2)-sy;
     if(sw<30||sh<30)continue;
     var c=document.createElement('canvas');c.width=sw;c.height=sh;
     var cx=c.getContext('2d');cx.drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
-    // 计算平均色
     var pd=cx.getImageData(0,0,sw,sh).data,tr=0,tg=0,tb=0,tc=0;
     for(var i=0;i<pd.length;i+=4){tr+=pd[i];tg+=pd[i+1];tb+=pd[i+2];tc++;}
     swatches.push({index:ri+1,color_name:'',sub_code:'',sku_code:'',image_url:c.toDataURL('image/jpeg',0.92),dominant_color:tc?'#'+[tr,tg,tb].map(function(v){return Math.round(v/tc).toString(16).padStart(2,'0')}).join(''):'#888888'});
@@ -545,7 +565,6 @@ function detectSwatchesOnCanvas(img){
   return swatches;
 }
 
-// ═══════════════════ Gemini OCR ═══════════════════
 function recognizeWithGemini(){
   if(!masterImageDataUrl)return;
   // 一次性发送整张大图，Gemini 识别所有色卡文字 + 花版编号
@@ -577,7 +596,6 @@ function recognizeWithGemini(){
   }).catch(function(){document.getElementById('patternNoInput').placeholder='识别失败'});
 }
 
-// ═══════════════════ 手动裁剪弹窗 ═══════════════════
 function openManualCropModal(){
   if(!masterImageDataUrl||!masterImg){showToast('请先上传图片',true);return}
   var modal=document.getElementById('cropModal');
@@ -623,7 +641,7 @@ function cropModalDone(){
   });
   closeCropModal();
   renderSwatches();
-  showToast('✅ 已添加 '+rects.length+' 个色卡');
+  showToast('已添加 '+rects.length+' 个色卡');
 }
 function closeCropModal(){
   document.getElementById('cropModal').classList.remove('show');
@@ -662,7 +680,6 @@ function closeCropModal(){
   canvas.addEventListener('touchstart',sd,{passive:false});canvas.addEventListener('touchmove',dr,{passive:false});canvas.addEventListener('touchend',ed,{passive:false});
 })();
 
-// ═══════════════════ 删除色卡 ═══════════════════
 function deleteSwatch(idx){
   if(!confirm('删除色卡 #'+(idx+1)+'？'))return;
   colorways.splice(idx,1);
@@ -671,24 +688,25 @@ function deleteSwatch(idx){
   showToast('已删除');
 }
 
-// ═══════════════════ Swatch Grid ═══════════════════
 function renderSwatches(){
   var grid=document.getElementById('swatchGrid');
-  if(!colorways.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#bbb">暂无结果，可点"手动裁剪"添加</div>';return}
+  if(!colorways.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#bbb">暂无结果，可用“手动裁剪”添加</div>';return}
   grid.innerHTML=colorways.map(function(cw,i){
     var name=cw.color_name||'色块'+(i+1),sub=cw.sub_code||'',sel=selectedSwatches[i]?' selected':'';
     return '<div class="color-card'+sel+'" id="cwCard_'+i+'" onclick="toggleSwatch('+i+',this)">'+
       '<div class="swatch-area" onclick="event.stopPropagation();openLightbox(\''+esc(cw.image_url)+'\',\''+name+'\')">'+
       '<img src="'+esc(cw.image_url)+'"></div>'+
       '<div class="color-label">'+name+'</div>'+(sub?'<div class="color-sub">#'+esc(sub)+'</div>':'')+
-      '<button class="swatch-del-btn" onclick="event.stopPropagation();deleteSwatch('+i+')">✕</button></div>';
+      '<button class="swatch-del-btn" onclick="event.stopPropagation();deleteSwatch('+i+')">×</button></div>';
   }).join('');
   document.getElementById('swatchCount').textContent='共 '+colorways.length+' 个';
   updateSelectedCount();updateAddBtn();
 }
 function toggleSwatch(idx,el){
-  if(selectedSwatches[idx]){delete selectedSwatches[idx];if(el)el.classList.remove('selected')}
-  else{selectedSwatches[idx]=true;if(el)el.classList.add('selected')}
+  var wasSelected=!!selectedSwatches[idx];
+  selectedSwatches={};
+  document.querySelectorAll('.color-card.selected').forEach(function(card){card.classList.remove('selected')});
+  if(!wasSelected){selectedSwatches[idx]=true;if(el)el.classList.add('selected')}
   updateSelectedCount();updateAddBtn();
 }
 function updateSelectedCount(){var c=Object.keys(selectedSwatches).length;document.getElementById('selectedCount').textContent='已选 '+c+' 个'}
@@ -709,39 +727,56 @@ function updateAddBtn(){
   if(c===0||t===0){btn.disabled=true;sub.textContent=c===0?'— 请选择色卡':'— 请选择尺码'}
   else{btn.disabled=false;sub.textContent='— '+c+'个色卡 · '+Object.keys(s).map(function(k){return k+'×'+s[k]}).join(', ')}
 }
+function getPrimaryFabricName(){
+  var fabrics=(style&&style.fabrics)||[];
+  if(fabrics.length){
+    var f=fabrics[0];
+    return (typeof f==='string'?f:(f.name||''))||'';
+  }
+  return '';
+}
 document.getElementById('addToCartBtn').addEventListener('click',function(){
-  var btn=this;btn.innerHTML='⏳ 添加中...';btn.disabled=true;setTimeout(function(){btn.disabled=false;updateAddBtn()},400);
+  var btn=this;btn.innerHTML='添加中...';btn.disabled=true;setTimeout(function(){btn.disabled=false;updateAddBtn()},400);
   var ids=Object.keys(selectedSwatches);if(!ids.length){showToast('请先选择色卡',true);return}
   var sz=getSelectedSizes();if(!Object.keys(sz).length){showToast('请选择尺码',true);return}
-  var add=0;
-  ids.forEach(function(idx){var i=parseInt(idx),cw=colorways[i];if(!cw)return;
-    LUNA.addToCart(styleCode,style.name||'',cw.color_name||'色块'+(i+1),sz,style.suggestedPrice||0,'','',[],'stampa',cw.image_url||'',cw.sku_code||'',0);add++;});
-  if(add){renderCartBody();updateBadge();showToast('✅ 已加入购物车 ('+add+'个)');toggleCart()}
+  var i=parseInt(ids[0]),cw=colorways[i];if(!cw)return;
+  LUNA.addToCart(styleCode,style.name||'',cw.color_name||'色块'+(i+1),sz,style.suggestedPrice||0,getPrimaryFabricName(),'',
+    [],'stampa',cw.image_url||'',cw.sku_code||cw.sub_code||'',cw.warehouse_id||cw.id||0);
+  renderCartBody();updateBadge();showToast('已加入购物车');toggleCart()
 });
 
 function saveToWarehouse(){
   var pn=document.getElementById('patternNoInput').value.trim()||patternNo;
-  if(!pn){showToast('⚠️ 请输入花版编号',true);return}
-  var btn=document.getElementById('saveBtn');btn.disabled=true;btn.innerHTML='⏳ 保存中...';
+  if(!pn){showToast('请输入花版编号',true);return}
+  var btn=document.getElementById('saveBtn');btn.disabled=true;btn.innerHTML='保存中...';
   fetch('/api/ai/confirm-pattern',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    pattern_no:pn,cycle_size:document.getElementById('cycleSizeInput').value,style_code:styleCode,
+    pattern_no:pn,cycle_size:'',style_code:styleCode,master_image:masterImageUrl||masterImageDataUrl,
     colorways:colorways.map(function(c,i){return{index:i+1,color_name:c.color_name||'',sub_code:c.sub_code||'',sku_code:c.sku_code||'',image_url:c.image_url||'',dominant_color:c.dominant_color||'',confirmed:true}})
   })}).then(function(r){return r.json()}).then(function(res){
-    if(res.status==='success'||res.saved){btn.innerHTML='✅ 已保存';btn.style.background='#10b981';showToast('花版已保存到仓库');loadHistory()}
-    else{showToast((res.error||'保存失败'),true);btn.disabled=false;btn.innerHTML='💾 保存到花版仓库'}
-  }).catch(function(){showToast('网络错误',true);btn.disabled=false;btn.innerHTML='💾 保存到花版仓库'});
+    if(res.status==='success'||res.saved){btn.innerHTML='已保存';btn.style.background='#10b981';showToast('花版已保存到图库');loadHistory();setTimeout(function(){btn.disabled=false;btn.innerHTML='保存到图库';btn.style.background='#C8A56D'},1200)}
+    else{showToast((res.error||'保存失败'),true);btn.disabled=false;btn.innerHTML='保存到图库'}
+  }).catch(function(){showToast('网络错误',true);btn.disabled=false;btn.innerHTML='保存到图库'});
 }
 
-function loadHistory(){fetch('/api/print-warehouse/groups').then(function(r){return r.json()}).then(function(groups){
+function loadHistory(){fetch('/api/print-warehouse/groups?style_code='+encodeURIComponent(styleCode)).then(function(r){return r.json()}).then(function(groups){
   if(!groups||!groups.length){document.getElementById('historySection').style.display='none';return}
   document.getElementById('historyGrid').innerHTML=groups.map(function(g){return '<div class="history-card" onclick="loadHistoryPrints(\''+esc(g.print_code)+'\')">'+
+    '<button class="swatch-del-btn" title="删除" onclick="event.stopPropagation();deleteHistoryGroup(\''+esc(g.print_code)+'\')">×</button>'+
     (g.thumb?'<img class="h-thumb" src="'+esc(g.thumb)+'">':'<div class="h-thumb" style="display:flex;align-items:center;justify-content:center;color:#ddd;font-size:24px">📁</div>')+
     '<div class="h-info"><div class="h-code">'+esc(g.print_code)+'</div></div></div>';}).join('');
   document.getElementById('historySection').style.display='block'}).catch(function(){})}
-function loadHistoryPrints(c){fetch('/api/print-warehouse/by-style/'+encodeURIComponent(c)).then(function(r){return r.json()}).then(function(prints){
+function loadHistoryPrints(c){fetch('/api/print-warehouse/by-style/'+encodeURIComponent(styleCode)+'?print_code='+encodeURIComponent(c)).then(function(r){return r.json()}).then(function(prints){
   if(!prints||!prints.length){showToast('暂无数据',true);return}
-  colorways=prints.map(function(p,i){var n={};try{n=p.notes?JSON.parse(p.notes):{}}catch(e){}return{index:i+1,color_name:n.color_name||'',sub_code:n.sub_code||'',sku_code:p.print_code||'',image_url:p.big_img||p.thumb_img||'',dominant_color:'#888888'}});
+  colorways=prints.map(function(p,i){var n={};try{n=p.notes?JSON.parse(p.notes):{}}catch(e){}return{index:i+1,id:p.id,warehouse_id:p.id,color_name:n.color_name||'',sub_code:n.sub_code||'',sku_code:p.print_code||'',image_url:p.big_img||p.thumb_img||'',dominant_color:'#888888'}});
   selectedSwatches={};document.getElementById('patternNoInput').value=c;document.getElementById('analysisResult').style.display='block';renderSwatches();showToast('已加载 '+prints.length+' 个花版')}).catch(function(){showToast('加载失败',true)})}
+function deleteHistoryGroup(c){
+  if(!confirm('删除当前款式下的花版 '+c+' ？'))return;
+  fetch('/api/print-warehouse/group?style_code='+encodeURIComponent(styleCode)+'&print_code='+encodeURIComponent(c),{method:'DELETE'})
+  .then(function(r){return r.json()}).then(function(res){
+    if(res.ok){showToast('已删除');loadHistory()}
+    else showToast(res.error||'删除失败',true);
+  }).catch(function(){showToast('删除失败',true)});
+}
 
 function toggleCart(){document.getElementById('cartModal').classList.toggle('open');document.getElementById('cartBackdrop').classList.toggle('show');if(document.getElementById('cartModal').classList.contains('open'))renderCartBody()}
 function renderCartBody(){
@@ -751,24 +786,24 @@ function renderCartBody(){
   cart.forEach(function(item,i){var k=item.code;if(!g[k])g[k]={code:k,price:item.price||0,items:[]};g[k].items.push({idx:i,color:item.color||'',qty:item.qty||{},img:item.stampa_img_url||''})});
   var html='';
   Object.keys(g).forEach(function(k){var gr=g[k];
-    html+='<div class="cart-code-group"><div class="cart-code-header"><span class="cc-code">'+esc(k)+'</span><span class="cc-price">€'+(gr.price||0).toFixed(2)+'</span></div>';
+    html+='<div class="cart-code-group"><div class="cart-code-header"><span class="cc-code">'+esc(k)+'</span><span class="cc-price">&euro;'+(gr.price||0).toFixed(2)+'</span></div>';
     gr.items.forEach(function(item){var q=item.qty||{};
-      html+='<div class="cart-color-item">'+(item.img?'<div class="cart-color-swatch" style="background-image:url('+esc(item.img)+')"></div>':'')+
+      html+='<div class="cart-color-item">'+(item.img?'<div class="cart-color-swatch" onclick="openLightbox(\''+esc(item.img)+'\',\''+esc(item.color)+'\')" style="cursor:pointer;background-image:url('+esc(item.img)+')"></div>':'')+
       '<div class="cart-color-info"><div class="cart-color-name">'+esc(item.color)+'</div><div class="cart-qty-ctrl">';
       Object.keys(q).forEach(function(s){if(q[s]<=0)return;
         html+='<div class="cart-qty-cell"><button class="cart-qty-btn" onclick="cartQty('+item.idx+',\''+s+'\',-1)">−</button><span class="cart-qty-val">'+q[s]+'</span><button class="cart-qty-btn" onclick="cartQty('+item.idx+',\''+s+'\',1)">+</button><span class="cart-qty-lbl">'+s+'</span></div>'});
-      html+='</div></div><button class="del-btn" onclick="cartRemove('+item.idx+')">✕</button></div>'});
+      html+='</div></div><button class="del-btn" onclick="cartRemove('+item.idx+')">×</button></div>'});
     html+='</div>'});
   el.innerHTML=html;updateSubmitBtn()}
 function cartQty(idx,s,d){LUNA.updateCartQty(idx,s,d);renderCartBody();updateBadge()}
 function cartRemove(idx){LUNA.removeFromCart(idx);renderCartBody();updateBadge()}
 function updateBadge(){var cart=LUNA.getCart()||[],t=0;cart.forEach(function(i){var q=i.qty||{};Object.keys(q).forEach(function(s){t+=q[s]||0})});document.getElementById('cartBadge').textContent=t;document.getElementById('floatBadge').textContent=t}
 function updateSubmitBtn(){var cart=LUNA.getCart()||[];document.getElementById('submitBtn').disabled=!cart.length;document.getElementById('submitSub').textContent=cart.length?'':'购物车为空'}
-function renderGuestDropdown(){var sel=document.getElementById('guestSelect');try{var guests=LUNA.getGuests()||[];sel.innerHTML='<option value="">— 选择客人 —</option>';guests.forEach(function(g){if(g.enabled!==false)sel.innerHTML+='<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>'})}catch(e){}}
-function submitOrder(){var guest=document.getElementById('guestSelect').value;if(!guest){showToast('请选择客人',true);return}
-  var btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='⏳ 提交中...';
+function renderGuestDropdown(){var sel=document.getElementById('guestSelect');var u=LUNA.getUser&&LUNA.getUser();if(u&&u.role==='guest'){var selfName=u.name||u.username||'';sel.innerHTML='<option value="'+esc(selfName)+'">'+esc(selfName)+'</option>';sel.value=selfName;sel.style.display='none';return}try{var guests=LUNA.getGuests()||[];sel.innerHTML='<option value="">— 选择客人 —</option>';guests.forEach(function(g){if(g.enabled!==false)sel.innerHTML+='<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>'})}catch(e){}}
+function submitOrder(){var u=LUNA.getUser&&LUNA.getUser();var guest=document.getElementById('guestSelect').value;if(!guest&&u&&u.role==='guest')guest=u.name||u.username||'';if(!guest){showToast('请选择客人',true);return}
+  var btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='提交中...';
   var result=LUNA.checkout(guest,document.getElementById('orderNoteInput').value.trim());
-  if(result&&result.ok!==false){showToast('✅ 下单成功');renderCartBody();updateBadge();setTimeout(function(){window.location.href='my-orders.html'},800)}
+  if(result&&result.ok!==false){showToast('下单成功');renderCartBody();updateBadge();setTimeout(function(){window.location.href='my-orders.html'},800)}
   else{showToast('下单失败',true);btn.disabled=false;updateSubmitBtn()}}
 function openLightbox(url,name){if(!url)return;document.getElementById('lightboxImg').src=url;document.getElementById('lightboxName').textContent=name||'';document.getElementById('lightbox').classList.add('show')}
 function closeLightbox(){document.getElementById('lightbox').classList.remove('show')}

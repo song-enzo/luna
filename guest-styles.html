@@ -68,13 +68,26 @@ border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
 .side-menu .sm-link.danger{color:#c44}
 .side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
 .side-menu .sm-link.active{background:#f7f4ee;color:#1c1c1c;font-weight:500}
-/* Inline Category Pills */
-.cat-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:0 0 4px}
-.cat-pill{padding:5px 14px;border:1px solid #e0dcd5;border-radius:20px;font-size:12px;color:#888;cursor:pointer;transition:all .15s;background:#fff;font-family:inherit}
+/* Homepage */
+.home-hero{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:end;margin-bottom:18px}
+.home-kicker{font-size:11px;font-weight:700;color:#C8A56D;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+.home-title{font-family:'Playfair Display',Georgia,serif;font-size:32px;line-height:1.1;color:#1C1C1C;margin-bottom:6px}
+.home-sub{font-size:13px;color:#8d877e;max-width:560px}
+.home-search{background:#fff;border:1px solid #EBE8E3;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(30,25,18,.035)}
+.home-search span{color:#C8A56D;font-size:15px}
+.home-search input{border:none;outline:none;width:100%;font-family:inherit;font-size:13px;color:#1C1C1C;background:transparent}
+.home-search input::placeholder{color:#B5A58A}
+.filter-bar{position:sticky;top:48px;z-index:5;background:rgba(247,246,243,.94);backdrop-filter:blur(10px);padding:8px 0 12px;margin-bottom:14px}
+.cat-pills{display:flex;gap:7px;overflow-x:auto;padding:0 0 3px;scrollbar-width:none}
+.cat-pills::-webkit-scrollbar{display:none}
+.cat-pill{white-space:nowrap;padding:6px 14px;border:1px solid #e0dcd5;border-radius:999px;font-size:12px;color:#756f67;cursor:pointer;transition:all .15s;background:#fff;font-family:inherit}
 .cat-pill:hover{border-color:#C8A56D;color:#C8A56D}
 .cat-pill.active{background:#C8A56D;color:#fff;border-color:#C8A56D}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 10px}
+.section-title{font-size:15px;font-weight:700;color:#1C1C1C;display:flex;align-items:center;gap:7px}
+.section-note{font-size:11px;color:#B5A58A}
 /* PRODUCT GRID */
-.page { max-width: 1200px; margin: 0 auto; padding: 24px 24px 60px; }
+.page { max-width: 1200px; margin: 0 auto; padding: 22px 24px 60px; }
 .grid {
 display: grid;
 grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -82,11 +95,11 @@ gap: 16px;
 }
 .card {
 background: #fff; border: 1px solid #EBE8E3;
-border-radius: 8px; overflow: hidden;
+border-radius: 10px; overflow: hidden;
 transition: box-shadow .25s, transform .25s;
 cursor: pointer;
 }
-.card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.05); transform: translateY(-2px); }
+.card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.07); transform: translateY(-2px); }
 .card .img-wrap {
 width: 100%; aspect-ratio: 3/4;
 background: #F2F0EC; overflow: hidden;
@@ -97,22 +110,25 @@ width: 100%; height: 100%; object-fit: contain;
 transition: transform .4s;
 }
 .card:hover .img-wrap img { transform: scale(1.04); }
-.card .info { padding: 10px 12px 12px; }
+.card .info { padding: 11px 12px 12px; min-height:82px; display:flex; flex-direction:column; }
 .card .info .code {
 font-family: 'Inter', sans-serif;
 font-size: 13px; color: #1C1C1C; font-weight: 600;
 letter-spacing: 0.3px; margin-bottom: 2px;
 }
 .card .info .name {
-font-size: 11px; color: #888; margin-bottom: 2px;
+font-size: 11px; color: #888; margin-bottom: 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
+.card .info .meta-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.card .info .category{font-size:10px;color:#A69B8E;background:#F7F4EE;border-radius:999px;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96px}
 .card .info .price {
-font-size: 14px; color: #1C1C1C; font-weight: 600;
+font-size: 14px; color: #C8A56D; font-weight: 700; white-space:nowrap;
 }
 .card .info .tag {
-display:inline-block; font-size:8px; padding:1px 5px; border-radius:3px;
-background:#F0EDE8; color:#888; margin-top:4px;
+position:absolute;top:8px;left:8px;display:inline-block;font-size:10px;padding:3px 7px;border-radius:999px;
+background:rgba(255,255,255,.9);color:#9B6C4A;border:1px solid rgba(200,165,109,.28);
 }
+.card{position:relative}
 /* FOOTER */
 .footer {
 border-top: 1px solid #EBE8E3;
@@ -120,25 +136,32 @@ padding: 24px; text-align: center;
 font-size: 11px; color: #B5A58A;
 }
 @media (max-width: 600px) {
+.page{padding:16px 14px 50px}
+.home-hero{grid-template-columns:1fr;gap:12px;margin-bottom:10px}
+.home-title{font-size:26px}
+.filter-bar{top:48px;margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
 .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.card .info{padding:9px 9px 10px;min-height:76px}
+.card .info .category{max-width:74px}
 }
 /* New arrivals horizontal scroll */
-.new-arrivals{margin-bottom:20px}
-.new-arrivals .section-title{font-size:15px;font-weight:600;color:#1C1C1C;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.new-arrivals .section-title .badge{font-size:10px;background:#C8A56D;color:#fff;padding:2px 8px;border-radius:10px;font-weight:500}
-.scroll-row{display:flex;gap:10px;overflow-x:auto;padding:4px 0 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
+.new-arrivals{margin-bottom:22px}
+.section-title .badge{font-size:10px;background:#C8A56D;color:#fff;padding:2px 8px;border-radius:10px;font-weight:500}
+.scroll-row{display:flex;gap:12px;overflow-x:auto;padding:4px 0 10px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
 .scroll-row::-webkit-scrollbar{height:3px}
 .scroll-row::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
 .scroll-row::-webkit-scrollbar-track{background:transparent}
-.scroll-card{flex:0 0 130px;scroll-snap-align:start;background:#fff;border:1px solid #EBE8E3;border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow .2s}
-.scroll-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.scroll-card .s-img{width:100%;aspect-ratio:1;background:#F2F0EC;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.scroll-card{flex:0 0 150px;scroll-snap-align:start;background:#fff;border:1px solid #EBE8E3;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s}
+.scroll-card:hover{box-shadow:0 5px 16px rgba(0,0,0,.07);transform:translateY(-1px)}
+.scroll-card .s-img{width:100%;aspect-ratio:4/5;background:#F2F0EC;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .scroll-card .s-img img{width:100%;height:100%;object-fit:contain}
-.scroll-card .s-info{padding:6px 8px 8px}
+.scroll-card .s-info{padding:8px 9px 9px}
 .scroll-card .s-info .s-code{font-size:11px;font-weight:600;color:#1C1C1C}
-.scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:600;margin-top:2px}
+.scroll-card .s-info .s-name{font-size:10px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:700;margin-top:3px}
 </style>
 <script src="luna-data.js?v=26"></script>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <!-- HEADER -->
@@ -163,7 +186,7 @@ font-size: 11px; color: #B5A58A;
   </div>
   <div class="sm-section">
     <div class="sm-section-title">款式</div>
-    <a class="sm-link active" href="javascript:void(0)" onclick="return filterByCategory('all',this)">👗 全部款式</a>
+    <a class="sm-link active" href="javascript:void(0)" data-all="1" onclick="return filterByCategory('all',this)">👗 全部款式</a>
     <div id="categoriesContainer"></div>
     <a class="sm-link" href="add-style.html" id="gs-add-style">➕ 添加款式</a>
     <a class="sm-link" href="style-manage.html" id="gs-style-manage">📋 款式管理</a>
@@ -183,10 +206,30 @@ font-size: 11px; color: #B5A58A;
 </div>
 <!-- PRODUCT GRID -->
 <div class="page">
-<div class="cat-pills" id="catPills"></div>
+<section class="home-hero">
+  <div>
+    <div class="home-kicker">LUNA ATELIER</div>
+    <div class="home-title">款式浏览</div>
+    <div class="home-sub">查看最新款式，按分类或编号快速筛选，点击款式即可进入下单。</div>
+  </div>
+  <label class="home-search">
+    <span>⌕</span>
+    <input id="searchInput" type="search" placeholder="搜索编号、名称、分类" oninput="applyFilters()">
+  </label>
+</section>
+<div class="filter-bar">
+  <div class="cat-pills" id="catPills"></div>
+</div>
 <div class="new-arrivals" id="newArrivals">
-  <div class="section-title">✨ 近期新款 <span class="badge" id="newBadge">30天</span></div>
+  <div class="section-head">
+    <div class="section-title">近期新款 <span class="badge" id="newBadge">30天</span></div>
+    <div class="section-note">左右滑动查看更多</div>
+  </div>
   <div class="scroll-row" id="newArrivalsRow"></div>
+</div>
+<div class="section-head">
+  <div class="section-title">全部款式</div>
+  <div class="section-note" id="resultCount"></div>
 </div>
 <div class="grid" id="stylesGrid"></div>
 </div>
@@ -202,6 +245,11 @@ const icons = {
 };
 return icons[cat] || '👔';
 }
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
 // 切换菜单
 function toggleMenu() {
 document.getElementById('sideOverlay').classList.toggle('active');
@@ -215,34 +263,80 @@ function logout() {
 // 数据
 var allStyles = [];
 var currentFilter = 'all';
+var currentSearch = '';
+var initialSortMode = '';
+function styleCreatedTime(s) {
+  var raw = s.createdAt || s.created_at || s.created || '';
+  var t = raw ? new Date(raw).getTime() : 0;
+  return isNaN(t) ? 0 : t;
+}
+function sortedByNewest(styles) {
+  return (styles || []).slice().sort(function(a, b) {
+    return styleCreatedTime(b) - styleCreatedTime(a);
+  });
+}
+function styleVisibleToCurrentUser(s) {
+  var user = LUNA.getUser && LUNA.getUser();
+  if (!user || user.role === 'admin') return true;
+  var visible = s.visibleGuests || [];
+  if (!visible || !visible.length) return true;
+  var keys = [user.id, user.username, user.name].filter(Boolean).map(String);
+  return visible.map(String).some(function(v) { return keys.indexOf(v) !== -1; });
+}
+function getStyleImageHtml(s) {
+  if (s.images && s.images.length > 0) {
+    var mainIdx = (s.mainPhoto !== undefined && s.mainPhoto < s.images.length) ? s.mainPhoto : 0;
+    var img = s.images[mainIdx] || '';
+    if (img.length > 100 || img.indexOf('photos/') === 0 || img.indexOf('/photos/') === 0 || img.indexOf('data:') === 0 || img.indexOf('http') === 0) {
+      return '<img src="' + img + '" alt="">';
+    }
+  }
+  return getCategoryIcon(s.category);
+}
+function styleMatchesSearch(s, q) {
+  if (!q) return true;
+  var text = [s.code, s.name, s.category, s.type, s.fabric, (s.fabrics || []).join(' ')].join(' ').toLowerCase();
+  return text.indexOf(q) >= 0;
+}
+function displayStyleName(s) {
+  var name = (s.name || '').trim();
+  var category = (s.category || '').trim();
+  if (name && name !== category) return name;
+  return s.type === 'print' ? '印花款式' : '常规款式';
+}
+function visibleStylesForCurrentFilters() {
+  currentSearch = (document.getElementById('searchInput') && document.getElementById('searchInput').value || '').trim().toLowerCase();
+  var list = allStyles.filter(function(s) {
+    var byCat = currentFilter === 'all' || s.category === currentFilter;
+    return byCat && styleMatchesSearch(s, currentSearch);
+  });
+  if (initialSortMode === 'new') list = sortedByNewest(list);
+  return list;
+}
+function applyFilters() {
+  renderGrid(visibleStylesForCurrentFilters());
+}
 // 渲染网格
 function renderGrid(styles) {
 var container = document.getElementById('stylesGrid');
+var countEl = document.getElementById('resultCount');
+if (countEl) countEl.textContent = (styles || []).length + ' 款';
 if (!styles.length) {
 container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#B5A58A;font-size:14px">暂无款式</div>';
 return;
 }
 container.innerHTML = styles.map(function(s) {
   var tag = (s.type === 'print') ? '<span class="tag">🌸 印花</span>' : '';
-  var imgHtml = '';
-  if (s.images && s.images.length > 0) {
-    var mainIdx = (s.mainPhoto !== undefined && s.mainPhoto < s.images.length) ? s.mainPhoto : 0;
-    var img = s.images[mainIdx];
-    if (img.length > 100 || img.indexOf('photos/') === 0 || img.indexOf('data:') === 0 || img.indexOf('http') === 0) {
-      imgHtml = '<img src="' + img + '" alt="">';
-    } else {
-      imgHtml = getCategoryIcon(s.category);
-    }
-  } else {
-    imgHtml = getCategoryIcon(s.category);
-  }
+  var imgHtml = getStyleImageHtml(s);
   var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
+  var name = displayStyleName(s);
   return '<div class="card" onclick="window.location.href=\'' + page + '?code=' + s.code + '\'">' +
   '<div class="img-wrap">' + imgHtml + '</div>' +
+  tag +
   '<div class="info">' +
   '<div class="code">ART-' + s.code + '</div>' +
-  '<div class="price">€' + (s.suggestedPrice || '0.00') + '</div>' +
-  tag +
+  '<div class="name">' + esc(name) + '</div>' +
+  '<div class="meta-row"><span class="category">' + esc(s.category || '未分类') + '</span><span class="price">€' + (s.suggestedPrice || '0.00') + '</span></div>' +
   '</div></div>';
 }).join('');
 }
@@ -252,40 +346,35 @@ function renderNewArrivals() {
   var row = document.getElementById("newArrivalsRow");
   var section = document.getElementById("newArrivals");
   if (!row) return;
-  var now = new Date();
-  var cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - 30);
-  var newStyles = allStyles.filter(function(s) {
-    if (!s.created_at) return false;
-    var d = new Date(s.created_at);
-    return d >= cutoff && d <= now;
-  });
+  var newStyles = sortedByNewest(allStyles).slice(0, 10);
   if (!newStyles.length) { section.style.display = "none"; return; }
   section.style.display = "";
   document.getElementById("newBadge").textContent = newStyles.length+"款";
   row.innerHTML = newStyles.map(function(s) {
-    var img = "";
-    if (s.images && s.images.length > 0) {
-      var mIdx2 = (s.mainPhoto !== undefined && s.mainPhoto < s.images.length) ? s.mainPhoto : 0;
-      img = '<img src="'+s.images[mIdx2]+'" alt="">';
-    } else {
-      img = getCategoryIcon(s.category);
-    }
+    var img = getStyleImageHtml(s);
+    var name = displayStyleName(s);
     var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
     return '<div class="scroll-card" onclick="window.location.href=\'' + page + '?code='+s.code+'\'">' +
       '<div class="s-img">'+img+'</div>' +
       '<div class="s-info"><div class="s-code">ART-'+s.code+'</div>' +
+      '<div class="s-name">'+esc(name)+'</div>' +
       '<div class="s-price">€'+(s.suggestedPrice||'0.00')+'</div></div></div>';
   }).join("");
 }
+function applyInitialView() {
+  var params = new URLSearchParams(window.location.search);
+  var sort = params.get('sort') || params.get('view') || '';
+  initialSortMode = sort === 'new' ? 'new' : '';
+  if (sort === 'new') {
+    renderGrid(sortedByNewest(allStyles));
+    return;
+  }
+  renderGrid(allStyles);
+}
 function filterByCategory(cat, el) {
 currentFilter = cat;
-if (cat === 'all') {
-renderGrid(allStyles);
-} else {
-renderGrid(allStyles.filter(function(s) { return s.category === cat; }));
-}
-document.querySelectorAll('#sideMenu .sm-link[data-category]').forEach(function(a){a.classList.remove('active')});
+applyFilters();
+document.querySelectorAll('#sideMenu .sm-link[data-category], #sideMenu .sm-link[data-all]').forEach(function(a){a.classList.remove('active')});
 document.querySelectorAll('.cat-pill').forEach(function(p){p.classList.remove('active')});
 if (el) {
   if (el.classList.contains('sm-link') || el.classList.contains('cat-pill')) el.classList.add('active');
@@ -337,10 +426,10 @@ function initPage() {
 try {
 var raw = localStorage.getItem('luna_styles_data');
 if (raw) {
-allStyles = JSON.parse(raw);
+allStyles = JSON.parse(raw).filter(styleVisibleToCurrentUser);
 }
 } catch(e) {}
-renderGrid(allStyles);
+applyInitialView();
 renderCategories();
   renderNewArrivals();
 updateCartBadge();

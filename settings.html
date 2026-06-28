@@ -9,7 +9,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1a1a1a}
 .header{display:flex;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid #e8e5e0}
 .header .logo{font-size:16px;font-weight:700;letter-spacing:1px;text-decoration:none;color:#1a1a1a;margin-right:auto}
-.setting-wrap{max-width:960px;margin:0 auto;padding:16px}
+.setting-wrap{max-width:1040px;margin:0 auto;padding:18px 16px 28px}
 .tabs{display:flex;gap:2px;overflow-x:auto;background:#f0ede8;border-radius:6px;padding:3px;margin-bottom:20px;flex-wrap:nowrap}
 .tabs::-webkit-scrollbar{height:0}
 .tab{white-space:nowrap;padding:10px 14px;font-size:11px;font-weight:500;border:none;border-radius:4px;cursor:pointer;background:transparent;color:#888;font-family:inherit;transition:all .15s;flex-shrink:0}
@@ -37,6 +37,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .export-row .field label{font-size:10px;color:#888}
 .export-row .field select{padding:6px 10px;border:1px solid #e8e5e0;border-radius:4px;font-size:12px;font-family:inherit;background:#fff}
 .export-btn{padding:8px 16px;background:#c9a96e;color:#1a1a1a;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.settings-hero{background:#fff;border:1px solid #e8e5e0;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px rgba(30,25,18,.035)}
+.settings-title{font-size:18px;font-weight:800;color:#1f1b16;margin-bottom:4px}
+.settings-subtitle{font-size:12px;color:#9b9187;line-height:1.5;margin-bottom:14px}
+.brand-box{display:grid;grid-template-columns:auto minmax(180px,1fr) auto;align-items:center;gap:10px;background:#faf8f4;border:1px solid #eee6da;border-radius:9px;padding:10px 12px}
+.brand-box label{font-size:12px;font-weight:800;color:#8a6f3e;white-space:nowrap}
+.brand-box input{width:100%;border:1px solid #d8d1c5;border-radius:6px;padding:9px 10px;font-size:13px;font-family:inherit;background:#fff}
+.brand-box input:focus{border-color:#c9a96e;outline:none;box-shadow:0 0 0 3px rgba(201,169,110,.14)}
+.brand-box button{border:none;border-radius:6px;background:#c9a96e;color:#fff;padding:9px 15px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.settings-section{margin-bottom:16px}
+.settings-section-head{display:flex;align-items:flex-end;justify-content:space-between;margin:0 2px 9px}
+.settings-section-title{font-size:12px;font-weight:800;color:#7a6d5f;letter-spacing:.08em;text-transform:uppercase}
+.settings-section-note{font-size:11px;color:#b2a89e}
+.settings-shortcuts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.settings-shortcut{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e8e5e0;border-radius:10px;padding:14px;text-decoration:none;color:#1a1a1a;transition:all .15s;min-height:78px}
+.settings-shortcut:hover{border-color:#c9a96e;box-shadow:0 5px 18px rgba(0,0,0,.06);transform:translateY(-1px)}
+.settings-shortcut .ico{width:42px;height:42px;border-radius:10px;background:#f6f0e5;display:flex;align-items:center;justify-content:center;font-size:21px;flex:0 0 auto}
+.settings-shortcut .name{font-size:14px;font-weight:800;margin-bottom:3px}
+.settings-shortcut .desc{font-size:11px;color:#999;line-height:1.35}
+@media(max-width:720px){.settings-shortcuts{grid-template-columns:1fr}.brand-box{grid-template-columns:1fr}.brand-box label{font-size:11px}}
 /* ===== FABRIC WAREHOUSE ===== */
 .fabric-card{background:#fff;border:1px solid #ebe8e3;border-radius:6px;padding:12px;margin-bottom:8px}
 .fabric-row{display:flex;gap:8px;align-items:end;margin-bottom:6px;flex-wrap:wrap}
@@ -134,13 +153,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   .color-entry .color-name{font-size:10px;padding:3px 0 1px}
 }
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
   <button class="hamburger" onclick="toggleMenu()">☰</button>
-  <span class="logo">LUNA ATELIER</span>
+  <span class="logo" id="settingsLogo">LUNA ATELIER</span>
 </div>
 <div class="setting-wrap">
+  <div class="settings-hero">
+    <div class="settings-title">统一设置</div>
+    <div class="settings-subtitle">集中管理系统名称、加工资料、分类和结算入口。面料仓库保留在工作台，方便日常操作直接进入。</div>
+    <div class="brand-box">
+      <label>页眉名称</label>
+      <input id="brandNameInput" placeholder="LUNA ATELIER">
+      <button onclick="saveBrandName()">保存名称</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-head">
+      <div class="settings-section-title">系统管理</div>
+      <div class="settings-section-note">低频管理入口</div>
+    </div>
+    <div class="settings-shortcuts">
+      <a class="settings-shortcut" href="factory.html"><div class="ico">🏭</div><div><div class="name">工厂页面</div><div class="desc">车工订单详情</div></div></a>
+      <a class="settings-shortcut" href="print-warehouse.html"><div class="ico">🎨</div><div><div class="name">花版仓库</div><div class="desc">印花色卡图库</div></div></a>
+      <a class="settings-shortcut" href="people-manage.html"><div class="ico">👥</div><div><div class="name">人员管理</div><div class="desc">客人与员工权限</div></div></a>
+    </div>
+  </div>
   <div class="tabs">
     <button class="tab active" data-tab="factories">🏭 加工工厂</button>
     <button class="tab" data-tab="procacc">🔧 工艺&辅料</button>
@@ -222,7 +262,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </div>
 
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=27"></script>
 <script>LUNA.renderNav();</script>
 <script>
 (function(){var u=LUNA.getUser();if(!u||u.role!=='admin'){window.location.href='index.html';return;}})();
@@ -1045,6 +1085,23 @@ function logout() {
 
 // ===== INIT =====
 initSettings();
+try{
+  var brandInput = document.getElementById('brandNameInput');
+  var currentBrandName = localStorage.getItem('luna_brand_name') || 'LUNA ATELIER';
+  if (brandInput) brandInput.value = currentBrandName;
+  var settingsLogo = document.getElementById('settingsLogo');
+  if (settingsLogo) settingsLogo.textContent = currentBrandName;
+}catch(e){}
+function saveBrandName() {
+  var input = document.getElementById('brandNameInput');
+  var name = input ? input.value.trim() : '';
+  if (!name) name = 'LUNA ATELIER';
+  localStorage.setItem('luna_brand_name', name);
+  var settingsLogo = document.getElementById('settingsLogo');
+  if (settingsLogo) settingsLogo.textContent = name;
+  if (LUNA && LUNA.showAlert) LUNA.showAlert('页眉名称已保存，刷新页面后生效');
+  else alert('页眉名称已保存，刷新页面后生效');
+}
 // 服务器数据同步后重新渲染
 window.addEventListener('luna-data-changed', function() {
   setTimeout(renderAll, 50);

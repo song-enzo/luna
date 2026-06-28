@@ -31,6 +31,12 @@ var LUNA = (function() {
     return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 5);
   }
 
+  function htmlEsc(value) {
+    var d = document.createElement('div');
+    d.textContent = value == null ? '' : String(value);
+    return d.innerHTML;
+  }
+
   function api(path, method, body) {
     // Synchronous XHR for backward compatibility
     var xhr = new XMLHttpRequest();
@@ -76,6 +82,17 @@ var LUNA = (function() {
   }
 
   function loadAllData() {
+    function orderEndpointForPage() {
+      var page = (window.location.pathname.split('/').pop() || '').split('?')[0];
+      var map = {
+        'marker.html': '/api/workflow/marker/orders',
+        'cutting.html': '/api/workflow/cutting/orders',
+        'cutting_history.html': '/api/workflow/cutting_history/orders',
+        'ready-pickup.html': '/api/workflow/pickup/orders',
+        'shipping.html': '/api/workflow/shipping/orders'
+      };
+      return map[page] || '/api/orders';
+    }
     // Load categories
     var r = api('/api/data/categories');
     if (!r.error) _cache.categories = r;
@@ -92,7 +109,7 @@ var LUNA = (function() {
     r = api('/api/styles');
     if (!r.error) _cache.styles = r;
     // Load orders
-    r = api('/api/orders');
+    r = api(orderEndpointForPage());
     if (!r.error) _cache.orders = r;
     // Fallback: if server orders are empty but localStorage has data, use it
     if ((!_cache.orders || _cache.orders.length === 0)) {
@@ -107,6 +124,9 @@ var LUNA = (function() {
     // Load guests
     r = api('/api/data/guests');
     if (!r.error) _cache.guests = r;
+    // Load employees
+    r = api('/api/data/employees');
+    if (!r.error) _cache.employees = r;
     // Load current user
     r = api('/api/me');
     if (r && !r.error) _user = r;
@@ -119,6 +139,7 @@ var LUNA = (function() {
       if (_cache.procacc) localStorage.setItem('luna_settings_procacc', JSON.stringify(_cache.procacc));
       if (_cache.categories) localStorage.setItem('luna_settings_categories', JSON.stringify(_cache.categories));
       if (_cache.factories) localStorage.setItem('luna_settings_factories', JSON.stringify(_cache.factories));
+      if (_cache.employees) localStorage.setItem('luna_settings_employees', JSON.stringify(_cache.employees));
     } catch(e) {}
     _initialized = true;
     syncCacheToLocalStorage();
@@ -139,6 +160,7 @@ var LUNA = (function() {
       if (_cache.categories) localStorage.setItem('luna_settings_categories', JSON.stringify(_cache.categories));
       if (_cache.factories) localStorage.setItem('luna_settings_factories', JSON.stringify(_cache.factories));
       if (_cache.guests) localStorage.setItem('luna_settings_guests', JSON.stringify(_cache.guests));
+      if (_cache.employees) localStorage.setItem('luna_settings_employees', JSON.stringify(_cache.employees));
     } catch(e) {}
   }
 
@@ -171,16 +193,37 @@ var LUNA = (function() {
     return r && r.error ? {error: r.error} : {error: '登录失败'};
   }
 
-  function canAccess(role, page) {
+  function normalizeEmployeeRole(role) {
+    var map = {'裁剪':'裁剪员','车缝':'车工','发货':'发货员','排版':'排版师'};
+    return map[role] || role || '';
+  }
+
+  function employeeDefaultPage(user) {
+    var role = normalizeEmployeeRole(user && user.employee_role);
+    if (role === '裁剪员') return 'cutting.html';
+    if (role === '发货员') return 'shipping.html';
+    if (role === '排版师') return 'marker.html';
+    if (role === '车工') return 'factory.html';
+    return 'index.html';
+  }
+
+  function canAccess(roleOrUser, page) {
+    var user = typeof roleOrUser === 'object' ? roleOrUser : {role: roleOrUser};
+    var role = user && user.role;
     if (role === 'admin') return true;
     if (role === 'guest') {
-      var guestPages = ['guest-styles.html','order-page.html','cart.html','my-orders.html','order-detail.html','tryon.html'];
+      var guestPages = ['guest-styles.html','order-page.html','order-print.html','cart.html','my-orders.html','order-detail.html','tryon.html','index.html'];
       return guestPages.indexOf(page) !== -1;
     }
     if (role === 'employee') {
-      var perms = getEmployeePermissions();
-      var list = perms[page] || [];
-      return list.indexOf('all') !== -1 || list.some(function(p) { return p === role; });
+      var employeePages = {
+        '裁剪员': ['cutting.html','cutting_history.html'],
+        '发货员': ['shipping.html'],
+        '排版师': ['marker.html','cutting.html'],
+        '车工': ['ready-pickup.html','factory.html']
+      };
+      var list = employeePages[normalizeEmployeeRole(user.employee_role)] || [];
+      return list.indexOf(page) !== -1;
     }
     return false;
   }
@@ -189,6 +232,11 @@ var LUNA = (function() {
     var user = getUser();
     if (!user) { window.location.href = 'index.html'; return null; }
     if (requiredRole && user.role !== requiredRole) { window.location.href = 'index.html'; return null; }
+    var page = (window.location.pathname.split('/').pop() || 'dashboard.html').split('?')[0];
+    if (!requiredRole && !canAccess(user, page)) {
+      window.location.href = user.role === 'employee' ? employeeDefaultPage(user) : (user.role === 'guest' ? 'guest-styles.html' : 'index.html');
+      return null;
+    }
     return user;
   }
 
@@ -1051,6 +1099,51 @@ var LUNA = (function() {
     } catch(e) { console.error('sync orders error', e); }
   }
 
+  function ensureImagePreview() {
+    if (!document.getElementById('luna-image-preview-style')) {
+      var s = document.createElement('style');
+      s.id = 'luna-image-preview-style';
+      s.textContent =
+        '.luna-image-preview{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200000;align-items:center;justify-content:center;flex-direction:column;padding:18px}' +
+        '.luna-image-preview.open{display:flex}' +
+        '.luna-image-preview-img{max-width:92vw;max-height:84vh;width:auto;height:auto;object-fit:contain;border-radius:8px;background:#fff;box-shadow:0 10px 36px rgba(0,0,0,.35)}' +
+        '.luna-image-preview-title{margin-top:12px;color:rgba(255,255,255,.9);font-size:14px;text-align:center;max-width:92vw;line-height:1.4}' +
+        '.luna-image-preview-close{position:fixed;top:14px;right:14px;width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:24px;line-height:40px;cursor:pointer}';
+      document.head.appendChild(s);
+    }
+    var box = document.getElementById('lunaImagePreview');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'lunaImagePreview';
+      box.className = 'luna-image-preview';
+      box.onclick = function(e) { if (e.target === box) closeImagePreview(); };
+      box.innerHTML =
+        '<button type="button" class="luna-image-preview-close" aria-label="关闭" onclick="LUNA.closeImagePreview()">×</button>' +
+        '<img class="luna-image-preview-img" id="lunaImagePreviewImg" alt="">' +
+        '<div class="luna-image-preview-title" id="lunaImagePreviewTitle"></div>';
+      document.body.appendChild(box);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeImagePreview();
+      });
+    }
+    return box;
+  }
+
+  function openImagePreview(src, title) {
+    if (!src) return;
+    var box = ensureImagePreview();
+    var img = document.getElementById('lunaImagePreviewImg');
+    var label = document.getElementById('lunaImagePreviewTitle');
+    img.src = src;
+    label.textContent = title || '';
+    box.classList.add('open');
+  }
+
+  function closeImagePreview() {
+    var box = document.getElementById('lunaImagePreview');
+    if (box) box.classList.remove('open');
+  }
+
   // ==================== 公共 API ====================
 
   return {
@@ -1109,6 +1202,7 @@ var LUNA = (function() {
     calcShipSubtotal: calcShipSubtotal, getInvoices: getInvoices,
     exportMonthlySettlement: exportMonthlySettlement,
     showAlert: showAlert, showConfirm: showConfirm,
+    openImagePreview: openImagePreview, closeImagePreview: closeImagePreview,
 
     getCart: getCart, saveCart: saveCart, getCartCount: getCartCount,
     addToCart: addToCart, removeFromCart: removeFromCart,
@@ -1232,6 +1326,12 @@ var LUNA = (function() {
     renderNav: function() {
       if (document.getElementById('diana-nav')) return; // already rendered
 
+      var navUser = getUser() || {};
+      var brandName = 'LUNA ATELIER';
+      try { brandName = localStorage.getItem('luna_brand_name') || brandName; } catch(e) {}
+      var logoHref = navUser.role === 'employee' ? '#' : 'guest-styles.html';
+      var logoClick = navUser.role === 'employee' ? ' onclick="event.preventDefault()"' : '';
+
       // Inject nav CSS once
       if (!document.getElementById('diana-nav-style')) {
         var s = document.createElement('style');
@@ -1267,18 +1367,18 @@ var LUNA = (function() {
       div.innerHTML =
         '<header class="diana-header">' +
           '<button class="diana-hamburger" id="dianaHamburger" aria-label="菜单">☰</button>' +
-          '<a href="guest-styles.html" class="diana-logo">DIANA</a>' +
+          '<a href="' + logoHref + '" class="diana-logo"' + logoClick + '>' + htmlEsc(brandName) + '</a>' +
         '</header>' +
         '<div class="diana-nav-overlay" id="dianaNavOverlay">' +
           '<div class="diana-nav-drawer">' +
             '<div class="diana-nav-header">' +
-              '<span class="diana-nav-logo">DIANA</span>' +
+              '<span class="diana-nav-logo">' + htmlEsc(brandName) + '</span>' +
               '<button class="diana-nav-close" id="dianaNavClose">&times;</button>' +
             '</div>' +
             '<div class="diana-nav-section">' +
               '<div class="diana-nav-section-title">款式</div>' +
-              '<a href="style-manage.html?sort=new" class="diana-nav-item">最近添加</a>' +
-              '<a href="style-manage.html?sort=category" class="diana-nav-item">类型</a>' +
+              '<a href="guest-styles.html?sort=new" class="diana-nav-item">最近添加</a>' +
+              '<a href="guest-styles.html?view=category" class="diana-nav-item">类型</a>' +
             '</div>' +
             '<div class="diana-nav-section">' +
               '<div class="diana-nav-section-title">订单</div>' +
@@ -1287,7 +1387,6 @@ var LUNA = (function() {
             '</div>' +
             '<div class="diana-nav-section">' +
               '<div class="diana-nav-section-title">管理</div>' +
-              '<a href="print-warehouse.html" class="diana-nav-item">花版仓库</a>' +
               '<a href="dashboard.html" class="diana-nav-item">工作台</a>' +
               '<a href="login-logs.html" class="diana-nav-item">登录记录</a>' +
               '<a href="change-password.html" class="diana-nav-item">修改密码</a>' +
@@ -1297,6 +1396,27 @@ var LUNA = (function() {
         '</div>';
 
       document.body.insertBefore(div, document.body.firstChild);
+
+      var currentPage = (window.location.pathname.split('/').pop() || 'guest-styles.html').split('?')[0];
+      if (navUser.role && navUser.role !== 'admin' && !canAccess(navUser, currentPage)) {
+        window.location.href = navUser.role === 'employee' ? employeeDefaultPage(navUser) : 'guest-styles.html';
+        return;
+      }
+      if (navUser.role !== 'admin') {
+        var alwaysAllowed = {'#': true};
+        div.querySelectorAll('a.diana-nav-item[href]').forEach(function(a) {
+          var href = a.getAttribute('href') || '';
+          var page = href.split('?')[0];
+          if (alwaysAllowed[page]) return;
+          if (!canAccess(navUser, page)) a.style.display = 'none';
+        });
+        div.querySelectorAll('.diana-nav-section').forEach(function(section) {
+          var visibleLinks = Array.prototype.slice.call(section.querySelectorAll('a.diana-nav-item')).filter(function(a) {
+            return a.style.display !== 'none';
+          });
+          if (!visibleLinks.length) section.style.display = 'none';
+        });
+      }
 
       // Hide old per-page headers
       var oldHeaders = document.querySelectorAll('.luna-header, .header, .header-inner');

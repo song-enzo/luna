@@ -50,6 +50,7 @@ a{text-decoration:none;color:inherit}
 /* Quick Actions Grid */
 .quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px}
 .quick-action{background:#fff;border:1px solid #e8e2d9;border-radius:10px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .25s;display:block}
+.quick-action[href="factory.html"],.quick-action[href="cutting_history.html"],.quick-action[href="people-manage.html"],.quick-action[href="print-warehouse.html"]{display:none}
 .quick-action:hover{box-shadow:0 4px 16px rgba(0,0,0,0.06);transform:translateY(-2px);border-color:#d4b87a}
 .qa-icon{width:48px;height:48px;border-radius:12px;background:#f5f1eb;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px;transition:all .25s}
 .quick-action:hover .qa-icon{background:#f0e6d2}
@@ -64,6 +65,9 @@ a{text-decoration:none;color:inherit}
 .order-id{font-size:12px;color:#b8965a;font-weight:600;letter-spacing:0.05em}
 .order-customer{font-size:13px;color:#3a3a3a;margin-top:2px}
 .order-meta{display:flex;gap:16px;font-size:12px;color:#b0a99e;margin-top:2px}
+.order-style-code{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;color:#b8965a;text-align:right;white-space:nowrap}
+.order-style-prefix{font-size:10px;font-weight:600;letter-spacing:.04em}
+.order-style-num{font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:700;letter-spacing:0}
 .order-amount{font-family:'Playfair Display',Georgia,serif;font-size:14px;font-weight:600;color:#b8965a;text-align:right}
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
 .badge-confirmed{background:#f0eee9;color:#7a756d}
@@ -109,6 +113,7 @@ a{text-decoration:none;color:inherit}
 .toggle.on .knob{left:18px}
 .style-msg{text-align:center;padding:30px;color:#aaa;font-size:13px}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 
@@ -171,6 +176,11 @@ a{text-decoration:none;color:inherit}
         <div class="qa-label">待拿货</div>
         <div class="qa-desc">车缝跟踪</div>
       </a>
+      <a class="quick-action" href="factory.html">
+        <div class="qa-icon">🏭</div>
+        <div class="qa-label">工厂页面</div>
+        <div class="qa-desc">车工订单详情</div>
+      </a>
       <a class="quick-action" href="javascript:void(0)" onclick="LUNA.showAlert('打成份纸功能即将开放')">
         <div class="qa-icon">🖨️</div>
         <div class="qa-label">打成份</div>
@@ -195,6 +205,11 @@ a{text-decoration:none;color:inherit}
         <div class="qa-icon">👤</div>
         <div class="qa-label">人员管理</div>
         <div class="qa-desc">客人·员工</div>
+      </a>
+      <a class="quick-action" href="print-warehouse.html">
+        <div class="qa-icon">🖼️</div>
+        <div class="qa-label">花版仓库</div>
+        <div class="qa-desc">印花大图·色卡图库</div>
       </a>
       <a class="quick-action" href="settings.html">
         <div class="qa-icon">⚙️</div>
@@ -225,7 +240,6 @@ a{text-decoration:none;color:inherit}
   </div>
   <div class="sm-section">
     <div class="sm-section-title">款式</div>
-    <a class="sm-link" href="fabric-warehouse.html">🧶 面料仓库</a>
     <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
     <a class="sm-link" href="add-style.html">➕ 添加款式</a>
   </div>
@@ -243,7 +257,7 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=27"></script>
 <script>LUNA.renderNav();</script>
 <script>
 var user;
@@ -325,7 +339,7 @@ if (!orders.length) {
     var code = o.items && o.items.length ? o.items[0].code : '';
     html += '<div class="order-card" onclick="window.location.href=\'order-detail.html?id='+o.id+'\'">' +
       '<div><div class="order-id">'+o.id+'</div><div class="order-customer">'+esc(o.customer)+(o.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(o.sub_customer)+')</span>':'')+'</div><div class="order-meta"><span>📅 '+o.date+'</span><span>📦 '+o.total_qty+'件</span></div></div>' +
-      '<div style="text-align:right"><div class="order-amount">ART-'+code+'</div><span class="badge badge-'+(LUNA.getOrderStatus(o))+'">'+(statusName[LUNA.getOrderStatus(o)]||LUNA.getOrderStatus(o))+'</span></div></div>';
+      '<div style="text-align:right"><div class="order-style-code"><span class="order-style-prefix">ART</span><span class="order-style-num">'+esc(code)+'</span></div><span class="badge badge-'+(LUNA.getOrderStatus(o))+'">'+(statusName[LUNA.getOrderStatus(o)]||LUNA.getOrderStatus(o))+'</span></div></div>';
   });
   container.innerHTML = html;
 }
@@ -364,7 +378,7 @@ window.addEventListener('luna-data-changed', function() {
       var code = o.items && o.items.length ? o.items[0].code : '';
       html += '<div class="order-card" onclick="window.location.href=\'order-detail.html?id='+o.id+'\'">' +
         '<div><div class="order-id">'+o.id+'</div><div class="order-customer">'+esc(o.customer)+(o.sub_customer?' <span style="color:#999;font-size:11px">(二级: '+esc(o.sub_customer)+')</span>':'')+'</div><div class="order-meta"><span>📅 '+o.date+'</span><span>📦 '+o.total_qty+'件</span></div></div>' +
-        '<div style="text-align:right"><div class="order-amount">ART-'+code+'</div><span class="badge badge-'+(LUNA.getOrderStatus(o))+'\">'+(statusName[LUNA.getOrderStatus(o)]||LUNA.getOrderStatus(o))+'</span></div></div>';
+        '<div style="text-align:right"><div class="order-style-code"><span class="order-style-prefix">ART</span><span class="order-style-num">'+esc(code)+'</span></div><span class="badge badge-'+(LUNA.getOrderStatus(o))+'\">'+(statusName[LUNA.getOrderStatus(o)]||LUNA.getOrderStatus(o))+'</span></div></div>';
     });
     container.innerHTML = html;
   }

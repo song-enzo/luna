@@ -268,6 +268,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .color-lightbox .cl-img{max-width:100%;max-height:80vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.4);object-fit:contain}
 .color-lightbox .cl-name{color:#fff;text-align:center;margin-top:14px;font-size:15px;font-weight:500;letter-spacing:.5px;opacity:.85}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
@@ -972,6 +973,14 @@ function renderGuestDropdowns() {
   var guests = [];
   try { guests = LUNA.getGuests(); } catch(e) {}
   var sel = document.getElementById('guestSelect');
+  var u = LUNA.getUser && LUNA.getUser();
+  if (u && u.role === 'guest') {
+    var selfName = u.name || u.username || '';
+    sel.innerHTML = '<option value="'+escJs(selfName)+'">'+esc(selfName)+'</option>';
+    sel.value = selfName;
+    sel.style.display = 'none';
+    return;
+  }
   var html = '<option value="">— 选择客人 —</option>';
   guests.forEach(function(g) {
     var n = g.name || g.username || '';
@@ -995,6 +1004,8 @@ document.getElementById('submitOrderBtn').addEventListener('click', function() {
     // 选择客人（支持一级或二级）
     var sel = document.getElementById('guestSelect');
     var customerName = sel.value;
+    var currentUser = LUNA.getUser && LUNA.getUser();
+    if (!customerName && currentUser && currentUser.role === 'guest') customerName = currentUser.name || currentUser.username || '';
     if (!customerName) { showToast('请选择客人'); sel.focus(); return; }
     // 判断选中客人是一级还是二级
     var guests = []; try { guests = LUNA.getGuests(); } catch(e) {}
@@ -1024,7 +1035,7 @@ document.getElementById('submitOrderBtn').addEventListener('click', function() {
     showToast('❤️ 非常感谢！编号: '+ids);
     toggleCart();
     setTimeout(function() {
-      window.location.href = 'marker.html';
+      window.location.href = 'my-orders.html';
     }, 1200);
   } catch(e) {
     console.error('Submit error:', e);

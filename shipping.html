@@ -62,6 +62,10 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit
 .matrix-color{font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .matrix-dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.08);flex-shrink:0}
 .matrix-qty{font-weight:700;font-size:14px;color:var(--text)}
+.print-swatches{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.print-chip{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:var(--text)}
+.print-chip img{width:34px;height:44px;object-fit:contain;border-radius:4px;background:#f7f6f3;border:1px solid #eee}
+.print-chip b{color:var(--gold);font-size:12px}
 .progress-section{padding:8px 12px;background:#faf9f6;border:1px solid var(--border);border-radius:5px;margin-bottom:12px}
 .progress-header{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted);margin-bottom:6px}
 .progress-bar-bg{height:6px;background:#eee;border-radius:3px;overflow:hidden}
@@ -94,6 +98,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:var(--text);-webkit
 .progress-fallback{font-size:11px;color:#bbb;margin-bottom:12px;padding:6px 0}
 .detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:5000;overflow-y:auto}.detail-box{background:#fff;max-width:700px;margin:40px auto;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.2)}.detail-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--cream);border-bottom:1px solid var(--border)}.detail-header h3{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--text)}.detail-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);padding:0 4px}.detail-close:hover{color:var(--text)}.detail-body{padding:20px}.detail-section{margin-bottom:20px}.detail-section h4{font-size:12px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}.detail-row{display:flex;padding:4px 0;font-size:13px}.detail-label{color:var(--text-muted);min-width:80px;flex-shrink:0}.detail-value{color:var(--text);font-weight:500}.detail-table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}.detail-table thead th{background:var(--cream);padding:6px 8px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;border-bottom:1px solid var(--border)}.detail-table tbody td{padding:6px 8px;border-bottom:1px solid var(--border)}.detail-table tbody td:last-child{text-align:right}@media(max-width:640px){.ship-table{font-size:11px}.ship-table .recv-input{width:60px}}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
@@ -185,6 +190,8 @@ function renderOrders(orders) {
 }
 
 function getColorStyle(fabricName, colorName) {
+  var printImg = findPrintVisual(colorName);
+  if (printImg) return 'background-image:url(' + esc(printImg) + ');background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f7f6f3';
   var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
   for (var fi = 0; fi < allFabrics.length; fi++) {
     if (allFabrics[fi].name === fabricName) {
@@ -212,6 +219,67 @@ function getColorStyle(fabricName, colorName) {
   return 'background:hsl(' + (Math.abs(hash) % 360) + ',50%,70%)';
 }
 
+function findPrintVisual(colorName) {
+  var needle = String(colorName || '').trim().toLowerCase();
+  var orders = LUNA.getOrders ? LUNA.getOrders() : [];
+  for (var oi = 0; oi < orders.length; oi++) {
+    var items = orders[oi].items || [];
+    for (var ii = 0; ii < items.length; ii++) {
+      var item = items[ii];
+      if (!item.stampa_img_url) continue;
+      var names = [item.color, item.stampa_code, item.sku_code, item.name].map(function(v) {
+        return String(v || '').trim().toLowerCase();
+      }).filter(Boolean);
+      for (var ni = 0; ni < names.length; ni++) {
+        if (names[ni] === needle || (needle && names[ni].indexOf(needle) >= 0) || (needle && needle.indexOf(names[ni]) >= 0)) return item.stampa_img_url;
+      }
+    }
+  }
+  return '';
+}
+
+function getOrderItemFabric(item) {
+  var f = (item && item.fabric ? item.fabric : '').trim();
+  if (f) return f;
+  var style = (item && item.code && LUNA.findStyle) ? LUNA.findStyle(item.code) : null;
+  var fabrics = (style && style.fabrics) || [];
+  if (fabrics.length) {
+    var first = fabrics[0];
+    return (typeof first === 'string' ? first : (first.name || '')) || '默认面料';
+  }
+  return '默认面料';
+}
+
+function isPrintItem(item) {
+  return !!(item && (item.stampa_img_url || item.item_type === 'stampa'));
+}
+
+function itemTotal(item) {
+  var total = 0, qty = item.qty || {};
+  Object.keys(qty).forEach(function(k) { total += Number(qty[k] || 0); });
+  return total;
+}
+
+function renderPrintSwatches(order) {
+  var prints = (order.items || []).filter(isPrintItem);
+  if (!prints.length) return '';
+  return '<div class="print-swatches">' + prints.map(function(item) {
+    var label = item.stampa_code || item.color || '印花色卡';
+    var img = item.stampa_img_url || '';
+    return '<div class="print-chip" onclick="openPrintSwatch(\'' + escJs(img) + '\',\'' + escJs(label) + '\')" title="点击放大">' +
+      '<img src="' + esc(img) + '" alt="">' +
+      '<span>' + esc(label) + '</span><b>' + itemTotal(item) + '件</b></div>';
+  }).join('') + '</div>';
+}
+
+function openPrintSwatch(img, name) {
+  var el = document.getElementById('ceImg');
+  document.getElementById('ceName').textContent = name || '印花色卡';
+  el.style.backgroundImage = img ? 'url(' + esc(img) + ')' : 'none';
+  el.style.backgroundColor = '#f0ede8';
+  document.getElementById('colorEnlargeOverlay').classList.add('show');
+}
+
 function getColorCuttingTotals(order) {
   var totals = {};
   var fabrics = order.cutting_complete && order.cutting_complete.fabrics;
@@ -220,7 +288,7 @@ function getColorCuttingTotals(order) {
     var items = order.items || [];
     var fabric1 = '';
     if (items.length > 0) {
-      var ff = items[0].fabric || '';
+      var ff = getOrderItemFabric(items[0]);
       fabric1 = ff.split(',')[0].trim();
     }
     for (var fName in fabrics) {
@@ -281,7 +349,7 @@ function calcOrderProgress(order, factories) {
   var allFabrics = order.cutting_complete.fabrics || {};
   var items = order.items || [];
   var fabric1 = '';
-  if (items.length > 0) { var ff = items[0].fabric || ''; fabric1 = ff.split(',')[0].trim(); }
+  if (items.length > 0) { var ff = getOrderItemFabric(items[0]); fabric1 = ff.split(',')[0].trim(); }
   for (var fn in allFabrics) {
     if (fabric1 && fn !== fabric1 && fn !== '默认面料') continue;
     for (var cc in (allFabrics[fn].colors || {})) { totalCut += allFabrics[fn].colors[cc].total || 0; }
@@ -310,6 +378,8 @@ function formatEta(date) {
 }
 
 function getColorVisual(fabricName, colorName) {
+  var printImg = findPrintVisual(colorName);
+  if (printImg) return printImg;
   var allFabrics = LUNA.getFabrics ? LUNA.getFabrics() : [];
   for (var fi = 0; fi < allFabrics.length; fi++) {
     if (allFabrics[fi].name === fabricName) {
@@ -336,7 +406,11 @@ function getColorVisual(fabricName, colorName) {
 
 function openColorEnlarge(name, fabricName) {
   var visual = getColorVisual(fabricName, name);
-  var isImg = visual.indexOf('http')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+  var isImg = visual.indexOf('http')===0||visual.indexOf('/photos/')===0||visual.indexOf('photos/')===0||visual.indexOf('data:')===0;
+  if (isImg && LUNA.openImagePreview) {
+    LUNA.openImagePreview(visual, name + (fabricName ? ' · ' + fabricName : ''));
+    return;
+  }
   var el = document.getElementById('ceImg');
   var nameEl = document.getElementById('ceName');
   nameEl.textContent = name;
@@ -401,9 +475,9 @@ function renderCard(order, factories) {
   var totalCut = 0;
   if (order.cutting_complete) {
     var allFabrics = order.cutting_complete.fabrics || {};
-    var fabItems = order.items || [];
+    var fabItems = items;
     var f1 = '';
-    if (fabItems.length > 0) { var ff = fabItems[0].fabric || ''; f1 = ff.split(',')[0].trim(); }
+    if (fabItems.length > 0) { var ff = getOrderItemFabric(fabItems[0]); f1 = ff.split(',')[0].trim(); }
     for (var fn in allFabrics) {
       if (f1 && fn !== f1 && fn !== '默认面料') continue;
       for (var cc in (allFabrics[fn].colors || {})) { totalCut += allFabrics[fn].colors[cc].total || 0; }
@@ -431,7 +505,7 @@ function renderCard(order, factories) {
   var colorFabrics = {};
   items.forEach(function(item) {
     if (!colorFabrics[item.color]) {
-      var fab = item.fabric || '';
+      var fab = getOrderItemFabric(item);
       colorFabrics[item.color] = (item.item_type === 'contrast') ? (fab.split(/\s*,\s*/)[0] || fab) : fab;
     }
   });
@@ -627,7 +701,7 @@ function showOrderDetail(orderId) {
   if (items.length) {
     html += '<div class="detail-section"><h4>下单明细</h4>';
     items.forEach(function(item) {
-      var dispFabric = item.fabric || '';
+      var dispFabric = getOrderItemFabric(item);
       if (item.item_type === 'contrast') dispFabric = dispFabric.split(/\s*,\s*/)[0] || dispFabric;
       html += '<div style="font-size:13px;font-weight:600;color:var(--gold);margin:8px 0 4px">#' + esc(item.code || '') + ' ' + esc(item.name || '') + '</div>' +
         '<table class="detail-table"><thead><tr><th>颜色</th><th>面料</th><th>尺码</th><th>数量</th></tr></thead><tbody>';
@@ -652,7 +726,7 @@ function showOrderDetail(orderId) {
     var allFabrics = cutting.fabrics || {};
     var itemList = order.items || [];
     var fabric1 = '';
-    if (itemList.length > 0) { var ff = itemList[0].fabric || ''; fabric1 = ff.split(',')[0].trim(); }
+    if (itemList.length > 0) { var ff = getOrderItemFabric(itemList[0]); fabric1 = ff.split(',')[0].trim(); }
     var realTotal = 0;
     for (var fn in allFabrics) {
       if (fabric1 && fn !== fabric1 && fn !== '默认面料') continue;

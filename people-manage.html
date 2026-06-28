@@ -81,6 +81,7 @@ td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px
   table{min-width:800px}
 }
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
@@ -152,7 +153,11 @@ var PEOPLE = {
   },
   save: function(key, data) {
     localStorage.setItem(this.KEYS[key], JSON.stringify(data));
-    if (typeof LUNA !== 'undefined' && LUNA.syncAllToServer) LUNA.syncAllToServer();
+    if (typeof LUNA !== 'undefined') {
+      if (key === 'guests' && LUNA.saveGuests) { LUNA.saveGuests(data); return; }
+      if (key === 'employees' && LUNA.saveEmployees) { LUNA.saveEmployees(data); return; }
+      if (LUNA.syncAllToServer) LUNA.syncAllToServer();
+    }
   }
 };
 
@@ -169,8 +174,8 @@ var DEFAULTS = {
     {id:'g4',name:'Giuseppe Verdi',username:'giuseppe',password:'giuseppe123',phone:'+39 333 111 2222',enabled:true,parent_id:'g2',address:'Piazza Duomo 8, Milano',tax_id:'IT07890123456',shop_name:'Alta Moda Milano'}
   ],
   employees: [
-    {id:'e0',name:'Maria Chen',username:'maria',password:'maria123',phone:'+39 333 777 8888',enabled:true,role:'裁剪'},
-    {id:'e1',name:'Antonio Rossi',username:'antonio',password:'antonio123',phone:'+39 333 444 5555',enabled:true,role:'车缝'}
+    {id:'e0',name:'Maria Chen',username:'maria',password:'maria123',phone:'+39 333 777 8888',enabled:true,role:'裁剪员',factory:''},
+    {id:'e1',name:'Antonio Rossi',username:'antonio',password:'antonio123',phone:'+39 333 444 5555',enabled:true,role:'车工',factory:''}
   ]
 };
 
@@ -307,7 +312,8 @@ function delGS(idx) {
 function renderEmployees() {
   var data = PEOPLE.get('employees') || [];
   var enb = data.filter(function(e){ return e.enabled !== false; }).length;
-  var roles = ['裁剪','车缝','熨烫','质检','包装','管理','其他'];
+  var roles = ['裁剪员','发货员','排版师','车工'];
+  var factories = (typeof LUNA !== 'undefined' && LUNA.getFactories) ? (LUNA.getFactories() || []) : [];
 
   var html = '<div class="stat-bar">';
   html += '<span>👥 总人数 <strong>' + data.length + '</strong></span>';
@@ -315,10 +321,10 @@ function renderEmployees() {
   html += '</div>';
 
   html += '<div class="tbl-wrap"><table>';
-  html += '<tr><th style="min-width:90px">姓名</th><th style="min-width:100px">手机</th><th style="min-width:80px">账号</th><th style="width:70px">密码</th><th style="min-width:80px">岗位</th><th style="width:50px">在职</th><th style="width:70px">操作</th></tr>';
+  html += '<tr><th style="min-width:90px">姓名</th><th style="min-width:100px">手机</th><th style="min-width:80px">账号</th><th style="width:70px">密码</th><th style="min-width:80px">岗位</th><th style="min-width:90px">工厂</th><th style="width:50px">在职</th><th style="width:70px">操作</th></tr>';
 
   if (data.length === 0) {
-    html += '<tr><td colspan="7" style="text-align:center;padding:40px;color:#aaa">暂无员工，点击下方按钮添加</td></tr>';
+    html += '<tr><td colspan="8" style="text-align:center;padding:40px;color:#aaa">暂无员工，点击下方按钮添加</td></tr>';
   }
 
   data.forEach(function(e, i) {
@@ -330,6 +336,9 @@ function renderEmployees() {
     html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updE(' + i + ',\'password\',this.value)" style="font-size:11px"></td>';
     html += '<td><select onchange="updE(' + i + ',\'role\',this.value)">';
     roles.forEach(function(r){ html += '<option value="' + r + '"' + (e.role === r ? ' selected' : '') + '>' + r + '</option>'; });
+    html += '</select></td>';
+    html += '<td><select onchange="updE(' + i + ',\'factory\',this.value)"><option value="">未指定</option>';
+    factories.forEach(function(f){ var name = f.name || f.id || ''; html += '<option value="' + esc(name) + '"' + ((e.factory||'') === name ? ' selected' : '') + '>' + esc(name) + '</option>'; });
     html += '</select></td>';
     html += '<td><span class="toggle' + (en ? ' on' : '') + '" onclick="togE(' + i + ')"><span class="knob"></span></span></td>';
     html += '<td><button class="btn btn-danger" onclick="delE(' + i + ')">删除</button></td>';
@@ -353,7 +362,7 @@ function togE(idx) {
 }
 function addE() {
   var d = PEOPLE.get('employees');
-  d.push({id:genId(),name:'新员工',username:'emp'+Date.now(),password:'123456',phone:'',enabled:true,role:'车缝'});
+  d.push({id:genId(),name:'新员工',username:'emp'+Date.now(),password:'123456',phone:'',enabled:true,role:'车工',factory:''});
   PEOPLE.save('employees', d); renderEmployees();
 }
 function delE(idx) {
