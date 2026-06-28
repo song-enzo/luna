@@ -1,4 +1,4 @@
-﻿# Normalize to LF, no BOM
+# Normalize to LF, no BOM
 * text=auto eol=lf
 *.html text eol=lf
 *.js text eol=lf
