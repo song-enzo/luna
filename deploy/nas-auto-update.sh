@@ -65,6 +65,7 @@ restart_luna() {
   log "updating $old_head -> $new_head"
   git pull --ff-only origin "$BRANCH" >> "$LOG_DIR/auto-update.log" 2>&1
   protect_runtime_files
+  exec 9>&-
   restart_luna
   log "updated and restarted"
 ) 9>"$LOCK_FILE"
