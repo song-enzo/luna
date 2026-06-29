@@ -69,15 +69,16 @@ border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
 .side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
 .side-menu .sm-link.active{background:#f7f4ee;color:#1c1c1c;font-weight:500}
 /* Homepage */
-.home-hero{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:end;margin-bottom:18px}
+.home-hero{display:block;margin-bottom:14px}
+.home-hero>div:first-child{display:none}
 .home-kicker{font-size:11px;font-weight:700;color:#C8A56D;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
 .home-title{font-family:'Playfair Display',Georgia,serif;font-size:32px;line-height:1.1;color:#1C1C1C;margin-bottom:6px}
 .home-sub{font-size:13px;color:#8d877e;max-width:560px}
-.home-search{background:#fff;border:1px solid #EBE8E3;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(30,25,18,.035)}
+.home-search{background:#fff;border:1px solid #EBE8E3;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(30,25,18,.035);max-width:420px}
 .home-search span{color:#C8A56D;font-size:15px}
 .home-search input{border:none;outline:none;width:100%;font-family:inherit;font-size:13px;color:#1C1C1C;background:transparent}
 .home-search input::placeholder{color:#B5A58A}
-.filter-bar{position:sticky;top:48px;z-index:5;background:rgba(247,246,243,.94);backdrop-filter:blur(10px);padding:8px 0 12px;margin-bottom:14px}
+.filter-bar{position:static;background:#F7F6F3;padding:0 0 12px;margin-bottom:14px}
 .cat-pills{display:flex;gap:7px;overflow-x:auto;padding:0 0 3px;scrollbar-width:none}
 .cat-pills::-webkit-scrollbar{display:none}
 .cat-pill{white-space:nowrap;padding:6px 14px;border:1px solid #e0dcd5;border-radius:999px;font-size:12px;color:#756f67;cursor:pointer;transition:all .15s;background:#fff;font-family:inherit}
@@ -110,23 +111,24 @@ width: 100%; height: 100%; object-fit: contain;
 transition: transform .4s;
 }
 .card:hover .img-wrap img { transform: scale(1.04); }
-.card .info { padding: 11px 12px 12px; min-height:82px; display:flex; flex-direction:column; }
+.card .info { padding: 11px 12px 12px; min-height:48px; display:flex; flex-direction:column; }
+.card .info .top-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .card .info .code {
 font-family: 'Inter', sans-serif;
 font-size: 13px; color: #1C1C1C; font-weight: 600;
-letter-spacing: 0.3px; margin-bottom: 2px;
+letter-spacing: 0.3px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .card .info .name {
 font-size: 11px; color: #888; margin-bottom: 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.card .info .meta-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.card .info .meta-row{display:none}
 .card .info .category{font-size:10px;color:#A69B8E;background:#F7F4EE;border-radius:999px;padding:2px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96px}
 .card .info .price {
 font-size: 14px; color: #C8A56D; font-weight: 700; white-space:nowrap;
 }
 .card .info .tag {
-position:absolute;top:8px;left:8px;display:inline-block;font-size:10px;padding:3px 7px;border-radius:999px;
-background:rgba(255,255,255,.9);color:#9B6C4A;border:1px solid rgba(200,165,109,.28);
+position:absolute;top:8px;left:8px;display:flex;align-items:center;justify-content:center;font-size:16px;width:30px;height:30px;border-radius:999px;
+background:rgba(255,255,255,.92);color:#9B6C4A;border:1px solid rgba(200,165,109,.28);box-shadow:0 3px 10px rgba(0,0,0,.08);
 }
 .card{position:relative}
 /* FOOTER */
@@ -139,9 +141,9 @@ font-size: 11px; color: #B5A58A;
 .page{padding:16px 14px 50px}
 .home-hero{grid-template-columns:1fr;gap:12px;margin-bottom:10px}
 .home-title{font-size:26px}
-.filter-bar{top:48px;margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+.filter-bar{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
 .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.card .info{padding:9px 9px 10px;min-height:76px}
+.card .info{padding:9px 9px 10px;min-height:44px}
 .card .info .category{max-width:74px}
 }
 /* New arrivals horizontal scroll */
@@ -151,14 +153,16 @@ font-size: 11px; color: #B5A58A;
 .scroll-row::-webkit-scrollbar{height:3px}
 .scroll-row::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
 .scroll-row::-webkit-scrollbar-track{background:transparent}
-.scroll-card{flex:0 0 150px;scroll-snap-align:start;background:#fff;border:1px solid #EBE8E3;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s}
+.scroll-card{flex:0 0 150px;scroll-snap-align:start;background:#fff;border:1px solid #EBE8E3;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s;position:relative}
 .scroll-card:hover{box-shadow:0 5px 16px rgba(0,0,0,.07);transform:translateY(-1px)}
 .scroll-card .s-img{width:100%;aspect-ratio:4/5;background:#F2F0EC;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .scroll-card .s-img img{width:100%;height:100%;object-fit:contain}
 .scroll-card .s-info{padding:8px 9px 9px}
-.scroll-card .s-info .s-code{font-size:11px;font-weight:600;color:#1C1C1C}
+.scroll-card .s-info .s-top-line{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.scroll-card .s-info .s-code{font-size:11px;font-weight:600;color:#1C1C1C;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scroll-card .s-info .s-name{font-size:10px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:700;margin-top:3px}
+.scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:700;white-space:nowrap}
+.scroll-card .s-tag{position:absolute;top:7px;left:7px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(200,165,109,.28);box-shadow:0 3px 10px rgba(0,0,0,.08);font-size:15px}
 </style>
 <script src="luna-data.js?v=26"></script>
 <style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
@@ -326,21 +330,17 @@ container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60
 return;
 }
 container.innerHTML = styles.map(function(s) {
-  var tag = (s.type === 'print') ? '<span class="tag">🌸 印花</span>' : '';
+  var tag = (s.type === 'print') ? '<span class="tag">🌸</span>' : '';
   var imgHtml = getStyleImageHtml(s);
   var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
-  var name = displayStyleName(s);
   return '<div class="card" onclick="window.location.href=\'' + page + '?code=' + s.code + '\'">' +
   '<div class="img-wrap">' + imgHtml + '</div>' +
   tag +
   '<div class="info">' +
-  '<div class="code">ART-' + s.code + '</div>' +
-  '<div class="name">' + esc(name) + '</div>' +
-  '<div class="meta-row"><span class="category">' + esc(s.category || '未分类') + '</span><span class="price">€' + (s.suggestedPrice || '0.00') + '</span></div>' +
+  '<div class="top-line"><span class="code">ART-' + s.code + '</span><span class="price">€' + (s.suggestedPrice || '0.00') + '</span></div>' +
   '</div></div>';
 }).join('');
 }
-// 按分类筛选
 // render new arrivals (horizontal scroll)
 function renderNewArrivals() {
   var row = document.getElementById("newArrivalsRow");
@@ -349,16 +349,15 @@ function renderNewArrivals() {
   var newStyles = sortedByNewest(allStyles).slice(0, 10);
   if (!newStyles.length) { section.style.display = "none"; return; }
   section.style.display = "";
-  document.getElementById("newBadge").textContent = newStyles.length+"款";
+  document.getElementById("newBadge").textContent = newStyles.length + "款";
   row.innerHTML = newStyles.map(function(s) {
     var img = getStyleImageHtml(s);
-    var name = displayStyleName(s);
     var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
-    return '<div class="scroll-card" onclick="window.location.href=\'' + page + '?code='+s.code+'\'">' +
-      '<div class="s-img">'+img+'</div>' +
-      '<div class="s-info"><div class="s-code">ART-'+s.code+'</div>' +
-      '<div class="s-name">'+esc(name)+'</div>' +
-      '<div class="s-price">€'+(s.suggestedPrice||'0.00')+'</div></div></div>';
+    var tag = (s.type === 'print') ? '<span class="s-tag">🌸</span>' : '';
+    return '<div class="scroll-card" onclick="window.location.href=\'' + page + '?code=' + s.code + '\'">' +
+      '<div class="s-img">' + img + '</div>' + tag +
+      '<div class="s-info"><div class="s-top-line"><span class="s-code">ART-' + s.code + '</span>' +
+      '<span class="s-price">€' + (s.suggestedPrice || '0.00') + '</span></div></div></div>';
   }).join("");
 }
 function applyInitialView() {
