@@ -10,6 +10,7 @@ function Is-SafePath {
 
     $normalized = $Path -replace '\\', '/'
 
+    if ($normalized -match '^/[0-7]{3}') { return $false }
     if ($normalized -match '^photos/') { return $false }
     if ($normalized -match '^backups/') { return $false }
     if ($normalized -match '^\.service-logs/') { return $false }
