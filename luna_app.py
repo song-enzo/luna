@@ -1754,7 +1754,7 @@ def api_fabric_update_color():
 
 @app.route('/api/order/quick-add-color', methods=['POST'])
 def api_order_quick_add_color():
-    """Quick-add a color from the order page: save image, update style_images, insert fabric_colors"""
+    """Quick-add a color from the order page: save image and insert/update fabric_colors."""
     data = request.get_json(silent=True) or {}
     style_code = data.get('style_code', '')
     color_name = data.get('color_name', '').strip()
@@ -1779,24 +1779,12 @@ def api_order_quick_add_color():
         except Exception as e:
             print('Error saving quick-add image:', e)
 
-    # 2. Insert into style_images
-    if file_path:
-        max_order_res = db.execute(
-            "SELECT COALESCE(MAX(sort_order), -1) FROM style_images WHERE style_code=?",
-            (style_code,)
-        ).fetchone()
-        max_order = max_order_res[0] if max_order_res else -1
-        db.execute(
-            "INSERT INTO style_images (style_code, file_path, sort_order) VALUES (?,?,?)",
-            (style_code, file_path, max_order + 1)
-        )
-
-    # 3. Extract anchor data
+    # 2. Extract anchor data
     anchor_x = data.get('anchor_x', 0)
     anchor_y = data.get('anchor_y', 0)
     has_anchor = bool(data.get('has_anchor'))
 
-    # 4. Determine target fabric(s)
+    # 3. Determine target fabric(s)
     target_fabric_id = data.get('fabric_id')
     fabric_ids = []
     if target_fabric_id:

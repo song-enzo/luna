@@ -6,6 +6,7 @@
 <title>LUNA ATELIER · 印花下单</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:120px}
@@ -18,7 +19,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .pdp-wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
 .carousel-wrap{position:relative;margin:12px 0;border-radius:8px;overflow:hidden;background:#f0ede8}
 .carousel-wrap .swiper-slide{display:flex;align-items:center;justify-content:center;background:#f0ede8}
-.carousel-wrap .swiper-slide img{width:100%;height:auto;display:block}
+.carousel-wrap .swiper-slide img{width:100%;height:auto;display:block;cursor:zoom-in}
 .carousel-wrap .swiper-pagination{position:relative;bottom:auto!important;padding:8px 0 4px}
 .carousel-wrap .swiper-pagination-bullet{width:5px;height:5px;background:#ddd;opacity:1}
 .carousel-wrap .swiper-pagination-bullet-active{background:#C8A56D;width:14px;border-radius:3px}
@@ -253,6 +254,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 <div class="toast" id="toast"></div>
 <script src="luna-data.js?v=26"></script>
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
 <script>
 var style, styleCode, colorways=[], selectedSwatches={}, ALL_SIZES=['XS','S','M','L','XL','XXL','XXXL','UNICA'];
 var masterImageDataUrl='', masterImageUrl='', patternNo='', masterImg=null;
@@ -286,10 +288,38 @@ function renderCarousel(){
   var imgs=style.images||[];
   if(!imgs.length){track.innerHTML='<div class="swiper-slide"><div style="padding:60px 0;color:#d5d0c9;font-size:14px">暂无图片</div></div>';ct.textContent='';return}
   if(typeof Swiper==='undefined'){setTimeout(renderCarousel,200);return}
-  track.innerHTML=imgs.map(function(u){return '<div class="swiper-slide"><img src="'+esc(u)+'" loading="lazy"></div>'}).join('');
+  track.innerHTML=imgs.map(function(u,i){return '<div class="swiper-slide"><img src="'+esc(u)+'" loading="lazy" data-idx="'+i+'"></div>'}).join('');
   var wrap=document.getElementById('carouselWrap');
   if(wrap._swiper)wrap._swiper.destroy(true,true);
   wrap._swiper=new Swiper('#carouselSwiper',{loop:true,speed:400,grabCursor:true,slidesPerView:1,pagination:{el:'#carouselDots',clickable:true},navigation:{nextEl:'.swiper-button-next',prevEl:'.swiper-button-prev'},on:{init:function(){ct.textContent='1/'+imgs.length},slideChange:function(){ct.textContent=(this.realIndex+1)+'/'+imgs.length}}});
+  track.onclick=function(e){
+    var img=e.target.closest('.swiper-slide img');
+    if(!img)return;
+    var idx=parseInt(img.getAttribute('data-idx'),10)||0;
+    if(window.Fancybox){
+      var sources=imgs.map(function(u){return{src:u}});
+      Fancybox.show(sources,{
+        dragToClose:true,
+        Image:{zoom:true},
+        showClass:false,
+        hideClass:false,
+        closeButton:false,
+        startIndex:idx,
+        on:{
+          "Carousel.selectSlide":function(fb,carousel,slide){
+            var href=slide.src;
+            track.querySelectorAll('.swiper-slide img').forEach(function(el,i){
+              if(el.src===href||el.src.split('?')[0]===href.split('?')[0]){
+                if(wrap._swiper&&wrap._swiper.slideToLoop)wrap._swiper.slideToLoop(i,0);
+              }
+            });
+          }
+        }
+      });
+    }else{
+      openLightbox(imgs[idx]||img.getAttribute('src')||img.src,'ART-'+(style&&style.code?style.code:''));
+    }
+  };
 }
 function renderInfo(){document.getElementById('productInfo').innerHTML='<div class="product-code-line"><span class="product-code">#'+esc(style.code)+'</span><span class="product-price">&euro;'+(style.suggestedPrice||0).toFixed(2)+'</span></div><div class="product-name">'+esc(style.name||'')+'</div>';}
 

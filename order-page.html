@@ -513,24 +513,9 @@ function renderCarousel() {
   var track = document.getElementById('carouselTrack');
   var counter = document.getElementById('carouselCounter');
 
-  // Collect all images: style images + fabric 1 color images
+  // Keep the product carousel limited to style photos; fabric/color cards belong in the color picker below.
   var imgSet = {}, allImgs = [];
   if (style.images) style.images.forEach(function(u) { if (u && !imgSet[u]) { imgSet[u] = true; allImgs.push(u); } });
-  if (style.fabrics && style.fabrics.length) {
-    var allFabrics = LUNA.getFabrics();
-    var mainFab = style.fabrics[0];
-    if (mainFab) {
-      for (var fi = 0; fi < allFabrics.length; fi++) {
-        if (allFabrics[fi].name === mainFab.name || allFabrics[fi].id === mainFab.id) {
-          (allFabrics[fi].colors || []).forEach(function(c) {
-            var url = c.img || c.img_path || '';
-            if (url && !imgSet[url]) { imgSet[url] = true; allImgs.push(url); }
-          });
-          break;
-        }
-      }
-    }
-  }
 
   var total = allImgs.length;
   if (!total) {

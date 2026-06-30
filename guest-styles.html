@@ -237,7 +237,7 @@ font-size: 11px; color: #B5A58A;
 <div class="grid" id="stylesGrid"></div>
 </div>
 <footer class="footer">
-<p>LUNA ATELIER · Prato · Italia</p>
+<p><span id="footerBrandName">LUNA ATELIER</span> · Prato · Italia</p>
 </footer>
 <script>
 // 获取分类图标
@@ -252,6 +252,15 @@ function esc(s) {
   var d = document.createElement('div');
   d.textContent = s == null ? '' : String(s);
   return d.innerHTML;
+}
+function getBrandName() {
+  try { return localStorage.getItem('luna_brand_name') || 'LUNA ATELIER'; } catch(e) { return 'LUNA ATELIER'; }
+}
+function renderBrandName() {
+  var name = getBrandName();
+  document.querySelectorAll('.logo,.sm-logo,#footerBrandName,.home-kicker').forEach(function(el) {
+    if (el) el.textContent = name;
+  });
 }
 // 切换菜单
 function toggleMenu() {
@@ -422,6 +431,7 @@ document.getElementById('cartBadge').textContent = count;
 }
 // 初始化
 function initPage() {
+renderBrandName();
 try {
 var raw = localStorage.getItem('luna_styles_data');
 if (raw) {
