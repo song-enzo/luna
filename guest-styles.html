@@ -279,6 +279,7 @@ function sortedByNewest(styles) {
   });
 }
 function styleVisibleToCurrentUser(s) {
+  if (s.enabled === false || s.enabled === 0) return false;
   var user = LUNA.getUser && LUNA.getUser();
   if (!user || user.role === 'admin') return true;
   var visible = s.visibleGuests || [];

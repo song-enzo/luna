@@ -8,169 +8,130 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf8f5;color:#1a1a1a;padding-bottom:60px}
 a{text-decoration:none;color:inherit}
-/* Header */
-.header{background:#fff;border-bottom:1px solid #e8e2d9;padding:0 24px;height:56px;display:flex;align-items:center;position:sticky;top:0;z-index:100}
-.logo{font-family:'Playfair Display',Georgia,serif;font-size:18px;letter-spacing:4px;font-weight:600;color:#1a1a1a;text-transform:uppercase}
-.logo span{color:#b8965a}
-.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-.page-title{font-size:14px;font-weight:600;color:#1a1a1a;letter-spacing:.5px}
-.header-btn{padding:8px 16px;background:#b8965a;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;text-decoration:none}
-.header-btn:hover{background:#a07d45}
-/* Side Menu */
-.hamburger{font-size:22px;cursor:pointer;padding:4px 10px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
-.hamburger:hover{color:#1a1a1a}
-.side-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
-.side-overlay.active{display:block}
-.side-menu{position:fixed;top:0;left:0;bottom:0;width:270px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .2s ease;box-shadow:2px 0 12px rgba(0,0,0,.1);overflow-y:auto}
-.side-menu.open{transform:translateX(0)}
-.side-menu .sm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid #f0ede8}
-.side-menu .sm-header .sm-logo{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;letter-spacing:2px;color:#1a1a1a}
-.side-menu .sm-header .sm-close{font-size:18px;cursor:pointer;color:#999;background:none;border:none;font-family:inherit}
-.side-menu .sm-section{padding:8px 0;border-bottom:1px solid #f5f2ef}
-.side-menu .sm-section-title{font-size:9px;font-weight:600;color:#b5a58a;letter-spacing:1px;padding:0 16px 6px;text-transform:uppercase}
-.side-menu .sm-link{display:flex;align-items:center;gap:8px;padding:9px 16px;font-size:13px;color:#555;text-decoration:none;transition:all .1s}
-.side-menu .sm-link:hover{background:#faf9f6;color:#1a1a1a}
-.side-menu .sm-link.active{background:#f7f4ee;color:#1c1c1c;font-weight:500}
-.side-menu .sm-link.danger{color:#c44}
-.side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
-/* Container */
-.container{max-width:960px;margin:0 auto;padding:0 24px}
-/* Controls */
-.controls{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px;flex-wrap:wrap;gap:10px}
-.control-left{display:flex;align-items:center;gap:12px}
-.control-left h1{font-size:16px;font-weight:700;color:#1a1a1a}
-.count-badge{font-size:12px;color:#b0a99e;font-weight:400}
-/* Table */
-.table-wrap{background:#fff;border:1px solid #e8e2d9;border-radius:10px;overflow-x:auto}
-.proc-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px}
-.proc-table th{padding:10px 8px;text-align:left;font-weight:600;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #e8e5e0;background:#faf8f5;white-space:nowrap}
-.proc-table td{padding:10px 8px;border-bottom:1px solid #f0ede8}
+.page{max-width:980px;margin:0 auto;padding:20px 24px 48px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.title{display:flex;align-items:baseline;gap:8px}
+.title h1{font-size:18px;font-weight:700;color:#1a1a1a}
+.count-badge{font-size:12px;color:#9d958a;font-weight:400}
+.add-btn{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:6px;background:#b8965a;color:#fff;font-size:13px;font-weight:600}
+.add-btn:hover{background:#a07d45}
+.table-wrap{background:#fff;border:1px solid #e8e2d9;border-radius:8px;overflow:visible}
+.proc-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}
+.proc-table th{padding:10px 8px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.3px;color:#666;background:#faf8f5;border-bottom:2px solid #e8e5e0;white-space:nowrap}
+.proc-table td{padding:10px 8px;border-bottom:1px solid #f0ede8;vertical-align:middle}
+.proc-table tr:last-child td{border-bottom:none}
 .proc-table th:first-child,.proc-table td:first-child{padding-left:12px}
 .proc-table th:last-child,.proc-table td:last-child{padding-right:12px}
-.proc-table tr:last-child td{border-bottom:none}
-.proc-table tr:hover td{background:#faf8f5}
-.tag{font-size:10px;padding:2px 8px;border-radius:3px;display:inline-block}
-.tag.work{background:#f5edd8;color:#a08050}
-.tag.material{background:#e0e8f0;color:#507090}
-/* Toggle */
-.toggle{width:34px;height:18px;border-radius:9px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:all .15s}
-.toggle.on{background:#5a8f5a}
-.toggle .knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.toggle.on .knob{left:18px}
-.panel-msg{text-align:center;padding:60px 20px;color:#aaa;font-size:13px}
-.guest-select{position:relative;min-width:170px}
-.guest-select-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid #e8e2d9;border-radius:6px;background:#fff;color:#333;font-family:inherit;font-size:12px;cursor:pointer;text-align:left}
+.style-code{font-weight:700;color:#c9a96e;font-size:13px}
+.price{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.panel-msg{text-align:center;padding:56px 20px;color:#aaa;font-size:13px}
+.guest-select{position:relative;min-width:180px}
+.guest-select-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid #e8e2d9;border-radius:6px;background:#fff;color:#333;font-family:inherit;font-size:12px;cursor:pointer;text-align:left;touch-action:manipulation}
 .guest-select-btn:hover{border-color:#c9a96e}
-.guest-select-summary{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.guest-select-summary{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .guest-select-caret{color:#b8965a;font-size:10px;flex:0 0 auto}
-.guest-select-menu{display:none;position:absolute;left:0;top:calc(100% + 4px);width:240px;max-height:260px;overflow:auto;background:#fff;border:1px solid #e8e2d9;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.12);padding:6px;z-index:50}
+.guest-select-menu{display:none;position:absolute;left:0;top:calc(100% + 4px);width:260px;max-height:260px;overflow:auto;background:#fff;border:1px solid #e8e2d9;border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.12);padding:6px;z-index:100;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .guest-select.open .guest-select-menu{display:block}
-.guest-option{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:5px;font-size:12px;color:#333;cursor:pointer;line-height:1.3}
+.guest-option{display:flex;align-items:center;gap:8px;padding:8px;border-radius:5px;font-size:12px;color:#333;cursor:pointer;line-height:1.3;touch-action:manipulation;user-select:none}
 .guest-option:hover{background:#faf8f5}
-.guest-option input{width:14px;height:14px;accent-color:#b8965a;flex:0 0 auto}
+.guest-option input{width:16px;height:16px;accent-color:#b8965a;flex:0 0 auto;pointer-events:none}
 .guest-option.all{font-weight:600;color:#8a6a36;border-bottom:1px solid #f0ede8;margin-bottom:4px}
-/* Toast */
+.toggle{width:34px;height:18px;border:0;border-radius:9px;background:#ddd;cursor:pointer;position:relative;display:inline-block;transition:background .15s;vertical-align:middle}
+.toggle.on{background:#5a8f5a}
+.toggle::after{content:"";width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.toggle.on::after{left:18px}
+.edit-link{color:#c9a96e;font-size:12px;font-weight:600}
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1c1c1c;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
-@media(max-width:600px){
+@media(max-width:700px){
+  .page{padding:14px 10px 40px}
+  .toolbar{align-items:flex-start}
+  .title h1{font-size:16px}
+  .add-btn{height:32px;padding:0 12px;font-size:12px;white-space:nowrap}
+  .table-wrap{overflow:visible}
   .proc-table{font-size:12px}
-  .proc-table th,.proc-table td{padding:8px}
+  .proc-table th,.proc-table td{padding:8px 6px}
+  .proc-table th:nth-child(2),.proc-table td:nth-child(2){width:64px}
+  .proc-table th:nth-child(4),.proc-table td:nth-child(4){width:44px}
+  .proc-table th:nth-child(5),.proc-table td:nth-child(5){width:44px}
+  .guest-select{position:static;min-width:120px}
+  .guest-select-menu{position:fixed;left:12px;right:12px;top:auto;bottom:18px;width:auto;max-height:55vh;padding:8px;z-index:10000}
+  .guest-option{min-height:42px;font-size:13px}
+  .guest-option input{width:18px;height:18px}
 }
 </style>
 <style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
-
-<div class="header">
-  <button class="hamburger" onclick="toggleMenu()">☰</button>
-  <a href="dashboard.html" class="logo">LUNA <span>A</span></a>
-  <div class="header-right">
-    <span class="page-title">款式管理</span>
-    <a class="header-btn" href="add-style.html">+ 添加款式</a>
-  </div>
-</div>
-
-<!-- Side Menu -->
-<div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
-<div class="side-menu" id="sideMenu">
-  <div class="sm-header">
-    <span class="sm-logo">LUNA ATELIER</span>
-    <button class="sm-close" onclick="toggleMenu()">✕</button>
-  </div>
-  <div class="sm-section">
-    <div class="sm-section-title">款式</div>
-    <a class="sm-link active" href="style-manage.html">📋 款式管理</a>
-    <a class="sm-link" href="add-style.html">➕ 添加款式</a>
-    <a class="sm-link" href="guest-styles.html">👗 款式浏览</a>
-  </div>
-  <div class="sm-section">
-    <div class="sm-section-title">订单</div>
-    <a class="sm-link" href="orders.html">📋 订单管理</a>
-    <a class="sm-link" href="marker.html">📐 打唛架</a>
-    <a class="sm-link" href="cutting.html">✂️ 裁剪发料</a>
-    <a class="sm-link" href="ready-pickup.html">🏭 待拿货</a>
-    <a class="sm-link" href="shipping.html">📦 发货管理</a>
-  </div>
-  <div class="sm-section">
-    <div class="sm-section-title">管理</div>
-    <a class="sm-link" href="dashboard.html">🏠 工作台</a>
-    <a class="sm-link" href="people-manage.html">👤 人员管理</a>
-    <a class="sm-link" href="settings.html?tab=warehouse">🧶 面料仓库</a>
-    <a class="sm-link" href="change-password.html">🔑 修改密码</a>
-    <a class="sm-link" href="login-logs.html">🔍 登录记录</a>
-    <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
-  </div>
-</div>
-
-<div class="container">
-  <div class="controls">
-    <div class="control-left">
-      <h1>款式管理 <span class="count-badge" id="countBadge">(0)</span></h1>
-      <a class="header-btn" href="add-style.html" style="font-size:12px;padding:6px 12px">+ 添加款式</a>
+<main class="page">
+  <div class="toolbar">
+    <div class="title">
+      <h1>款式管理</h1>
+      <span class="count-badge" id="countBadge">(0)</span>
     </div>
+    <a class="add-btn" href="add-style.html">+ 添加款式</a>
   </div>
-  <div class="table-wrap" id="stylePanel"></div>
-</div>
-
+  <div class="table-wrap" id="stylePanel">
+    <div class="panel-msg">加载中...</div>
+  </div>
+</main>
 <div class="toast" id="toast"></div>
 
 <script src="luna-data.js?v=26"></script>
-<script>LUNA.renderNav();</script>
 <script>
-(function(){var u=LUNA.getUser();if(!u||u.role!=='admin'){window.location.href='index.html';return;}})();
-var SETTINGS = {
-  KEYS: { styleToggles: 'luna_settings_style_toggles' },
-  get: function(key) {
-    var raw = localStorage.getItem(this.KEYS[key]);
-    if (raw) { try { var d = JSON.parse(raw); return (Array.isArray(d) && d.length === 0) ? null : d; } catch(e) { return null; } }
-    return null;
-  },
-  save: function(key, data) {
-    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
-  }
-};
+LUNA.renderNav();
+(function(){
+  var u = LUNA.getUser();
+  if (!u || u.role !== 'admin') window.location.href = 'index.html';
+})();
+
 var _suppressNextStyleRender = false;
+var _saveTimers = {};
 
-function toggleMenu() {
-  document.getElementById('sideOverlay').classList.toggle('active');
-  document.getElementById('sideMenu').classList.toggle('open');
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
 }
 
-function logout() {
-  LUNA.clearUser();
-  window.location.href = 'index.html';
+function saveStyleAsync(style, successMessage) {
+  if (!style || !style.code) return;
+  if (LUNA._syncToLocalStorage) LUNA._syncToLocalStorage();
+
+  clearTimeout(_saveTimers[style.code]);
+  _saveTimers[style.code] = setTimeout(function() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/styles', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.withCredentials = true;
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (successMessage) showToast(successMessage);
+      } else {
+        showToast('保存失败，请重试');
+      }
+    };
+    xhr.onerror = function() {
+      showToast('保存失败，请重试');
+    };
+    xhr.send(JSON.stringify(style));
+  }, 80);
 }
 
-function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-function guestValue(g) { return String(g.id || g.username || g.name || ''); }
+function guestValue(g) {
+  return String(g.id || g.username || g.name || '');
+}
+
 function guestKeys(g) {
   return [g.id, g.username, g.name, g.shop_name].filter(Boolean).map(String);
 }
+
 function guestLabel(g) {
   var val = guestValue(g);
   return (g.shop_name ? g.shop_name + ' - ' : '') + (g.name || g.username || val);
 }
+
 function guestIsVisible(g, visible) {
   var keys = guestKeys(g);
   for (var i = 0; i < keys.length; i++) {
@@ -178,6 +139,7 @@ function guestIsVisible(g, visible) {
   }
   return false;
 }
+
 function selectedGuestValues(visible, guests) {
   var values = [];
   guests.forEach(function(g) {
@@ -186,6 +148,7 @@ function selectedGuestValues(visible, guests) {
   });
   return values;
 }
+
 function visibleGuestSummary(visible, guests) {
   if (!visible.length) return '全部客人';
   var labels = [];
@@ -196,110 +159,125 @@ function visibleGuestSummary(visible, guests) {
   return labels.length <= 2 ? labels.join('、') : labels.slice(0, 2).join('、') + ' +' + (labels.length - 2);
 }
 
-function showToast(msg) {
-  var t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); }, 2500);
-}
-
-function renderStylesLegacy() {
-  var styles = [];
-  try { styles = LUNA.getStyles(); } catch(e) {}
-  var guests = [];
-  try { guests = LUNA.getGuests ? (LUNA.getGuests() || []) : []; } catch(e) {}
-  var toggles = SETTINGS.get('styleToggles') || {};
-  document.getElementById('countBadge').textContent = '(' + styles.length + ')';
-  var html = '';
-  if (styles.length === 0) {
-    html = '<div class="panel-msg">暂无款式，请先添加款式</div>';
-    document.getElementById('stylePanel').innerHTML = html;
-    return;
-  }
-  html += '<table class="proc-table">';
-  html += '<tr><th>编号</th><th style="width:70px;text-align:right">价格</th><th style="min-width:150px">可见客人</th><th style="text-align:center;width:44px">启用</th><th style="width:44px">操作</th></tr>';
-  styles.forEach(function(s) {
-    var code = s.code;
-    var isOn = toggles[code] !== false;
-    var visible = (s.visibleGuests || []).map(String);
-    var selectedValues = selectedGuestValues(visible, guests);
-    html += '<tr>';
-    html += '<td><strong style="color:#c9a96e;font-size:13px">' + esc(code) + '</strong></td>';
-    html += '<td style="text-align:right">€' + ((s.suggestedPrice||0).toFixed(2)) + '</td>';
-    html += '<td><select multiple size="3" onchange="updateVisibleGuests(\'' + esc(code) + '\',this)" style="min-width:140px;font-size:11px"><option value=""' + (visible.length ? '' : ' selected') + '>全部客人</option>';
-    guests.forEach(function(g) {
-      var val = String(g.id || g.username || g.name || '');
-      var label = (g.shop_name ? g.shop_name + ' · ' : '') + (g.name || g.username || val);
-      html += '<option value="' + esc(val) + '"' + (visible.indexOf(val) !== -1 ? ' selected' : '') + '>' + esc(label) + '</option>';
-    });
-    html += '</select></td>';
-    html += '<td style="text-align:center"><span class="toggle' + (isOn ? ' on' : '') + '" onclick="toggleStyle(\'' + code + '\')"><span class="knob"></span></span></td>';
-    html += '<td><a href="add-style.html?code=' + code + '" style="color:#c9a96e;font-size:11px;text-decoration:none">编辑</a></td>';
-    html += '</tr>';
-  });
-  html += '</table>';
-  document.getElementById('stylePanel').innerHTML = html;
-}
-
-function updateVisibleGuests(code, sel) {
-  var styles = LUNA.getStyles();
-  var selected = [];
-  for (var i = 0; i < sel.options.length; i++) {
-    var opt = sel.options[i];
-    if (opt.selected && opt.value) selected.push(opt.value);
-  }
-  for (var j = 0; j < styles.length; j++) {
-    if (styles[j].code === code) {
-      styles[j].visibleGuests = selected;
-      LUNA.saveStyles(styles);
-      showToast(selected.length ? '已限制可见客人' : '已设为全部客人可见');
-      break;
-    }
-  }
+function el(tag, className, text) {
+  var node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
 
 function renderStyles() {
   var styles = [];
-  try { styles = LUNA.getStyles(); } catch(e) {}
   var guests = [];
+  try { styles = LUNA.getStyles() || []; } catch(e) {}
   try { guests = LUNA.getGuests ? (LUNA.getGuests() || []) : []; } catch(e) {}
-  var toggles = SETTINGS.get('styleToggles') || {};
+
   document.getElementById('countBadge').textContent = '(' + styles.length + ')';
-  var html = '';
-  if (styles.length === 0) {
-    document.getElementById('stylePanel').innerHTML = '<div class="panel-msg">No styles yet</div>';
+  var panel = document.getElementById('stylePanel');
+  panel.innerHTML = '';
+
+  if (!styles.length) {
+    panel.appendChild(el('div', 'panel-msg', '暂无款式，请先添加款式'));
     return;
   }
-  html += '<table class="proc-table">';
-  html += '<tr><th>编号</th><th style="width:70px;text-align:right">价格</th><th style="min-width:180px">可见客人</th><th style="text-align:center;width:44px">启用</th><th style="width:44px">操作</th></tr>';
-  styles.forEach(function(s) {
-    var code = s.code;
-    var isOn = toggles[code] !== false;
-    var visible = (s.visibleGuests || []).map(String);
-    var selectedValues = selectedGuestValues(visible, guests);
-    html += '<tr>';
-    html += '<td><strong style="color:#c9a96e;font-size:13px">' + esc(code) + '</strong></td>';
-    html += '<td style="text-align:right">EUR ' + ((s.suggestedPrice || 0).toFixed(2)) + '</td>';
-    html += '<td><div class="guest-select" data-code="' + escAttr(code) + '">';
-    html += '<button type="button" class="guest-select-btn" onclick="toggleGuestDropdown(this,event)"><span class="guest-select-summary">' + esc(visibleGuestSummary(selectedValues, guests)) + '</span><span class="guest-select-caret">v</span></button>';
-    html += '<div class="guest-select-menu" onclick="event.stopPropagation()">';
-    html += '<label class="guest-option all"><input type="checkbox" onchange="setAllVisibleGuests(this,event)"' + (selectedValues.length ? '' : ' checked') + '>全部客人</label>';
-    guests.forEach(function(g) {
-      var val = guestValue(g);
-      if (!val) return;
-      html += '<label class="guest-option"><input type="checkbox" data-value="' + escAttr(val) + '" onchange="updateVisibleGuestChoice(this,event)"' + (selectedValues.indexOf(val) !== -1 ? ' checked' : '') + '>' + esc(guestLabel(g)) + '</label>';
-    });
-    html += '</div></div></td>';
-    html += '<td style="text-align:center"><span class="toggle' + (isOn ? ' on' : '') + '" onclick="toggleStyle(\'' + escAttr(code) + '\')"><span class="knob"></span></span></td>';
-    html += '<td><a href="add-style.html?code=' + encodeURIComponent(code) + '" style="color:#c9a96e;font-size:11px;text-decoration:none">编辑</a></td>';
-    html += '</tr>';
+
+  var table = el('table', 'proc-table');
+  var thead = document.createElement('thead');
+  var headRow = document.createElement('tr');
+  ['编号', '价格', '可见客人', '启用', '操作'].forEach(function(text, idx) {
+    var th = document.createElement('th');
+    th.textContent = text;
+    if (idx === 1) th.style.textAlign = 'right';
+    if (idx === 3) th.style.textAlign = 'center';
+    headRow.appendChild(th);
   });
-  html += '</table>';
-  document.getElementById('stylePanel').innerHTML = html;
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  styles.forEach(function(style) {
+    var code = String(style.code || '');
+    var visible = (style.visibleGuests || []).map(String);
+    var selectedValues = selectedGuestValues(visible, guests);
+    var isOn = style.enabled !== false && style.enabled !== 0;
+
+    var tr = document.createElement('tr');
+    var codeCell = document.createElement('td');
+    codeCell.appendChild(el('span', 'style-code', code));
+    tr.appendChild(codeCell);
+
+    var priceCell = el('td', 'price', 'EUR ' + Number(style.suggestedPrice || 0).toFixed(2));
+    tr.appendChild(priceCell);
+
+    var guestsCell = document.createElement('td');
+    guestsCell.appendChild(buildGuestSelect(code, selectedValues, guests));
+    tr.appendChild(guestsCell);
+
+    var enabledCell = document.createElement('td');
+    enabledCell.style.textAlign = 'center';
+    var toggle = el('button', 'toggle' + (isOn ? ' on' : ''));
+    toggle.type = 'button';
+    toggle.setAttribute('aria-label', isOn ? '关闭客人可见' : '启用客人可见');
+    toggle.onclick = function(event) {
+      event.stopPropagation();
+      toggleStyle(code);
+    };
+    enabledCell.appendChild(toggle);
+    tr.appendChild(enabledCell);
+
+    var editCell = document.createElement('td');
+    var edit = el('a', 'edit-link', '编辑');
+    edit.href = 'add-style.html?code=' + encodeURIComponent(code);
+    editCell.appendChild(edit);
+    tr.appendChild(editCell);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  panel.appendChild(table);
+}
+
+function buildGuestSelect(code, selectedValues, guests) {
+  var wrap = el('div', 'guest-select');
+  wrap.setAttribute('data-code', code);
+
+  var btn = el('button', 'guest-select-btn');
+  btn.type = 'button';
+  btn.onclick = function(event) { toggleGuestDropdown(btn, event); };
+  btn.appendChild(el('span', 'guest-select-summary', visibleGuestSummary(selectedValues, guests)));
+  btn.appendChild(el('span', 'guest-select-caret', 'v'));
+  wrap.appendChild(btn);
+
+  var menu = el('div', 'guest-select-menu');
+  menu.onclick = function(event) { event.stopPropagation(); };
+  menu.ontouchstart = function(event) { event.stopPropagation(); };
+  menu.appendChild(buildGuestOption('全部客人', '', !selectedValues.length, true));
+
+  guests.forEach(function(g) {
+    var val = guestValue(g);
+    if (!val) return;
+    menu.appendChild(buildGuestOption(guestLabel(g), val, !selectedValues.length || selectedValues.indexOf(val) !== -1, false));
+  });
+  wrap.appendChild(menu);
+  return wrap;
+}
+
+function buildGuestOption(labelText, value, checked, isAll) {
+  var label = el('label', 'guest-option' + (isAll ? ' all' : ''));
+  var input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = checked;
+  if (value) input.setAttribute('data-value', value);
+  label.appendChild(input);
+  label.appendChild(document.createTextNode(labelText));
+  label.onclick = function(event) {
+    if (isAll) setAllVisibleGuests(label, event);
+    else updateVisibleGuestChoice(label, event);
+  };
+  return label;
 }
 
 function toggleGuestDropdown(btn, event) {
-  event.stopPropagation();
+  if (event) event.stopPropagation();
   var wrap = btn.closest('.guest-select');
   var isOpen = wrap.classList.contains('open');
   closeGuestDropdowns();
@@ -307,29 +285,29 @@ function toggleGuestDropdown(btn, event) {
 }
 
 function closeGuestDropdowns() {
-  var open = document.querySelectorAll('.guest-select.open');
-  for (var i = 0; i < open.length; i++) open[i].classList.remove('open');
+  document.querySelectorAll('.guest-select.open').forEach(function(open) {
+    open.classList.remove('open');
+  });
 }
 
 function currentGuestSelection(wrap) {
   var selected = [];
-  var inputs = wrap.querySelectorAll('.guest-option input[data-value]');
-  for (var i = 0; i < inputs.length; i++) {
-    if (inputs[i].checked) selected.push(inputs[i].getAttribute('data-value'));
-  }
+  wrap.querySelectorAll('.guest-option input[data-value]').forEach(function(input) {
+    if (input.checked) selected.push(input.getAttribute('data-value'));
+  });
   return selected;
 }
 
 function syncGuestSelect(wrap, selected) {
   var guests = [];
   try { guests = LUNA.getGuests ? (LUNA.getGuests() || []) : []; } catch(e) {}
-  var all = wrap.querySelector('.guest-option.all input');
-  var inputs = wrap.querySelectorAll('.guest-option input[data-value]');
   var selectedMap = {};
   selected.forEach(function(v) { selectedMap[String(v)] = true; });
-  for (var i = 0; i < inputs.length; i++) {
-    inputs[i].checked = !!selectedMap[inputs[i].getAttribute('data-value')];
-  }
+
+  wrap.querySelectorAll('.guest-option input[data-value]').forEach(function(input) {
+    input.checked = selected.length === 0 || !!selectedMap[input.getAttribute('data-value')];
+  });
+  var all = wrap.querySelector('.guest-option.all input');
   if (all) all.checked = selected.length === 0;
   var summary = wrap.querySelector('.guest-select-summary');
   if (summary) summary.textContent = visibleGuestSummary(selected, guests);
@@ -337,37 +315,47 @@ function syncGuestSelect(wrap, selected) {
 
 function saveVisibleGuests(code, selected, wrap) {
   var styles = LUNA.getStyles();
-  for (var j = 0; j < styles.length; j++) {
-    if (styles[j].code === code) {
-      styles[j].visibleGuests = selected;
-      _suppressNextStyleRender = true;
-      LUNA.saveStyles(styles);
+  for (var i = 0; i < styles.length; i++) {
+    if (String(styles[i].code) === String(code)) {
+      styles[i].visibleGuests = selected;
       syncGuestSelect(wrap, selected);
-      showToast(selected.length ? '已限制可见客人' : '已设为全部客人可见');
+      saveStyleAsync(styles[i], selected.length ? '已限制可见客人' : '已设为全部客人可见');
       break;
     }
   }
 }
 
-function setAllVisibleGuests(input, event) {
-  event.stopPropagation();
-  var wrap = input.closest('.guest-select');
-  if (!input.checked) input.checked = true;
+function setAllVisibleGuests(option, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  var wrap = option.closest('.guest-select');
   saveVisibleGuests(wrap.getAttribute('data-code'), [], wrap);
 }
 
-function updateVisibleGuestChoice(input, event) {
-  event.stopPropagation();
-  var wrap = input.closest('.guest-select');
-  var all = wrap.querySelector('.guest-option.all input');
-  if (all) all.checked = false;
-  saveVisibleGuests(wrap.getAttribute('data-code'), currentGuestSelection(wrap), wrap);
+function updateVisibleGuestChoice(option, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  var wrap = option.closest('.guest-select');
+  var input = option.querySelector('input');
+  input.checked = !input.checked;
+  var selected = currentGuestSelection(wrap);
+  saveVisibleGuests(wrap.getAttribute('data-code'), selected, wrap);
 }
 
 function toggleStyle(code) {
-  var toggles = SETTINGS.get('styleToggles') || {};
-  toggles[code] = toggles[code] === false ? true : false;
-  SETTINGS.save('styleToggles', toggles);
+  var styles = LUNA.getStyles();
+  for (var i = 0; i < styles.length; i++) {
+    if (String(styles[i].code) === String(code)) {
+      var isOn = styles[i].enabled !== false && styles[i].enabled !== 0;
+      styles[i].enabled = !isOn;
+      saveStyleAsync(styles[i], styles[i].enabled ? '已启用，客人可见' : '已关闭，客人不可见');
+      break;
+    }
+  }
   renderStyles();
 }
 
@@ -376,15 +364,14 @@ function init() {
 }
 
 var _initDone = false;
-if (typeof window !== 'undefined') {
-  window.addEventListener('luna-data-initialized', function() {
+window.addEventListener('luna-data-initialized', function() {
+  if (!_initDone) { _initDone = true; init(); }
+});
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  setTimeout(function() {
     if (!_initDone) { _initDone = true; init(); }
-  });
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(function() { if (!_initDone) { _initDone = true; init(); } }, 300);
-  }
+  }, 300);
 }
-
 window.addEventListener('luna-data-changed', function() {
   if (_suppressNextStyleRender) {
     _suppressNextStyleRender = false;

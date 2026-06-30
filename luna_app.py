@@ -294,6 +294,13 @@ def init_db():
             detail TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS composition_print_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payload TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_by TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
     """)
     db.commit()
     # Create print_warehouse table (花版仓库)
@@ -1134,6 +1141,178 @@ def read_all_orders():
     ids = db.execute("SELECT id FROM orders ORDER BY id DESC").fetchall()
     return [read_order(r['id']) for r in ids]
 
+def _guest_lookup_maps():
+    guests = get_settings_list('guests') or []
+    maps = {}
+    for guest in guests:
+        for key in (guest.get('id'), guest.get('username'), guest.get('name'), guest.get('shop_name')):
+            if key:
+                maps[str(key).strip()] = guest
+    return maps
+
+def _fabric_composition_maps():
+    fabrics = get_settings_list('fabrics') or []
+    maps = {}
+    for fabric in fabrics:
+        name = str(fabric.get('name') or '').strip()
+        if name:
+            maps[name] = fabric.get('composition') or ''
+    return maps
+
+def _order_client_profile(order, guest_maps):
+    raw = order.get('sub_customer') or order.get('customer') or ''
+    guest = guest_maps.get(str(raw).strip()) or {}
+    display = guest.get('shop_name') or guest.get('name') or raw
+    return {
+        'name': display,
+        'rawName': raw,
+        'address': guest.get('address', ''),
+        'tax_id': guest.get('tax_id', ''),
+        'shop_name': guest.get('shop_name', '')
+    }
+
+def _size_sort_key(size):
+    order = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', 'UNICA', 'U', 'F']
+    s = str(size).upper()
+    return (order.index(s) if s in order else 999, s)
+
+def _order_status_key(order):
+    order_placed = bool((order.get('order_placed') or {}).get('completed'))
+    marker = bool((order.get('marker_complete') or {}).get('completed'))
+    cutting = bool((order.get('cutting_complete') or {}).get('completed'))
+    pickup = bool((order.get('pickup_complete') or {}).get('completed'))
+    shipping = bool((order.get('shipping_complete') or {}).get('completed'))
+    if not order_placed:
+        return 'pending'
+    if not marker:
+        return 'confirmed'
+    if not cutting:
+        return 'cutting'
+    if not pickup:
+        return 'pickup'
+    if not shipping:
+        return 'sewing'
+    return 'shipped'
+
+def _order_progress_label(order):
+    labels = {
+        'confirmed': '待确认',
+        'cutting': '裁剪中',
+        'pickup': '待拿货',
+        'sewing': '车缝中',
+        'shipped': '已发货',
+        'completed': '已完成'
+    }
+    key = _order_status_key(order)
+    return labels.get(key, key)
+
+def _composition_text_lines(value):
+    lines = []
+    if value is None:
+        return lines
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return lines
+        if text[:1] in ('[', '{'):
+            try:
+                parsed = json.loads(text)
+                return _composition_text_lines(parsed)
+            except Exception:
+                pass
+        for part in re.split(r'[\r\n;；]+', text):
+            part = part.strip()
+            if part:
+                lines.append(part)
+        return lines
+    if isinstance(value, list):
+        for entry in value:
+            lines.extend(_composition_text_lines(entry))
+        return lines
+    if isinstance(value, dict):
+        pct = value.get('pct', value.get('percentage', value.get('percent', value.get('value', ''))))
+        name = value.get('it') or value.get('name') or value.get('material') or value.get('component') or value.get('text') or ''
+        if pct not in (None, '') and name:
+            lines.append(f"{pct}% {str(name).strip()}".strip())
+            return lines
+        for key in ('composition', 'text', 'value'):
+            nested = value.get(key)
+            if nested:
+                return _composition_text_lines(nested)
+        text = str(value).strip()
+        if text and text != '{}':
+            lines.append(text)
+        return lines
+    text = str(value).strip()
+    if text:
+        lines.append(text)
+    return lines
+
+def _composition_lines(item, fabric_compositions):
+    lines = []
+    seen = set()
+    components = item.get('components') or []
+    if isinstance(components, list):
+        for component in components:
+            if not isinstance(component, dict):
+                continue
+            name = str(component.get('part') or component.get('fabric') or component.get('name') or '').strip()
+            composition = component.get('composition') or ''
+            if not composition and name:
+                composition = fabric_compositions.get(name) or name
+            for text in _composition_text_lines(composition):
+                if text and text not in seen:
+                    seen.add(text)
+                    lines.append(text)
+    if not lines:
+        fabric_names = [x.strip() for x in re.split(r'[,，/]+', item.get('fabric') or '') if x.strip()]
+        for name in fabric_names:
+            for text in _composition_text_lines(fabric_compositions.get(name) or name):
+                if text and text not in seen:
+                    seen.add(text)
+                    lines.append(text)
+    return lines
+
+def build_composition_print_records(orders):
+    guest_maps = _guest_lookup_maps()
+    fabric_compositions = _fabric_composition_maps()
+    records = []
+    for order in orders:
+        status_key = _order_status_key(order)
+        if status_key not in ('cutting', 'pickup', 'sewing'):
+            continue
+        client = _order_client_profile(order, guest_maps)
+        for idx, item in enumerate(order.get('items') or []):
+            qty = item.get('qty') or {}
+            sizes = []
+            for size in sorted(qty.keys(), key=_size_sort_key):
+                count = int(qty.get(size) or 0)
+                if count > 0:
+                    sizes.append({'size': str(size), 'ordered': count, 'printQty': count})
+            if not sizes:
+                continue
+            composition_lines = _composition_lines(item, fabric_compositions)
+            records.append({
+                'recordId': f"{order.get('id')}::{idx}",
+                'orderId': order.get('id'),
+                'date': order.get('date', ''),
+                'customer': order.get('customer', ''),
+                'sub_customer': order.get('sub_customer', ''),
+                'client': client,
+                'statusKey': status_key,
+                'progressLabel': _order_progress_label(order),
+                'styleCode': item.get('code', ''),
+                'styleName': item.get('name', ''),
+                'color': item.get('color', ''),
+                'fabric': item.get('fabric', ''),
+                'components': item.get('components') or [],
+                'compositionLines': composition_lines,
+                'composition': '\n'.join(composition_lines),
+                'sizes': sizes,
+                'totalQty': sum(s['printQty'] for s in sizes)
+            })
+    return records
+
 def order_belongs_to_guest(order, user):
     if not order or not user:
         return False
@@ -1212,7 +1391,7 @@ def save_single_style(style):
          s.get('type','solid'), s.get('laborCost',0), s.get('ironCost',0),
          s.get('edgeNote',''), s.get('processingNote',''),
          s.get('totalCost',0) or 0, s.get('suggestedPrice',0) or 0,
-         s.get('createdAt',''), 1, int(s.get('mainPhoto', 0) or 0),
+         s.get('createdAt',''), 1 if s.get('enabled', True) else 0, int(s.get('mainPhoto', 0) or 0),
          json.dumps(s.get('visibleGuests', []), ensure_ascii=False)))
     # Fabrics
     db.execute("DELETE FROM style_fabrics WHERE style_code=?", (s['code'],))
@@ -1274,6 +1453,7 @@ def read_style(code):
         'totalCost': d['total_cost'],
         'suggestedPrice': d['suggested_price'],
         'createdAt': d['created_at'],
+        'enabled': bool(d.get('enabled', 1)),
         'mainPhoto': int(d['main_photo']) if d['main_photo'] != '' else 0,
         'visibleGuests': json.loads(d.get('visible_guests') or '[]'),
         'fabrics': [],
@@ -1316,6 +1496,9 @@ def read_all_styles():
 def style_visible_to_user(style, user=None):
     if not style:
         return False
+    if style.get('enabled') is False or style.get('enabled') == 0:
+        user = user or get_user()
+        return bool(user and user.get('role') in ('admin', 'employee'))
     visible = style.get('visibleGuests') or []
     if not visible:
         return True
@@ -2284,6 +2467,33 @@ def api_factory_order_get(order_id):
     if not is_factory_work_order(order):
         return forbid()
     return jsonify(build_factory_order(order))
+
+@app.route('/api/composition-print/orders', methods=['GET'])
+@require_auth
+def api_composition_print_orders():
+    u = get_user()
+    if not u or u.get('role') == 'guest':
+        return forbid()
+    orders = filter_orders_for_user(read_all_orders(), u)
+    return jsonify(build_composition_print_records(orders))
+
+@app.route('/api/composition-print/submit', methods=['POST'])
+@require_auth
+def api_composition_print_submit():
+    u = get_user()
+    if not u or u.get('role') == 'guest':
+        return forbid()
+    payload = request.get_json(silent=True) or {}
+    if not payload.get('styleCode') or not payload.get('sizeQuantities'):
+        return jsonify({'error': 'styleCode and sizeQuantities are required'}), 400
+    db = get_db()
+    db.execute(
+        "INSERT INTO composition_print_jobs (payload, status, created_by) VALUES (?,?,?)",
+        (json.dumps(payload, ensure_ascii=False), 'pending', u.get('name') or u.get('username') or '')
+    )
+    db.commit()
+    job_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return jsonify({'ok': True, 'jobId': job_id, 'status': 'pending'})
 
 @app.route('/api/orders/<order_id>', methods=['DELETE'])
 @require_admin

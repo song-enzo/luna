@@ -1,0 +1,2 @@
+job_id,order_id,customer_code,customer_name,address_code,art_code,brand,style_code,style_name,fabric,composition,origin,color,size,qty,wash_symbols,wash_label,header_text,note
+"TEMPLATE","ORD-TEMPLATE","CUST-A238","TEST CUSTOMER","ADDR-08","ART. 8832","DIANA","ART-SCUBA001","SCUBA TEST LABEL","Scuba","100% Lino / 亚麻","Made in Italy","Black","M","1","1","固定水洗标内容","LUNA ATELIER","template data"

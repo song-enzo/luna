@@ -216,6 +216,7 @@ var LUNA = (function() {
       return guestPages.indexOf(page) !== -1;
     }
     if (role === 'employee') {
+      if (page === 'composition-print.html') return true;
       var employeePages = {
         '裁剪员': ['cutting.html','cutting_history.html'],
         '发货员': ['shipping.html'],

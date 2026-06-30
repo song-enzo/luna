@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>成份打印控制台</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#faf9f7;color:#1f2937;padding-bottom:96px;-webkit-tap-highlight-color:transparent}
+a{text-decoration:none;color:inherit}
+button,input,select{font-family:inherit}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.page{max-width:1100px;margin:0 auto;padding:14px 12px 32px}
+.status-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.04em;color:#26313f}
+.brand-mark{width:30px;height:30px;border-radius:9px;background:#C8A56D;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}
+.receiver{display:flex;align-items:center;gap:6px;border:1px solid #e8e2d9;background:#fff;color:#b8965a;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+.pulse{width:8px;height:8px;border-radius:50%;background:#C8A56D;box-shadow:0 0 0 4px rgba(200,165,109,.16)}
+.tabs{display:flex;background:#f0ede8;border-radius:12px;padding:4px;margin-bottom:12px}
+.tab{flex:1;border:0;background:transparent;border-radius:9px;padding:9px 6px;font-size:13px;font-weight:800;color:#64748b}
+.tab.active.order{background:#fff;color:#b8965a;box-shadow:0 1px 5px rgba(15,23,42,.08)}
+.tab.active.manual{background:#fff;color:#b8965a;box-shadow:0 1px 5px rgba(15,23,42,.08)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:12px}
+.panel{background:#fff;border:1px solid #e8e2d9;border-radius:14px;padding:14px;box-shadow:0 1px 5px rgba(15,23,42,.04)}
+.panel-title{font-size:12px;font-weight:800;color:#94a3b8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.order-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;padding-right:2px}
+.order-card{width:100%;border:1px solid #e8e2d9;background:#fff;border-radius:12px;padding:9px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;cursor:pointer}
+.order-card.active{border:2px solid #C8A56D;background:#fffaf0}
+.order-main{min-width:0;display:flex;flex-direction:column;gap:2px;flex:1}
+.order-id{font-size:12px;font-weight:900;color:#27313f}
+.order-client,.order-meta{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:10px;color:#94a3b8}
+.style-pill{flex:0 0 auto;background:#f0eee9;color:#b8965a;font-size:10px;font-weight:900;padding:4px 7px;border-radius:8px}
+.empty{padding:34px 12px;text-align:center;color:#94a3b8;font-size:13px}
+.subhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.subhead strong{font-size:12px;color:#0f172a}
+.subhead span{font-size:11px;color:#64748b}
+.item-list{display:flex;flex-direction:column;gap:8px}
+.item-card{width:100%;border:1px solid #e5e7eb;background:#f8fafc;border-radius:12px;padding:8px 9px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.item-card.active{border:2px solid #C8A56D;background:#fffaf0}
+.item-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.item-code{font-size:12px;font-weight:900;color:#1f2937}
+.item-qty{font-size:11px;font-weight:800;color:#b8965a}
+.item-fabric,.item-name{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.size-list{display:flex;flex-direction:column;gap:8px}
+.size-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:8px}
+.size-row.active{border-color:#C8A56D;background:#fffaf0}
+.size-info{display:flex;align-items:center;gap:10px;min-width:0}
+.size-badge{min-width:34px;height:34px;padding:0 8px;border-radius:8px;background:#1f2937;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px}
+.size-copy{font-size:12px;color:#64748b;font-weight:700}
+.qty-ctrl{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.qty-btn{width:34px;height:34px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#475569;font-size:18px;font-weight:900}
+.qty-input{width:54px;height:34px;border:1px solid #d1d5db;border-radius:9px;background:#fff;text-align:center;font-weight:900;font-size:13px}
+.manual-panel{display:none}
+.manual-panel.active,.order-panel.active{display:flex}
+.order-panel{display:flex}
+.form-row{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.form-row label{font-size:11px;font-weight:800;color:#64748b}
+.select,.manual-input{width:100%;border:1px solid #d1d5db;border-radius:10px;background:#f8fafc;padding:9px;font-size:13px;color:#334155}
+.size-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.size-button{border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#334155;font-weight:900;padding:9px 0}
+.size-button.active{border:2px solid #C8A56D;background:#fffaf0;color:#b8965a}
+.preview-wrap{position:sticky;top:62px}
+.preview-panel{background:#1f2937;border-radius:16px;padding:14px;box-shadow:0 12px 24px rgba(15,23,42,.2)}
+.preview-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.14);padding-bottom:9px;margin-bottom:12px;color:#cbd5e1;font-size:11px;font-weight:800}
+.paper{width:220px;min-height:362px;background:#fff;color:#000;margin:0 auto;border-radius:2px;padding:16px 14px;text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+.top-dots{font-size:13px;line-height:1;margin-bottom:28px;letter-spacing:4px;white-space:nowrap;overflow:hidden}
+.made{font-family:"Arial Narrow",Arial,sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:0;line-height:1}
+.composition{font-family:"Arial Narrow",Arial,sans-serif;font-size:15px;line-height:1.02;font-weight:700;margin-bottom:10px;text-transform:uppercase}
+.composition div{margin:0}
+.art{font-family:"Arial Narrow",Arial,sans-serif;font-size:22px;font-weight:700;line-height:1;letter-spacing:0;margin-top:3px}
+.tg{font-family:"Arial Narrow",Arial,sans-serif;font-size:17px;font-weight:700;line-height:1;margin-top:1px;letter-spacing:0}
+.care{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 10px;font-size:13px;font-weight:900;line-height:1}
+.care span{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:24px;padding:0 4px;border:2px solid #000;border-radius:4px}
+.care .plain{border:0;min-width:auto;height:auto;padding:0 2px}
+.distributor{font-family:"Arial Narrow",Arial,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;line-height:1;margin:4px 0 7px}
+.client{font-family:"Arial Narrow",Arial,sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tax{font-family:"Arial Narrow",Arial,sans-serif;font-size:17px;font-weight:700;line-height:1.02;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.address{font-family:"Arial Narrow",Arial,sans-serif;font-size:16px;line-height:1.02;white-space:pre-line;margin-top:4px;font-weight:700;text-transform:uppercase}
+.country{font-family:"Arial Narrow",Arial,sans-serif;font-size:24px;line-height:1;font-weight:700;margin-top:2px;text-transform:uppercase}
+.watermark{display:none}
+.cut-space{display:none}
+.bottom-bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e5e7eb;padding:12px;z-index:200;box-shadow:0 -8px 18px rgba(15,23,42,.08)}
+.print-btn{max-width:1100px;margin:0 auto;width:100%;border:0;border-radius:15px;color:#fff;font-size:15px;font-weight:900;padding:14px 10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.print-btn.order{background:#C8A56D}
+.print-btn.manual{background:#C8A56D}
+.print-btn:active{transform:scale(.99)}
+.print-btn:disabled{opacity:.7}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:500;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media(max-width:760px){
+  .grid{grid-template-columns:1fr}
+  .preview-wrap{position:static}
+  .preview-panel{margin-bottom:4px}
+  .paper{width:216px}
+}
+</style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
+</head>
+<body>
+<main class="page">
+  <div class="status-bar">
+    <div class="receiver"><span class="pulse"></span><span>Win7 接收器待连接</span></div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabOrder" class="tab active order" type="button" onclick="switchMode('order')">订单模式</button>
+    <button id="tabManual" class="tab" type="button" onclick="switchMode('manual')">手动补打</button>
+  </div>
+
+  <div class="grid">
+    <section class="stack">
+      <div id="orderPanel" class="order-panel stack active">
+        <div class="panel">
+          <div class="panel-title">1. 选择未完成订单</div>
+          <div id="orderList" class="order-list"><div class="empty">正在读取订单...</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title" style="margin-bottom:8px;font-size:11px">2. 数量与号码</div>
+          <div id="sizeMatrix" class="size-list"><div class="empty">请选择款号</div></div>
+        </div>
+      </div>
+
+      <div id="manualPanel" class="manual-panel stack">
+        <div class="panel">
+          <div class="panel-title">1. 自由选择</div>
+          <div class="form-row">
+            <label>款号与成份</label>
+            <select id="manualStyle" class="select" onchange="updateManualFromInputs()"></select>
+          </div>
+          <div class="form-row">
+            <label>客人资料</label>
+            <select id="manualClient" class="select" onchange="updateManualFromInputs()"></select>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">2. 指定尺码与数量</div>
+          <div class="size-buttons" id="manualSizes"></div>
+          <div class="size-row" style="margin-top:10px;cursor:default">
+            <div class="size-copy">补打数量</div>
+            <div class="qty-ctrl">
+              <button class="qty-btn" type="button" onclick="changeManualQty(-1)">-</button>
+              <input id="manualQty" class="qty-input" type="number" value="10" min="0" oninput="updatePrintButton()">
+              <button class="qty-btn" type="button" onclick="changeManualQty(1)">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="preview-wrap">
+      <div class="preview-panel">
+        <div class="preview-head">
+          <span>成份纸实时预览</span>
+          <span>30mm 宽</span>
+        </div>
+        <div class="paper">
+          <div class="top-dots">- - - - - - - - - - - - - - - -</div>
+          <div class="made">made in italy</div>
+          <div id="viewComposition" class="composition"><div>请选择订单</div></div>
+          <div class="art">ART: <span id="viewStyle">-</span></div>
+          <div class="tg">TG: <span id="viewSize">-</span></div>
+          <div class="care">
+            <span class="plain">30°</span><span>X</span><span>P</span><span class="plain">⎍</span><span>X</span>
+          </div>
+          <div class="distributor">DISTRIBUIDO POR</div>
+          <div class="client" id="viewClient">-</div>
+          <div class="tax" id="viewTax">IAV: -</div>
+          <div class="address" id="viewAddress">-</div>
+          <div class="country" id="viewCountry"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="bottom-bar">
+  <button id="printBtn" class="print-btn order" type="button" onclick="triggerPrint()">发送至本地电脑自动打印</button>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="luna-data.js?v=28"></script>
+<script>
+LUNA.renderNav();
+(function() {
+  var u = LUNA.getUser();
+  if (!u || u.role === 'guest') window.location.href = 'index.html';
+})();
+
+var rawRecords = [];
+var orderGroups = [];
+var selectedOrder = null;
+var selectedRecord = null;
+var activeMode = 'order';
+var activeSize = '';
+var printQty = {};
+var manualSize = 'M';
+
+function esc(value) {
+  var d = document.createElement('div');
+  d.textContent = value == null ? '' : String(value);
+  return d.innerHTML;
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2200);
+}
+
+function requestJson(method, url, body, cb) {
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, url, true);
+  xhr.withCredentials = true;
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    var data = null;
+    try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+    if (xhr.status >= 200 && xhr.status < 300) cb(null, data);
+    else cb((data && data.error) || xhr.statusText || '请求失败', data);
+  };
+  xhr.onerror = function() { cb('网络错误'); };
+  xhr.send(body ? JSON.stringify(body) : null);
+}
+
+function sizeSortKey(size) {
+  var order = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', 'UNICA', 'U', 'F'];
+  var s = String(size || '').toUpperCase();
+  var idx = order.indexOf(s);
+  return [idx === -1 ? 999 : idx, s];
+}
+
+function groupRecords(list) {
+  var map = {};
+  (list || []).forEach(function(r) {
+    var key = r.orderId || r.recordId || '';
+    if (!map[key]) {
+      map[key] = {
+        orderId: r.orderId || '',
+        date: r.date || '',
+        customer: r.customer || '',
+        client: r.client || {},
+        statusKey: r.statusKey || '',
+        totalQty: 0,
+        records: []
+      };
+    }
+    var g = map[key];
+    g.records.push(r);
+    g.totalQty += parseInt(r.totalQty, 10) || 0;
+    if (!g.date && r.date) g.date = r.date;
+    if (!g.customer && r.customer) g.customer = r.customer;
+    if (!g.client || !g.client.name) g.client = r.client || g.client || {};
+    if (!g.statusKey && r.statusKey) g.statusKey = r.statusKey;
+  });
+  return Object.keys(map).sort(function(a, b) { return b.localeCompare(a); }).map(function(key) { return map[key]; });
+}
+
+function firstRecord(g) {
+  return (g && g.records && g.records.length) ? g.records[0] : null;
+}
+
+function summarizeFabrics(records) {
+  var seen = {};
+  var names = [];
+  (records || []).forEach(function(r) {
+    var name = String(r.fabric || '').trim();
+    if (name && !seen[name]) {
+      seen[name] = true;
+      names.push(name);
+    }
+  });
+  return names.join(' / ');
+}
+
+function statusText(statusKey) {
+  var map = {pending:'待确认', confirmed:'待确认', cutting:'裁剪中', pickup:'待拿货', sewing:'车缝中', shipped:'已发货', completed:'已完成'};
+  return map[statusKey] || statusKey || '待确认';
+}
+
+function loadOrders() {
+  requestJson('GET', '/api/composition-print/orders', null, function(err, data) {
+    if (err) {
+      document.getElementById('orderList').innerHTML = '<div class="empty">读取失败：' + esc(err) + '</div>';
+      return;
+    }
+    rawRecords = Array.isArray(data) ? data.filter(function(r) {
+      return r && (r.statusKey === 'cutting' || r.statusKey === 'pickup' || r.statusKey === 'sewing');
+    }) : [];
+    orderGroups = groupRecords(rawRecords);
+    renderOrders();
+    renderManualOptions();
+    if (orderGroups.length) selectOrder(orderGroups[0].orderId);
+    else updatePreview(null);
+  });
+}
+
+function renderOrders() {
+  var box = document.getElementById('orderList');
+  if (!orderGroups.length) {
+    box.innerHTML = '<div class="empty">暂无未完成订单</div>';
+    document.getElementById('sizeMatrix').innerHTML = '<div class="empty">请选择款号</div>';
+    return;
+  }
+  box.innerHTML = orderGroups.map(function(g) {
+    var top = firstRecord(g) || {};
+    var fabrics = summarizeFabrics(g.records);
+    return '<button type="button" class="order-card' + (selectedOrder && selectedOrder.orderId === g.orderId ? ' active' : '') + '" data-order="' + esc(g.orderId) + '" onclick="selectOrder(\'' + esc(g.orderId) + '\')">' +
+      '<span class="order-main">' +
+        '<span class="order-id">' + esc(top.styleCode ? ('ART-' + top.styleCode) : (g.orderId || '-')) + '</span>' +
+        '<span class="order-client">' + esc((g.client && (g.client.shop_name || g.client.name)) || g.customer || '-') + '</span>' +
+        '<span class="order-meta"><span>' + esc(g.date || '') + '</span><span>' + esc(fabrics || '-') + '</span><span>' + esc(g.totalQty) + ' 件</span></span>' +
+      '</span>' +
+      '<span class="style-pill">' + esc(statusText(g.statusKey)) + '</span>' +
+    '</button>';
+  }).join('');
+}
+
+function selectOrder(orderId) {
+  selectedOrder = orderGroups.filter(function(g) { return g.orderId === orderId; })[0] || null;
+  selectedRecord = selectedOrder && selectedOrder.records.length ? selectedOrder.records[0] : null;
+  printQty = {};
+  activeSize = '';
+  if (selectedRecord && selectedRecord.sizes && selectedRecord.sizes.length) {
+    selectedRecord.sizes.forEach(function(row) { printQty[row.size] = row.printQty || row.ordered || 0; });
+    activeSize = selectedRecord.sizes[0].size;
+  }
+  renderOrders();
+  renderItems();
+  renderSizeMatrix();
+  updatePreview();
+  updatePrintButton();
+}
+
+function renderItems() {
+  return;
+}
+
+function selectItem(recordId) {
+  selectedRecord = (selectedOrder && selectedOrder.records.filter(function(r) { return r.recordId === recordId; })[0]) || null;
+  printQty = {};
+  activeSize = '';
+  if (selectedRecord && selectedRecord.sizes && selectedRecord.sizes.length) {
+    selectedRecord.sizes.forEach(function(row) { printQty[row.size] = row.printQty || row.ordered || 0; });
+    activeSize = selectedRecord.sizes[0].size;
+  }
+  renderItems();
+  renderSizeMatrix();
+  updatePreview();
+  updatePrintButton();
+}
+
+function renderSizeMatrix() {
+  var box = document.getElementById('sizeMatrix');
+  if (!selectedRecord) {
+    box.innerHTML = '<div class="empty">请选择款号</div>';
+    return;
+  }
+  if (!selectedRecord.sizes || !selectedRecord.sizes.length) {
+    box.innerHTML = '<div class="empty">该款号没有尺码数据</div>';
+    return;
+  }
+  box.innerHTML = selectedRecord.sizes.map(function(row) {
+    var qty = printQty[row.size] || 0;
+    return '<div class="size-row' + (row.size === activeSize ? ' active' : '') + '" onclick="selectSize(\'' + esc(row.size) + '\')">' +
+      '<div class="size-info"><span class="size-badge">' + esc(displaySize(row.size)) + '</span><span class="size-copy">订单数量 ' + esc(row.ordered || 0) + ' 件</span></div>' +
+      '<div class="qty-ctrl" onclick="event.stopPropagation()">' +
+        '<button class="qty-btn" type="button" onclick="changeQty(\'' + esc(row.size) + '\',-1)">-</button>' +
+        '<input class="qty-input" type="number" min="0" value="' + esc(qty) + '" oninput="setQty(\'' + esc(row.size) + '\',this.value)">' +
+        '<button class="qty-btn" type="button" onclick="changeQty(\'' + esc(row.size) + '\',1)">+</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function displaySize(size) {
+  var s = String(size || '').trim().toUpperCase();
+  if (!s || s === 'UNICA') return 'U';
+  return s;
+}
+
+function selectSize(size) {
+  activeSize = size;
+  renderSizeMatrix();
+  updatePreview();
+}
+
+function setQty(size, value) {
+  printQty[size] = Math.max(0, parseInt(value, 10) || 0);
+  activeSize = size;
+  updatePreview();
+  updatePrintButton();
+}
+
+function changeQty(size, delta) {
+  printQty[size] = Math.max(0, (parseInt(printQty[size], 10) || 0) + delta);
+  activeSize = size;
+  renderSizeMatrix();
+  updatePreview();
+  updatePrintButton();
+}
+
+function currentCompositionLines(record) {
+  if (!record) return [];
+  function expand(value) {
+    var out = [];
+    if (value == null) return out;
+    if (Array.isArray(value)) {
+      value.forEach(function(entry) { out = out.concat(expand(entry)); });
+      return out;
+    }
+    if (typeof value === 'object') {
+      var pct = value.pct != null ? value.pct : (value.percentage != null ? value.percentage : value.percent);
+      var name = value.it || value.name || value.material || value.component || value.text || '';
+      if (pct != null && name) {
+        out.push(String(pct) + '% ' + String(name).trim());
+        return out;
+      }
+      ['composition', 'text', 'value'].some(function(key) {
+        if (value[key]) {
+          out = out.concat(expand(value[key]));
+          return true;
+        }
+        return false;
+      });
+      if (!out.length) {
+        var fallback = String(value).trim();
+        if (fallback && fallback !== '[object Object]') out.push(fallback);
+      }
+      return out;
+    }
+    var text = String(value).trim();
+    if (!text) return out;
+    if ((text[0] === '[' || text[0] === '{')) {
+      try {
+        return expand(JSON.parse(text));
+      } catch (e) {}
+    }
+    text.split(/\r?\n|;|；/).forEach(function(part) {
+      part = part.trim();
+      if (part) out.push(part);
+    });
+    return out;
+  }
+  var lines = expand(record.compositionLines && record.compositionLines.length ? record.compositionLines : record.composition || '');
+  return lines;
+}
+
+function compositionHtml(record) {
+  var lines = currentCompositionLines(record);
+  if (!lines.length) return '<div>未填写成份</div>';
+  return lines.map(function(line) { return '<div>' + esc(line) + '</div>'; }).join('');
+}
+
+function updatePreview(recordOverride) {
+  var r = recordOverride || selectedRecord;
+  if (!r) {
+    document.getElementById('viewComposition').innerHTML = '<div>请选择订单</div>';
+    document.getElementById('viewStyle').textContent = '-';
+    document.getElementById('viewSize').textContent = '-';
+    document.getElementById('viewClient').textContent = '-';
+    document.getElementById('viewAddress').textContent = '-';
+    document.getElementById('viewTax').textContent = 'IAV: -';
+    document.getElementById('viewCountry').textContent = '';
+    return;
+  }
+  document.getElementById('viewComposition').innerHTML = compositionHtml(r);
+  document.getElementById('viewStyle').textContent = r.styleCode || '-';
+  document.getElementById('viewSize').textContent = activeMode === 'manual' ? displaySize(manualSize) : displaySize(activeSize || (r.sizes && r.sizes[0] && r.sizes[0].size) || '-');
+  document.getElementById('viewClient').textContent = (selectedOrder && selectedOrder.client && (selectedOrder.client.shop_name || selectedOrder.client.name)) || (r.client && (r.client.shop_name || r.client.name)) || '-';
+  document.getElementById('viewAddress').textContent = (selectedOrder && selectedOrder.client && selectedOrder.client.address) || (r.client && r.client.address) || '-';
+  document.getElementById('viewTax').textContent = 'IAV: ' + ((selectedOrder && selectedOrder.client && selectedOrder.client.tax_id) || (r.client && r.client.tax_id) || '-');
+  document.getElementById('viewCountry').textContent = (selectedOrder && selectedOrder.client && selectedOrder.client.country) || (r.client && r.client.country) || '';
+}
+
+function updatePrintButton() {
+  var total = 0;
+  if (activeMode === 'order') {
+    Object.keys(printQty).forEach(function(size) {
+      total += parseInt(printQty[size], 10) || 0;
+    });
+    document.getElementById('printBtn').textContent = '发送至本地电脑自动打印 (' + total + ')';
+  } else {
+    total = Math.max(0, parseInt(document.getElementById('manualQty').value, 10) || 0);
+    document.getElementById('printBtn').textContent = '发送至本地电脑自动打印 (' + total + ')';
+  }
+}
+
+function switchMode(mode) {
+  activeMode = mode;
+  document.getElementById('tabOrder').className = 'tab' + (mode === 'order' ? ' active order' : '');
+  document.getElementById('tabManual').className = 'tab' + (mode === 'manual' ? ' active manual' : '');
+  document.getElementById('orderPanel').classList.toggle('active', mode === 'order');
+  document.getElementById('manualPanel').classList.toggle('active', mode === 'manual');
+  document.getElementById('printBtn').className = 'print-btn ' + mode;
+  if (mode === 'manual') {
+    updateManualFromInputs();
+  } else {
+    updatePreview();
+  }
+  updatePrintButton();
+}
+
+function renderManualOptions() {
+  var styles = [];
+  var clients = [];
+  var seenStyles = {};
+  var seenClients = {};
+  rawRecords.forEach(function(r) {
+    if (r.styleCode && !seenStyles[r.styleCode]) {
+      seenStyles[r.styleCode] = true;
+      styles.push(r);
+    }
+    var clientName = r.client && (r.client.shop_name || r.client.name);
+    if (clientName && !seenClients[clientName]) {
+      seenClients[clientName] = true;
+      clients.push(r.client);
+    }
+  });
+  document.getElementById('manualStyle').innerHTML = styles.map(function(r, idx) {
+    return '<option value="' + idx + '">' + esc(r.styleCode || '-') + ' - ' + esc(currentCompositionLines(r).join(' / ') || '未填写成份') + '</option>';
+  }).join('');
+  document.getElementById('manualClient').innerHTML = clients.map(function(c, idx) {
+    return '<option value="' + idx + '">' + esc(c.shop_name || c.name || '-') + '</option>';
+  }).join('');
+  document.getElementById('manualStyle')._records = styles;
+  document.getElementById('manualClient')._clients = clients;
+  renderManualSizes();
+  if (activeMode === 'manual') updateManualFromInputs();
+}
+
+function renderManualSizes() {
+  var sizes = ['S', 'M', 'L', 'XL', 'U'];
+  document.getElementById('manualSizes').innerHTML = sizes.map(function(size) {
+    return '<button type="button" class="size-button' + (size === manualSize ? ' active' : '') + '" onclick="selectManualSize(\'' + size + '\')">' + size + '</button>';
+  }).join('');
+}
+
+function selectManualSize(size) {
+  manualSize = size;
+  renderManualSizes();
+  updatePreview(buildManualRecord());
+}
+
+function changeManualQty(delta) {
+  var input = document.getElementById('manualQty');
+  input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+  updatePrintButton();
+}
+
+function buildManualRecord() {
+  var styleSelect = document.getElementById('manualStyle');
+  var clientSelect = document.getElementById('manualClient');
+  var source = (styleSelect._records || [])[parseInt(styleSelect.value, 10) || 0] || rawRecords[0] || {};
+  var client = (clientSelect._clients || [])[parseInt(clientSelect.value, 10) || 0] || (source.client || {});
+  return {
+    recordId: 'manual',
+    orderId: '',
+    styleCode: source.styleCode || '',
+    composition: source.composition || '',
+    compositionLines: source.compositionLines || [],
+    client: client
+  };
+}
+
+function updateManualFromInputs() {
+  updatePreview(buildManualRecord());
+  updatePrintButton();
+}
+
+function buildPrintPayload() {
+  var now = new Date().toISOString();
+  if (activeMode === 'manual') {
+    var manual = buildManualRecord();
+    var qty = Math.max(0, parseInt(document.getElementById('manualQty').value, 10) || 0);
+    return {
+      mode: 'manual',
+      generatedAt: now,
+      styleCode: manual.styleCode,
+      composition: manual.composition,
+      compositionLines: manual.compositionLines,
+      client: manual.client,
+      sizeQuantities: [{size: manualSize, qty: qty}],
+      totalQty: qty
+    };
+  }
+  if (!selectedOrder || !selectedRecord) return null;
+  var sizes = Object.keys(printQty).map(function(size) {
+    return {size: size, qty: Math.max(0, parseInt(printQty[size], 10) || 0)};
+  }).filter(function(row) { return row.qty > 0; });
+  return {
+    mode: 'order',
+    generatedAt: now,
+    orderId: selectedOrder.orderId,
+    recordId: selectedRecord.recordId,
+    styleCode: selectedRecord.styleCode,
+    styleName: selectedRecord.styleName,
+    color: selectedRecord.color,
+    fabric: selectedRecord.fabric,
+    components: selectedRecord.components,
+    composition: selectedRecord.composition,
+    compositionLines: selectedRecord.compositionLines,
+    client: selectedOrder.client || selectedRecord.client,
+    sizeQuantities: sizes,
+    totalQty: sizes.reduce(function(sum, row) { return sum + row.qty; }, 0)
+  };
+}
+
+function triggerPrint() {
+  var payload = buildPrintPayload();
+  if (!payload || !payload.styleCode || !payload.sizeQuantities.length || payload.totalQty <= 0) {
+    showToast('请先选择款号和打印数量');
+    return;
+  }
+  var btn = document.getElementById('printBtn');
+  var oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '正在提交...';
+  requestJson('POST', '/api/composition-print/submit', payload, function(err, data) {
+    btn.disabled = false;
+    btn.textContent = oldText;
+    updatePrintButton();
+    if (err) {
+      showToast('提交失败：' + err);
+      return;
+    }
+    showToast('已提交打印任务 #' + data.jobId);
+  });
+}
+
+loadOrders();
+</script>
+</body>
+</html>
