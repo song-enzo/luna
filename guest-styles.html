@@ -78,6 +78,13 @@ border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
 .home-search span{color:#C8A56D;font-size:15px}
 .home-search input{border:none;outline:none;width:100%;font-family:inherit;font-size:13px;color:#1C1C1C;background:transparent}
 .home-search input::placeholder{color:#B5A58A}
+body:not(.guest-search-open) .home-search{display:none}
+body.guest-search-open .home-search{display:flex;max-width:none;margin-bottom:12px}
+.guest-nav-tools{display:flex;align-items:center;gap:14px;margin-left:auto}
+.guest-nav-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:transparent;color:#999;font-size:18px;cursor:pointer;text-decoration:none;font-family:inherit}
+.guest-nav-icon:hover,.guest-nav-icon.active{color:#1C1C1C}
+.guest-nav-tools .cart-badge{top:1px;right:0}
+#diana-nav .diana-logo{margin-right:auto}
 .filter-bar{position:static;background:#F7F6F3;padding:0 0 12px;margin-bottom:14px}
 .cat-pills{display:flex;gap:7px;overflow-x:auto;padding:0 0 3px;scrollbar-width:none}
 .cat-pills::-webkit-scrollbar{display:none}
@@ -263,6 +270,36 @@ function renderBrandName() {
   });
 }
 // 切换菜单
+function toggleHeaderSearch() {
+  document.body.classList.toggle('guest-search-open');
+  var btn = document.getElementById('guestHeaderSearchBtn');
+  if (btn) btn.classList.toggle('active', document.body.classList.contains('guest-search-open'));
+  if (document.body.classList.contains('guest-search-open')) {
+    setTimeout(function() {
+      var input = document.getElementById('searchInput');
+      if (input) input.focus();
+    }, 30);
+  }
+}
+function renderGuestHeaderTools() {
+  var header = document.querySelector('#diana-nav .diana-header');
+  if (!header) {
+    setTimeout(renderGuestHeaderTools, 100);
+    return;
+  }
+  if (document.getElementById('guestHeaderTools')) {
+    updateCartBadge();
+    return;
+  }
+  var tools = document.createElement('div');
+  tools.id = 'guestHeaderTools';
+  tools.className = 'guest-nav-tools';
+  tools.innerHTML =
+    '<button type="button" class="guest-nav-icon" id="guestHeaderSearchBtn" onclick="toggleHeaderSearch()" aria-label="搜索">🔍</button>' +
+    '<a href="cart.html" class="guest-nav-icon" aria-label="购物车">🛒<span class="cart-badge" id="guestHeaderCartBadge">0</span></a>';
+  header.appendChild(tools);
+  updateCartBadge();
+}
 function toggleMenu() {
 document.getElementById('sideOverlay').classList.toggle('active');
 document.getElementById('sideMenu').classList.toggle('open');
@@ -411,7 +448,11 @@ return '<button class="cat-pill" onclick="filterByCategory(\'' + c + '\',this)">
 // 更新购物车徽标（兼容新旧两种数据格式）
 function updateCartBadge() {
 var raw = localStorage.getItem('luna_cart_data');
-if (!raw) { document.getElementById('cartBadge').textContent = '0'; return; }
+if (!raw) {
+  if (document.getElementById('cartBadge')) document.getElementById('cartBadge').textContent = '0';
+  if (document.getElementById('guestHeaderCartBadge')) document.getElementById('guestHeaderCartBadge').textContent = '0';
+  return;
+}
 var cart;
 try { cart = JSON.parse(raw); } catch(e) { cart = []; }
 var count = 0;
@@ -427,11 +468,13 @@ for (var i = 0; i < cart.length; i++) {
     });
   }
 }
-document.getElementById('cartBadge').textContent = count;
+if (document.getElementById('cartBadge')) document.getElementById('cartBadge').textContent = count;
+if (document.getElementById('guestHeaderCartBadge')) document.getElementById('guestHeaderCartBadge').textContent = count;
 }
 // 初始化
 function initPage() {
 renderBrandName();
+renderGuestHeaderTools();
 try {
 var raw = localStorage.getItem('luna_styles_data');
 if (raw) {
@@ -471,6 +514,6 @@ if (e.key === 'luna_styles_data') initPage();
 if (e.key === 'luna_cart_data') updateCartBadge();
 });
 </script>
-<script>LUNA.renderNav();</script>
+<script>LUNA.renderNav(); renderGuestHeaderTools();</script>
 </body>
 </html>
