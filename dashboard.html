@@ -331,7 +331,7 @@ window.logout = function() {
   }
   function statusLabel(key) {
     return {
-      confirmed: '待打纸样',
+      confirmed: '打纸样中',
       cutting: '裁剪中',
       pickup: '待拿货',
       sewing: '车缝中',
@@ -362,9 +362,19 @@ window.logout = function() {
   }
   function renderRecentOrders() {
     var orders = (LUNA.getOrders ? LUNA.getOrders() : []).slice();
+    var activeOrders = orders.filter(function(order) {
+      var status = LUNA.getOrderStatus ? LUNA.getOrderStatus(order) : '';
+      return status !== 'shipped' && status !== 'completed';
+    });
+    var displayOrders = activeOrders.length ? activeOrders : orders;
     orders.sort(function(a, b) {
       var ad = String(a.date || a.id || '');
       var bd = String(b.date || b.id || '');
+      return bd.localeCompare(ad);
+    });
+    displayOrders.sort(function(a, b) {
+      var ad = String(a.date || '') + ' ' + String(a.id || '');
+      var bd = String(b.date || '') + ' ' + String(b.id || '');
       return bd.localeCompare(ad);
     });
     var list = document.getElementById('recentOrders');
@@ -374,7 +384,7 @@ window.logout = function() {
       return;
     }
     var html = '';
-    orders.slice(0, 5).forEach(function(order) {
+    displayOrders.slice(0, 15).forEach(function(order) {
       var first = (order.items || [])[0] || {};
       var status = LUNA.getOrderStatus ? LUNA.getOrderStatus(order) : '';
       html += '<div class="order-card" onclick="window.location.href=\'order-detail.html?id=' + dashEsc(order.id) + '\'">' +
@@ -449,7 +459,7 @@ document.getElementById('logoutBtn').addEventListener('click', logout);
 // Pipeline
 var orders = LUNA.getOrders();
 var flowSteps = [
-  {key:'marker', label:'打唛架', icon:'📐', href:'marker.html'},
+  {key:'marker', label:'打纸样中', icon:'📐', href:'marker.html'},
   {key:'cutting', label:'裁剪中', icon:'✂️', href:'cutting.html'},
   {key:'pickup', label:'待拿货', icon:'🏭', href:'ready-pickup.html'},
   {key:'sewing', label:'车缝中', icon:'🧵', href:'shipping.html'}
@@ -484,7 +494,7 @@ flowSteps.forEach(function(step, i) {
 document.getElementById('pipeline').innerHTML = pipelineHtml;
 
 // 最近订单
-var statusName = {confirmed:'已确认',cutting:'打唛架',pickup:'待拿货',sewing:'车缝中',shipped:'已发货',completed:'已完成'};
+var statusName = {confirmed:'打纸样中',cutting:'裁剪中',pickup:'待拿货',sewing:'车缝中',shipped:'已发货',completed:'已完成'};
 var container = document.getElementById('recentOrders');
 if (!orders.length) {
   container.innerHTML = '<div class="empty-state">暂无订单</div>';
