@@ -11,6 +11,7 @@ photos/
 venv/
 .venv/
 .env
+.luna-session-secret
 *.log
 local_config.json
 test_gemini_key.py

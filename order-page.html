@@ -273,7 +273,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 <body>
 <div class="header">
   <button class="back" onclick="history.back()">←</button>
-  <span class="logo">LUNA <span>A</span></span>
+  <span class="logo" data-luna-brand>LUNA ATELIER</span>
   <button class="cart-icon" onclick="toggleCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
 </div>
 <div class="pdp-wrap">
@@ -450,7 +450,7 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
     <button class="submit-btn" id="submitOrderBtn" disabled>📋 下单 <span class="sub" id="submitSub">(购物车为空)</span></button>
   </div>
 </div>
-<script src="luna-data.js?v=38"></script>
+<script src="luna-data.js?v=39"></script>
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js" defer></script>
 <script>LUNA.renderNav();</script>
@@ -467,6 +467,11 @@ var _qcMode = 'solid';
 var _qcImageData = null;
 var _qcAnchors = [];
 var _qcFile = null;
+
+function isPrintStyle(styleObj) {
+  var t = String((styleObj && styleObj.type) || '').toLowerCase();
+  return t === 'stampa' || t === 'print' || t === '印花';
+}
 
 function init() {
   var code = new URLSearchParams(location.search).get('code');
@@ -496,8 +501,8 @@ function init() {
   updateSubmitBtn();
   renderGuestDropdowns();
 
-  // Auto-detect stampa mode from style.type
-  if (style && style.type === 'stampa') {
+  // Auto-detect print/stampa mode from style.type
+  if (isPrintStyle(style)) {
     document.getElementById('contrastToggle').style.display = 'none';
     document.getElementById('stampaArea').style.display = 'block';
     document.getElementById('modeLabel').textContent = '① 选择底色 + 花版';
@@ -762,8 +767,8 @@ function updateAddBtn() {
     sub.textContent = '— ' + desc + (total > 0 ? ' · ' + total + '件' : '');
     return;
   }
-  // Stampa mode auto-detection (from style.type)
-  if (style && style.type === 'stampa') {
+  // Print/Stampa mode auto-detection (from style.type)
+  if (isPrintStyle(style)) {
     if (!selectedColor) { btn.disabled = true; sub.textContent = '— 请先选择底色'; return; }
     if (!_selectedStampa) { btn.disabled = true; sub.textContent = '— 请先选择花版'; return; }
     var stotal = 0;
@@ -789,8 +794,8 @@ document.getElementById('addToCartBtn').addEventListener('click', function() {
   var btn = this; btn.innerHTML = '⏳ 添加中...'; btn.disabled = true;
   setTimeout(function(){ btn.disabled = false; updateAddBtn(); }, 400);
 
-  // ── Stampa mode ──
-  if (style && style.type === 'stampa') {
+  // ── Print/Stampa mode ──
+  if (isPrintStyle(style)) {
     if (!_selectedStampa) { showToast('⚠️ 请先选择花版'); return; }
     var sqty = {};
     var stotal = 0;
@@ -961,9 +966,18 @@ function renderGuestDropdowns() {
   var u = LUNA.getUser && LUNA.getUser();
   if (u && u.role === 'guest') {
     var selfName = u.name || u.username || '';
-    sel.innerHTML = '<option value="'+escJs(selfName)+'">'+esc(selfName)+'</option>';
+    var secondaries = guests.filter(function(g) {
+      if (!g || g.enabled === false) return false;
+      return g.parent_id && (g.parent_id === u.id || g.parent_id === u.username);
+    });
+    var guestHtml = '<option value="'+escJs(selfName)+'">本人 · '+esc(selfName)+'</option>';
+    secondaries.forEach(function(g) {
+      var n = g.name || g.username || '';
+      if (n) guestHtml += '<option value="'+escJs(n)+'">二级客人 · '+esc(n)+'</option>';
+    });
+    sel.innerHTML = guestHtml;
     sel.value = selfName;
-    sel.style.display = 'none';
+    sel.style.display = secondaries.length ? '' : 'none';
     return;
   }
   var html = '<option value="">— 选择客人 —</option>';

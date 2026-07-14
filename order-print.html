@@ -154,11 +154,12 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
 .crop-modal .cm-footer .cancel-btn{background:#f0ede8;color:#666}
 .crop-modal .cm-img-bg{display:none}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
   <a class="back" href="javascript:history.back()">&larr;</a>
-  <span class="logo">LUNA <span>A</span></span>
+  <span class="logo" data-luna-brand>LUNA ATELIER</span>
   <button class="cart-icon" onclick="toggleCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
 </div>
 <div class="pdp-wrap">
@@ -252,12 +253,14 @@ body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-fon
   <img id="cropModalImg" class="cm-img-bg">
 </div>
 <div class="toast" id="toast"></div>
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=39"></script>
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+<script>LUNA.renderNav();</script>
 <script>
 var style, styleCode, colorways=[], selectedSwatches={}, ALL_SIZES=['XS','S','M','L','XL','XXL','XXXL','UNICA'];
 var masterImageDataUrl='', masterImageUrl='', patternNo='', masterImg=null;
+var autoSaveInProgress=false, autoSaveDone=false;
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
 function showToast(m,err){var t=document.getElementById('toast');t.textContent=(err?'× ':'✓ ')+m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},3000)}
 
@@ -404,17 +407,18 @@ function applyAIAnalysis(data){
     };
   });
   selectedSwatches={};
-  patternNo=data.pattern_no||'';
-  if(patternNo)document.getElementById('patternNoInput').value=patternNo;
+  patternNo=data.pattern_no||document.getElementById('patternNoInput').value.trim()||styleCode;
+  document.getElementById('patternNoInput').value=patternNo;
   if(data.master_image){
     masterImageUrl=data.master_image;
     document.getElementById('masterPreviewImg').src=data.master_image;
   }
   var saveBtn=document.getElementById('saveBtn');
-  if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='保存到图库';saveBtn.style.background='#C8A56D'}
+  if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='自动保存中...';saveBtn.style.background='#C8A56D'}
   document.getElementById('swatchCount').textContent='共 '+colorways.length+' 个色卡';
   document.getElementById('analysisResult').style.display='block';
   renderSwatches();
+  autoSaveToWarehouse();
 }
 function pollAnalysisJob(jobId,startedAt){
   fetch('/api/ai/analyze-pattern-job/'+encodeURIComponent(jobId))
@@ -444,7 +448,8 @@ function pollAnalysisJob(jobId,startedAt){
 function processImage(file){
   var zone=document.getElementById('uploadZone');
   var saveBtn=document.getElementById('saveBtn');
-  if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='保存到图库';saveBtn.style.background='#C8A56D'}
+  autoSaveInProgress=false;autoSaveDone=false;
+  if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='等待识别';saveBtn.style.background='#C8A56D'}
   masterImageUrl='';
   zone.classList.add('loading');
   zone.innerHTML='<div class="spinner"></div><div class="loading-text">正在上传并识别...</div>';
@@ -775,17 +780,52 @@ document.getElementById('addToCartBtn').addEventListener('click',function(){
   renderCartBody();updateBadge();showToast('已加入购物车');toggleCart()
 });
 
-function saveToWarehouse(){
-  var pn=document.getElementById('patternNoInput').value.trim()||patternNo;
+function autoSaveToWarehouse(){
+  if(autoSaveInProgress||autoSaveDone)return;
+  if(!colorways.length){
+    var btn0=document.getElementById('saveBtn');
+    if(btn0){btn0.disabled=true;btn0.innerHTML='无色卡可保存'}
+    return;
+  }
+  saveToWarehouse(true);
+}
+function saveToWarehouse(autoMode){
+  var pn=document.getElementById('patternNoInput').value.trim()||patternNo||(autoMode?styleCode:'');
   if(!pn){showToast('请输入花版编号',true);return}
-  var btn=document.getElementById('saveBtn');btn.disabled=true;btn.innerHTML='保存中...';
+  patternNo=pn;
+  document.getElementById('patternNoInput').value=pn;
+  autoSaveInProgress=!!autoMode;
+  var btn=document.getElementById('saveBtn');
+  if(btn){btn.disabled=true;btn.innerHTML=autoMode?'自动保存中...':'保存中...';}
   fetch('/api/ai/confirm-pattern',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     pattern_no:pn,cycle_size:'',style_code:styleCode,master_image:masterImageUrl||masterImageDataUrl,
     colorways:colorways.map(function(c,i){return{index:i+1,color_name:c.color_name||'',sub_code:c.sub_code||'',sku_code:c.sku_code||'',image_url:c.image_url||'',dominant_color:c.dominant_color||'',confirmed:true}})
   })}).then(function(r){return r.json()}).then(function(res){
-    if(res.status==='success'||res.saved){btn.innerHTML='已保存';btn.style.background='#10b981';showToast('花版已保存到图库');loadHistory();setTimeout(function(){btn.disabled=false;btn.innerHTML='保存到图库';btn.style.background='#C8A56D'},1200)}
-    else{showToast((res.error||'保存失败'),true);btn.disabled=false;btn.innerHTML='保存到图库'}
-  }).catch(function(){showToast('网络错误',true);btn.disabled=false;btn.innerHTML='保存到图库'});
+    autoSaveInProgress=false;
+    if(res.status==='success'||res.saved){
+      autoSaveDone=true;
+      if(Array.isArray(res.saved)){
+        res.saved.forEach(function(s,i){
+          if(colorways[i]){
+            colorways[i].warehouse_id=s.id||colorways[i].warehouse_id||0;
+            colorways[i].id=s.id||colorways[i].id||0;
+          }
+        });
+      }
+      if(btn){btn.innerHTML=autoMode?'已自动保存':'已保存';btn.style.background='#10b981';btn.disabled=true;}
+      showToast(autoMode?'已自动保存到图库':'花版已保存到图库');
+      loadHistory();
+    }
+    else{
+      autoSaveDone=false;
+      showToast((res.error||'保存失败'),true);
+      if(btn){btn.disabled=false;btn.innerHTML='重新保存到图库';btn.style.background='#C8A56D'}
+    }
+  }).catch(function(){
+    autoSaveInProgress=false;autoSaveDone=false;
+    showToast('网络错误',true);
+    if(btn){btn.disabled=false;btn.innerHTML='重新保存到图库';btn.style.background='#C8A56D'}
+  });
 }
 
 function loadHistory(){fetch('/api/print-warehouse/groups?style_code='+encodeURIComponent(styleCode)).then(function(r){return r.json()}).then(function(groups){
@@ -829,10 +869,18 @@ function cartQty(idx,s,d){LUNA.updateCartQty(idx,s,d);renderCartBody();updateBad
 function cartRemove(idx){LUNA.removeFromCart(idx);renderCartBody();updateBadge()}
 function updateBadge(){var cart=LUNA.getCart()||[],t=0;cart.forEach(function(i){var q=i.qty||{};Object.keys(q).forEach(function(s){t+=q[s]||0})});document.getElementById('cartBadge').textContent=t;document.getElementById('floatBadge').textContent=t}
 function updateSubmitBtn(){var cart=LUNA.getCart()||[];document.getElementById('submitBtn').disabled=!cart.length;document.getElementById('submitSub').textContent=cart.length?'':'购物车为空'}
-function renderGuestDropdown(){var sel=document.getElementById('guestSelect');var u=LUNA.getUser&&LUNA.getUser();if(u&&u.role==='guest'){var selfName=u.name||u.username||'';sel.innerHTML='<option value="'+esc(selfName)+'">'+esc(selfName)+'</option>';sel.value=selfName;sel.style.display='none';return}try{var guests=LUNA.getGuests()||[];sel.innerHTML='<option value="">— 选择客人 —</option>';guests.forEach(function(g){if(g.enabled!==false)sel.innerHTML+='<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>'})}catch(e){}}
-function submitOrder(){var u=LUNA.getUser&&LUNA.getUser();var guest=document.getElementById('guestSelect').value;if(!guest&&u&&u.role==='guest')guest=u.name||u.username||'';if(!guest){showToast('请选择客人',true);return}
+function renderGuestDropdown(){var sel=document.getElementById('guestSelect');var u=LUNA.getUser&&LUNA.getUser();var guests=[];try{guests=LUNA.getGuests()||[]}catch(e){}
+  if(u&&u.role==='guest'){var selfName=u.name||u.username||'';var secondaries=guests.filter(function(g){return g&&g.enabled!==false&&g.parent_id&&(g.parent_id===u.id||g.parent_id===u.username)});
+    var html='<option value="'+esc(selfName)+'">本人 · '+esc(selfName)+'</option>';secondaries.forEach(function(g){var n=g.name||g.username||'';if(n)html+='<option value="'+esc(n)+'">二级客人 · '+esc(n)+'</option>'});
+    sel.innerHTML=html;sel.value=selfName;sel.style.display=secondaries.length?'':'none';return}
+  sel.innerHTML='<option value="">— 选择客人 —</option>';guests.forEach(function(g){if(g.enabled!==false&&!g.parent_id)sel.innerHTML+='<option value="'+esc(g.name||g.username||'')+'">A '+esc(g.name||g.username||'')+'</option>'})}
+function resolveSelectedCustomer(){var u=LUNA.getUser&&LUNA.getUser();var sel=document.getElementById('guestSelect');var customer=sel.value;if(!customer&&u&&u.role==='guest')customer=u.name||u.username||'';var sub='';var guests=[];try{guests=LUNA.getGuests()||[]}catch(e){}
+  var picked=null;for(var i=0;i<guests.length;i++){var n=guests[i].name||guests[i].username||'';if(n===customer){picked=guests[i];break}}
+  if(picked&&picked.parent_id){sub=customer;for(var j=0;j<guests.length;j++){if(guests[j].id===picked.parent_id||guests[j].username===picked.parent_id){customer=guests[j].name||guests[j].username||customer;break}}}
+  return {customer:customer,subCustomer:sub}}
+function submitOrder(){var picked=resolveSelectedCustomer();var guest=picked.customer;if(!guest){showToast('请选择客人',true);return}
   var btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='提交中...';
-  var result=LUNA.checkout(guest,document.getElementById('orderNoteInput').value.trim());
+  var result=LUNA.checkout(guest,document.getElementById('orderNoteInput').value.trim(),picked.subCustomer);
   if(result&&result.ok!==false){showToast('下单成功');renderCartBody();updateBadge();setTimeout(function(){window.location.href='my-orders.html'},800)}
   else{showToast('下单失败',true);btn.disabled=false;updateSubmitBtn()}}
 function openLightbox(url,name){if(!url)return;document.getElementById('lightboxImg').src=url;document.getElementById('lightboxName').textContent=name||'';document.getElementById('lightbox').classList.add('show')}

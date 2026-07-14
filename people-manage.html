@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .side-menu .sm-link.danger{color:#c44}
 .side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
 /* ===== Page ===== */
-.page{max-width:1100px;margin:0 auto;padding:20px}
+.page{max-width:1280px;margin:0 auto;padding:20px}
 /* ===== Tabs ===== */
 .tabs{display:flex;gap:2px;background:#f0ede8;border-radius:8px;padding:3px;margin-bottom:20px}
 .tab{flex:1;padding:12px;font-size:13px;font-weight:500;border:none;border-radius:6px;cursor:pointer;background:transparent;color:#888;font-family:inherit;transition:all .15s;text-align:center}
@@ -68,6 +68,22 @@ td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px
 .btn-add:hover{border-color:#c9a96e;color:#c9a96e}
 .add-sub-btn{font-size:11px;background:none;border:1px dashed #ddd;border-radius:4px;padding:4px 12px;cursor:pointer;color:#999;font-family:inherit}
 .add-sub-btn:hover{border-color:#c9a96e;color:#c9a96e}
+.emp-table{min-width:900px}
+.pass-cell{display:flex;gap:5px;min-width:150px}
+.pass-cell input{min-width:0}
+.perm-summary{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.perm-count{font-size:11px;color:#888}
+.perm-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center;padding:18px}
+.perm-modal-overlay.active{display:flex}
+.perm-modal{width:min(560px,100%);max-height:86vh;overflow:auto;background:#fff;border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.18);padding:18px}
+.perm-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.perm-modal-title{font-size:18px;font-weight:700}
+.perm-modal-close{border:none;background:#f5f2ed;border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer;color:#777}
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.perm-chip{display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #ebe8e3;border-radius:6px;background:#faf9f7;font-size:11px;color:#555;cursor:pointer;line-height:1.2;white-space:nowrap}
+.perm-chip:hover{border-color:#c9a96e;background:#fffaf2}
+.perm-chip input{width:auto;min-height:0;margin:0}
+.perm-modal .perm-chip{font-size:13px;padding:10px 12px}
 /* ===== Hint ===== */
 .hint{font-size:11px;color:#888;background:#faf6ee;padding:8px 12px;border-radius:6px;margin-top:12px;line-height:1.6}
 /* ===== Responsive ===== */
@@ -76,6 +92,9 @@ td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px
   th,td{padding:6px 6px;font-size:12px}
   td input{font-size:12px;padding:5px}
   .stat-bar{gap:10px;font-size:12px}
+  .emp-table{min-width:760px}
+  .pass-cell{min-width:130px}
+  .perm-grid{grid-template-columns:1fr}
 }
 @media(max-width:480px){
   table{min-width:800px}
@@ -93,7 +112,7 @@ td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px
 <div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
 <div class="side-menu" id="sideMenu">
   <div class="sm-header">
-    <span class="sm-logo">LUNA ATELIER</span>
+    <span class="sm-logo" data-luna-brand>LUNA ATELIER</span>
     <button class="sm-close" onclick="toggleMenu()">✕</button>
   </div>
   <div class="sm-section">
@@ -124,7 +143,20 @@ td select{padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px
   <div class="panel" id="panel-employees"></div>
 </div>
 
-<script src="luna-data.js?v=26"></script>
+<div class="perm-modal-overlay" id="permModal" onclick="if(event.target===this)closePermissionModal()">
+  <div class="perm-modal">
+    <div class="perm-modal-head">
+      <div>
+        <div class="perm-modal-title" id="permModalTitle">开放页面权限</div>
+        <div class="hint" style="margin-top:6px">勾选后立即保存。员工登录后只能进入已开放页面。</div>
+      </div>
+      <button class="perm-modal-close" onclick="closePermissionModal()">×</button>
+    </div>
+    <div id="permModalBody"></div>
+  </div>
+</div>
+
+<script src="luna-data.js?v=39"></script>
 <script>LUNA.renderNav();</script>
 <script>
 (function(){var u=LUNA.getUser();if(!u||u.role!=='admin'){window.location.href='index.html';return;}})();
@@ -134,8 +166,7 @@ function toggleMenu() {
   document.getElementById('sideOverlay').classList.toggle('active');
 }
 function logout() {
-  LUNA.clearUser();
-  window.location.href = 'index.html';
+  LUNA.logout();
 }
 
 // ===== 数据层 =====
@@ -147,17 +178,38 @@ var PEOPLE = {
   get: function(key) {
     var raw = localStorage.getItem(this.KEYS[key]);
     if (raw) {
-      try { var d = JSON.parse(raw); return Array.isArray(d) && d.length === 0 ? null : d; } catch(e) { return []; }
+      try {
+        var d = JSON.parse(raw);
+        if (Array.isArray(d)) {
+          d.forEach(function(x){ if (x && x.password === '******') delete x.password; });
+        }
+        return Array.isArray(d) && d.length === 0 ? null : d;
+      } catch(e) { return []; }
     }
     return null;
   },
   save: function(key, data) {
-    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+    data = (data || []).map(function(item) {
+      var copy = Object.assign({}, item);
+      if (copy.password === '******') delete copy.password;
+      return copy;
+    });
     if (typeof LUNA !== 'undefined') {
-      if (key === 'guests' && LUNA.saveGuests) { LUNA.saveGuests(data); return; }
-      if (key === 'employees' && LUNA.saveEmployees) { LUNA.saveEmployees(data); return; }
+      var result = null;
+      if (key === 'guests' && LUNA.saveGuests) result = LUNA.saveGuests(data);
+      else if (key === 'employees' && LUNA.saveEmployees) result = LUNA.saveEmployees(data);
+      if (result && result.error) {
+        alert(result.error);
+        return false;
+      }
+      if (result !== null) {
+        localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+        return true;
+      }
       if (LUNA.syncAllToServer) LUNA.syncAllToServer();
     }
+    localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+    return true;
   }
 };
 
@@ -179,28 +231,38 @@ var DEFAULTS = {
   ]
 };
 
+function setPeopleLocal(key, data) {
+  localStorage.setItem(PEOPLE.KEYS[key], JSON.stringify(data || []));
+}
+function fetchPeopleList(key, callback) {
+  fetch('/api/data/' + key, {credentials:'same-origin'})
+    .then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok || data.error) throw new Error(data.error || ('读取' + key + '失败'));
+        return Array.isArray(data) ? data : [];
+      });
+    })
+    .then(function(data) { callback(null, data); })
+    .catch(function(err) { callback(err); });
+}
 function initPeople() {
-  ['guests','employees'].forEach(function(k) {
-    var d = PEOPLE.get(k);
-    if (!d || (Array.isArray(d) && d.length === 0)) PEOPLE.save(k, DEFAULTS[k]);
-  });
+  document.getElementById('panel-guests').innerHTML = '<div class="hint">正在读取客人账号…</div>';
+  document.getElementById('panel-employees').innerHTML = '<div class="hint">正在读取员工账号…</div>';
   renderGuests();
   renderEmployees();
-  // Try loading server data
-  var map = {'luna_settings_guests':'guests','luna_settings_employees':'employees'};
-  var reload = false;
-  Object.keys(map).forEach(function(k) {
-    var v = LUNA.get(k);
-    if (v && Array.isArray(v) && v.length > 0) { PEOPLE.save(map[k], v); reload = true; }
+  fetchPeopleList('guests', function(err, data) {
+    if (err) { console.warn(err); return; }
+    setPeopleLocal('guests', data);
+    renderGuests();
   });
-  if (reload) { renderGuests(); renderEmployees(); }
+  fetchPeopleList('employees', function(err, data) {
+    if (err) { console.warn(err); return; }
+    setPeopleLocal('employees', data);
+    renderEmployees();
+  });
   window.addEventListener('luna-data-changed', function() {
-    var changed = false;
-    Object.keys(map).forEach(function(k) {
-      var v = LUNA.get(k);
-      if (v && Array.isArray(v) && v.length > 0) { PEOPLE.save(map[k], v); changed = true; }
-    });
-    if (changed) { renderGuests(); renderEmployees(); }
+    fetchPeopleList('guests', function(err, data) { if (!err) { setPeopleLocal('guests', data); renderGuests(); } });
+    fetchPeopleList('employees', function(err, data) { if (!err) { setPeopleLocal('employees', data); renderEmployees(); } });
   });
 }
 
@@ -219,7 +281,7 @@ function renderGuests() {
   html += '</div>';
 
   html += '<div class="tbl-wrap"><table>';
-  html += '<tr><th style="width:55px">级别</th><th style="min-width:90px">姓名</th><th style="min-width:90px">店名</th><th style="min-width:150px">地址</th><th style="min-width:100px">税号</th><th style="min-width:80px">账号</th><th style="width:70px">密码</th><th style="width:50px">启用</th><th style="width:70px">操作</th></tr>';
+  html += '<tr><th style="width:55px">级别</th><th style="min-width:90px">姓名</th><th style="min-width:90px">店名</th><th style="min-width:150px">地址</th><th style="min-width:100px">税号</th><th style="min-width:80px">账号</th><th style="min-width:145px">密码设置</th><th style="width:50px">启用</th><th style="width:70px">操作</th></tr>';
 
   if (data.length === 0) {
     html += '<tr><td colspan="9" style="text-align:center;padding:40px;color:#aaa">暂无客人，点击下方按钮添加</td></tr>';
@@ -235,7 +297,7 @@ function renderGuests() {
     html += '<td><input value="' + esc(g.address||'') + '" placeholder="地址" onchange="updG(' + ri + ',\'address\',this.value)"></td>';
     html += '<td><input value="' + esc(g.tax_id||'') + '" placeholder="税号" onchange="updG(' + ri + ',\'tax_id\',this.value)"></td>';
     html += '<td><input value="' + esc(g.username) + '" placeholder="账号" onchange="updG(' + ri + ',\'username\',this.value)"></td>';
-    html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updG(' + ri + ',\'password\',this.value)" style="font-size:11px"></td>';
+    html += '<td><div style="display:flex;gap:4px"><input id="guestPass' + ri + '" type="password" placeholder="已设置；留空不修改" style="font-size:11px;min-width:92px"><button class="btn btn-mini" onclick="saveGuestPassword(' + ri + ')">保存</button></div></td>';
     html += '<td><span class="toggle' + (en ? ' on' : '') + '" onclick="togG(' + ri + ')"><span class="knob"></span></span></td>';
     html += '<td><button class="btn btn-danger" onclick="delGP(' + ri + ')">删除</button></td>';
     html += '</tr>';
@@ -252,7 +314,7 @@ function renderGuests() {
       html += '<td><input value="' + esc(s.address||'') + '" placeholder="地址" onchange="updG(' + si + ',\'address\',this.value)"></td>';
       html += '<td><input value="' + esc(s.tax_id||'') + '" placeholder="税号" onchange="updG(' + si + ',\'tax_id\',this.value)"></td>';
       html += '<td><input value="' + esc(s.username) + '" placeholder="账号" onchange="updG(' + si + ',\'username\',this.value)"></td>';
-      html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updG(' + si + ',\'password\',this.value)" style="font-size:11px"></td>';
+      html += '<td><div style="display:flex;gap:4px"><input id="guestPass' + si + '" type="password" placeholder="已设置；留空不修改" style="font-size:11px;min-width:92px"><button class="btn btn-mini" onclick="saveGuestPassword(' + si + ')">保存</button></div></td>';
       html += '<td><span class="toggle' + (en2 ? ' on' : '') + '" onclick="togG(' + si + ')"><span class="knob"></span></span></td>';
       html += '<td><button class="btn btn-danger" onclick="delGS(' + si + ')">删除</button></td>';
       html += '</tr>';
@@ -273,21 +335,33 @@ function renderGuests() {
 function updG(idx, field, val) {
   var data = PEOPLE.get('guests');
   if (!data || idx >= data.length) return;
-  if (field === 'password' && (!val || val === '******')) return;
   data[idx][field] = val;
   PEOPLE.save('guests', data);
+}
+function saveGuestPassword(idx) {
+  var input = document.getElementById('guestPass' + idx);
+  var val = input ? input.value.trim() : '';
+  if (!val) { alert('请输入新密码'); return; }
+  var data = PEOPLE.get('guests');
+  if (!data || idx >= data.length) return;
+  data[idx].password = val;
+  if (PEOPLE.save('guests', data)) {
+    delete data[idx].password;
+    input.value = '';
+    alert('密码已更新');
+  }
 }
 function togG(idx) {
   var d = PEOPLE.get('guests'); if (!d || idx >= d.length) return;
   d[idx].enabled = !(d[idx].enabled !== false); PEOPLE.save('guests', d); renderGuests();
 }
 function addG() {
-  var d = PEOPLE.get('guests');
+  var d = PEOPLE.get('guests') || [];
   d.push({id:genId(),name:'新客人',username:'guest'+Date.now(),password:'123456',phone:'',enabled:true,parent_id:'',address:'',tax_id:'',shop_name:''});
   PEOPLE.save('guests', d); renderGuests();
 }
 function addSub(pid) {
-  var d = PEOPLE.get('guests');
+  var d = PEOPLE.get('guests') || [];
   d.push({id:genId(),name:'新二级',username:'sub'+Date.now(),password:'',phone:'',enabled:true,parent_id:pid,address:'',tax_id:'',shop_name:''});
   PEOPLE.save('guests', d); renderGuests();
 }
@@ -312,16 +386,15 @@ function delGS(idx) {
 function renderEmployees() {
   var data = PEOPLE.get('employees') || [];
   var enb = data.filter(function(e){ return e.enabled !== false; }).length;
-  var roles = ['裁剪员','发货员','排版师','车工'];
-  var factories = (typeof LUNA !== 'undefined' && LUNA.getFactories) ? (LUNA.getFactories() || []) : [];
+  var roles = ['裁剪员','发货员','排版师'];
 
   var html = '<div class="stat-bar">';
   html += '<span>👥 总人数 <strong>' + data.length + '</strong></span>';
   html += '<span>✅ 在职 <strong>' + enb + '</strong></span>';
   html += '</div>';
 
-  html += '<div class="tbl-wrap"><table>';
-  html += '<tr><th style="min-width:90px">姓名</th><th style="min-width:100px">手机</th><th style="min-width:80px">账号</th><th style="width:70px">密码</th><th style="min-width:80px">岗位</th><th style="min-width:90px">工厂</th><th style="width:50px">在职</th><th style="width:70px">操作</th></tr>';
+  html += '<div class="tbl-wrap"><table class="emp-table">';
+  html += '<tr><th style="min-width:90px">姓名</th><th style="min-width:100px">手机</th><th style="min-width:90px">账号</th><th style="min-width:150px">密码设置</th><th style="min-width:80px">岗位</th><th style="width:55px">在职</th><th style="min-width:210px">权限/操作</th></tr>';
 
   if (data.length === 0) {
     html += '<tr><td colspan="8" style="text-align:center;padding:40px;color:#aaa">暂无员工，点击下方按钮添加</td></tr>';
@@ -333,36 +406,99 @@ function renderEmployees() {
     html += '<td><input value="' + esc(e.name) + '" placeholder="姓名" onchange="updE(' + i + ',\'name\',this.value)"></td>';
     html += '<td><input value="' + esc(e.phone||'') + '" placeholder="手机" onchange="updE(' + i + ',\'phone\',this.value)"></td>';
     html += '<td><input value="' + esc(e.username) + '" placeholder="账号" onchange="updE(' + i + ',\'username\',this.value)"></td>';
-    html += '<td><input type="password" value="******" onfocus="this.value=\'\'" onchange="updE(' + i + ',\'password\',this.value)" style="font-size:11px"></td>';
+    html += '<td><div class="pass-cell"><input id="empPass' + i + '" type="password" placeholder="已设置；留空不修改"><button class="btn btn-success" onclick="saveEmployeePassword(' + i + ')">保存</button></div></td>';
     html += '<td><select onchange="updE(' + i + ',\'role\',this.value)">';
     roles.forEach(function(r){ html += '<option value="' + r + '"' + (e.role === r ? ' selected' : '') + '>' + r + '</option>'; });
     html += '</select></td>';
-    html += '<td><select onchange="updE(' + i + ',\'factory\',this.value)"><option value="">未指定</option>';
-    factories.forEach(function(f){ var name = f.name || f.id || ''; html += '<option value="' + esc(name) + '"' + ((e.factory||'') === name ? ' selected' : '') + '>' + esc(name) + '</option>'; });
-    html += '</select></td>';
     html += '<td><span class="toggle' + (en ? ' on' : '') + '" onclick="togE(' + i + ')"><span class="knob"></span></span></td>';
-    html += '<td><button class="btn btn-danger" onclick="delE(' + i + ')">删除</button></td>';
+    html += '<td>' + renderPermissionSummary(e, i) + '</td>';
     html += '</tr>';
   });
 
   html += '</table></div>';
   html += '<div class="add-row" style="margin-top:10px"><button class="btn-add" onclick="addE()">＋ 添加员工</button></div>';
-  html += '<div class="hint">💡 员工账号可用于登录系统。关闭「在职」后该账号无法登录。</div>';
+  html += '<div class="hint">💡 员工账号可登录系统；这里勾选哪些页面，员工登录后就只能看这些页面。加工工厂账号请在「设置 → 加工工厂」里设置。</div>';
   document.getElementById('panel-employees').innerHTML = html;
 }
 
+var EMP_PAGE_OPTIONS = [
+  ['guest-styles.html','款式浏览/下单'],
+  ['style-manage.html','款式管理'],
+  ['add-style.html','添加款式'],
+  ['marker.html','唛架/纸样'],
+  ['cutting.html','裁剪'],
+  ['cutting_history.html','裁剪历史'],
+  ['ready-pickup.html','待取货'],
+  ['shipping.html','发货'],
+  ['factory.html','工厂页面']
+];
+function defaultEmployeePermissions(role) {
+  if (role === '排版师') return ['marker.html'];
+  if (role === '裁剪员') return ['cutting.html','cutting_history.html'];
+  if (role === '发货员') return ['shipping.html','ready-pickup.html'];
+  return [];
+}
+function employeePermissions(e) {
+  return Array.isArray(e.permissions) ? e.permissions : defaultEmployeePermissions(e.role);
+}
+function renderPermissionChecks(e, idx) {
+  var perms = employeePermissions(e);
+  return '<div class="perm-grid">' + EMP_PAGE_OPTIONS.map(function(opt) {
+    var checked = perms.indexOf(opt[0]) !== -1 ? ' checked' : '';
+    return '<label class="perm-chip"><input type="checkbox" onchange="toggleEPermission(' + idx + ',\'' + opt[0] + '\',this.checked)"' + checked + '> ' + opt[1] + '</label>';
+  }).join('') + '</div>';
+}
+function renderPermissionSummary(e, idx) {
+  var perms = employeePermissions(e);
+  return '<div class="perm-summary"><span class="perm-count">已开放 ' + perms.length + ' 个</span><button class="btn btn-primary" onclick="openPermissionModal(' + idx + ')">设置权限</button><button class="btn btn-danger" onclick="delE(' + idx + ')">删除</button></div>';
+}
+function openPermissionModal(idx) {
+  var d = PEOPLE.get('employees') || [];
+  if (idx >= d.length) return;
+  var e = d[idx];
+  document.getElementById('permModalTitle').textContent = '开放页面权限 · ' + (e.name || e.username || '员工');
+  document.getElementById('permModalBody').innerHTML = renderPermissionChecks(e, idx);
+  document.getElementById('permModal').classList.add('active');
+}
+function closePermissionModal() {
+  document.getElementById('permModal').classList.remove('active');
+}
 function updE(idx, field, val) {
   var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
-  if (field === 'password' && (!val || val === '******')) return;
-  d[idx][field] = val; PEOPLE.save('employees', d);
+  d[idx][field] = val;
+  if (field === 'role') d[idx].permissions = defaultEmployeePermissions(val);
+  PEOPLE.save('employees', d); if (field === 'role') renderEmployees();
+}
+function toggleEPermission(idx, page, checked) {
+  var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
+  var perms = employeePermissions(d[idx]).slice();
+  var pos = perms.indexOf(page);
+  if (checked && pos === -1) perms.push(page);
+  if (!checked && pos !== -1) perms.splice(pos, 1);
+  d[idx].permissions = perms;
+  PEOPLE.save('employees', d);
+  renderEmployees();
+  if (document.getElementById('permModal').classList.contains('active')) openPermissionModal(idx);
+}
+function saveEmployeePassword(idx) {
+  var input = document.getElementById('empPass' + idx);
+  var val = input ? input.value.trim() : '';
+  if (!val) { alert('请输入新密码'); return; }
+  var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
+  d[idx].password = val;
+  if (PEOPLE.save('employees', d)) {
+    delete d[idx].password;
+    input.value = '';
+    alert('密码已更新');
+  }
 }
 function togE(idx) {
   var d = PEOPLE.get('employees'); if (!d || idx >= d.length) return;
   d[idx].enabled = !(d[idx].enabled !== false); PEOPLE.save('employees', d); renderEmployees();
 }
 function addE() {
-  var d = PEOPLE.get('employees');
-  d.push({id:genId(),name:'新员工',username:'emp'+Date.now(),password:'123456',phone:'',enabled:true,role:'车工',factory:''});
+  var d = PEOPLE.get('employees') || [];
+  d.push({id:genId(),name:'新员工',username:'emp'+Date.now(),password:'123456',phone:'',enabled:true,role:'裁剪员',factory:'',permissions:defaultEmployeePermissions('裁剪员')});
   PEOPLE.save('employees', d); renderEmployees();
 }
 function delE(idx) {

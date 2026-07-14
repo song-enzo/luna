@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>LUNA ATELIER · 印花下单</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#F7F6F3;color:#1C1C1C;-webkit-font-smoothing:antialiased;padding-bottom:120px}
+.header{display:flex;align-items:center;padding:12px 16px;background:#fff;border-bottom:1px solid #EBE8E3;position:sticky;top:0;z-index:100}
+.header .back{font-size:20px;cursor:pointer;padding:4px 8px 4px 0;background:none;border:none;color:#666;font-family:inherit;text-decoration:none}
+.header .logo{font-family:'Playfair Display',serif;font-size:14px;letter-spacing:3px;color:#1C1C1C;margin-right:auto}
+.header .logo span{color:#C8A56D}
+.header .cart-icon{background:none;border:none;font-size:18px;cursor:pointer;position:relative;padding:4px;color:#999}
+.header .cart-badge{position:absolute;top:-2px;right:-6px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1.5px solid #fff}
+.pdp-wrap{max-width:480px;margin:0 auto;padding:0 16px 32px}
+.carousel-wrap{position:relative;margin:12px 0;border-radius:8px;overflow:hidden;background:#f0ede8}
+.carousel-wrap .swiper-slide{display:flex;align-items:center;justify-content:center;background:#f0ede8}
+.carousel-wrap .swiper-slide img{width:100%;height:auto;display:block;cursor:zoom-in}
+.carousel-wrap .swiper-pagination{position:relative;bottom:auto!important;padding:8px 0 4px}
+.carousel-wrap .swiper-pagination-bullet{width:5px;height:5px;background:#ddd;opacity:1}
+.carousel-wrap .swiper-pagination-bullet-active{background:#C8A56D;width:14px;border-radius:3px}
+.carousel-wrap .swiper-button-next,.carousel-wrap .swiper-button-prev{color:#fff;background:rgba(0,0,0,.3);width:36px;height:36px;border-radius:50%;transition:all .25s}
+.carousel-wrap .swiper-button-next:after,.carousel-wrap .swiper-button-prev:after{font-size:14px;font-weight:700}
+.carousel-counter{position:absolute;bottom:36px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;z-index:5}
+.product-info{padding:16px 0 8px}
+.product-code-line{display:flex;align-items:baseline;justify-content:space-between;margin-top:2px}
+.product-code{font-size:14px;color:#C8A56D;font-weight:600}
+.product-price{font-size:12px;color:#C8A56D;font-weight:600}
+.product-name{font-family:'Playfair Display',serif;font-size:22px;margin-top:4px;color:#1C1C1C}
+.upload-section{margin:12px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.upload-section .section-title{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:10px}
+.upload-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.upload-actions button,.upload-actions .upload-zone{border:none;border-radius:6px;padding:12px 10px;text-align:center;cursor:pointer;transition:all .15s;font-family:inherit;font-size:13px;font-weight:700;min-height:44px;display:flex;align-items:center;justify-content:center}
+.upload-zone{background:#C8A56D;color:#fff}
+.upload-zone:hover,.upload-zone.drag-over{border-color:#C8A56D;background:#faf6ee}
+.upload-zone:hover,.upload-zone.drag-over{background:#b8963e;color:#fff}
+.upload-zone .icon,.upload-zone .sub-hint{display:none}
+.upload-zone .hint{font-size:13px;color:inherit}
+.upload-zone .spinner{width:32px;height:32px;border:3px solid #EBE8E3;border-top-color:#C8A56D;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.upload-zone .loading-text{font-size:13px;color:#999}
+.ai-progress{display:none;margin-top:12px;padding:12px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.ai-progress.show{display:block}
+.ai-progress .progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:11px;color:#666}
+.ai-progress .progress-stage{font-weight:600;color:#1C1C1C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-progress .progress-percent{font-weight:700;color:#C8A56D}
+.ai-progress .progress-track{height:8px;background:#F0EDE8;border-radius:999px;overflow:hidden}
+.ai-progress .progress-bar{height:100%;width:0;background:#C8A56D;border-radius:999px;transition:width .25s ease}
+.ai-progress .progress-detail{margin-top:7px;font-size:10px;color:#999;line-height:1.4}
+.master-preview{margin:12px 0;padding:12px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.master-preview .mp-title{font-size:11px;color:#999;font-weight:500;margin-bottom:6px;display:flex;justify-content:space-between}
+.master-preview .mp-img-wrap{position:relative;cursor:pointer;border-radius:4px;overflow:hidden;background:#f0ede8}
+.master-preview .mp-img-wrap img{width:100%;height:auto;display:block;max-height:200px;object-fit:contain}
+.master-preview .mp-img-wrap .mp-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.08);opacity:0;transition:opacity .2s;font-size:13px;color:#fff;font-weight:600}
+.master-preview .mp-img-wrap:hover .mp-overlay{opacity:1;background:rgba(0,0,0,.3)}
+.pattern-fields{display:flex;gap:8px;margin:8px 0}
+.pattern-fields .field-group{flex:1}
+.pattern-fields .field-group label{display:block;font-size:10px;color:#999;font-weight:500;margin-bottom:3px;text-transform:uppercase}
+.pattern-fields .field-group input{width:100%;padding:8px 10px;border:1px solid #EBE8E3;border-radius:6px;font-size:13px;font-family:inherit;outline:none;background:#F7F6F3;color:#1C1C1C}
+.pattern-fields .field-group input:focus{border-color:#C8A56D}
+.color-card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.color-card{cursor:pointer;border-radius:6px;overflow:hidden;background:#fff;border:1.5px solid #EBE8E3;transition:all .15s;position:relative}
+.color-card:hover{border-color:#C8A56D}
+.color-card.selected{border-color:#C8A56D;box-shadow:0 0 0 2px rgba(200,165,109,.3)}
+.color-card .swatch-area{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f7f6f3}
+.color-card .swatch-area img{width:100%;height:100%;object-fit:contain}
+.color-card .color-label{padding:4px 2px;text-align:center;font-size:10px;font-weight:500;color:#1C1C1C;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.color-card .color-sub{font-size:8px;color:#C8A56D;text-align:center;padding:0 2px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swatch-del-btn{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(196,30,58,.9);color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;font-family:inherit}
+.action-row{display:flex;gap:8px;margin:12px 0}
+.action-row button{flex:1;padding:10px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .1s}
+.save-btn{background:#1C1C1C;color:#fff}
+.upload-actions .save-btn{background:#C8A56D;color:#fff}
+.upload-actions .save-btn:hover:not(:disabled){background:#b8963e}
+.save-btn:disabled{opacity:.5;cursor:default}
+.save-btn:hover{background:#333}
+.add-cart-btn{background:#C8A56D;color:#fff}
+.add-cart-btn:hover{background:#b8963e}
+.opt-block{margin:16px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.opt-label{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:10px}
+.size-btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.size-btn{padding:6px 10px;border:1.5px solid #C8A56D;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#C8A56D;font-family:inherit;transition:all .15s;min-width:40px;text-align:center}
+.size-btn:hover{background:#faf6ee}
+.size-btn.selected{background:#C8A56D;color:#fff;border-color:#C8A56D}
+.qty-select{padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;color:#333;outline:none;background:#fff;min-width:60px}
+.qty-select:focus{border-color:#C8A56D}
+.add-btn{width:100%;padding:14px;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .15s}
+.add-btn:disabled{opacity:.5;cursor:default;background:#ddd;color:#999}
+.add-btn .sub{font-size:11px;opacity:.6;font-weight:400}
+.add-btn:hover:not(:disabled){background:#b8963e}
+.order-note{margin-top:10px}
+.order-note textarea{width:100%;padding:8px 10px;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;font-family:inherit;resize:none;min-height:44px;outline:none;color:#333}
+.order-note textarea:focus{border-color:#C8A56D}
+.cart-float{position:fixed;bottom:24px;right:20px;z-index:900;width:52px;height:52px;border-radius:50%;background:#1C1C1C;color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2);font-family:inherit}
+.cart-float .badge{position:absolute;top:-4px;right:-4px;background:#c41e3a;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 4px}
+.cart-modal{display:none;position:fixed;bottom:90px;right:16px;width:340px;max-width:92vw;max-height:60vh;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:901;overflow:hidden;flex-direction:column}
+.cart-modal.open{display:flex}
+.cart-modal .cm-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #EBE8E3}
+.cart-modal .cm-header .cm-title{font-size:13px;font-weight:600;color:#1C1C1C}
+.cart-modal .cm-header .cm-close{background:none;border:none;font-size:18px;color:#999;cursor:pointer;font-family:inherit;padding:2px}
+.cart-modal .cm-body{overflow-y:auto;flex:1;padding:8px 0}
+.cart-empty{text-align:center;padding:20px;color:#bbb;font-size:12px}
+.cart-code-group{border:1.5px dashed #C8A56D;border-radius:8px;padding:8px;margin:0 8px 10px;background:#fff}
+.cart-code-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:2px;font-size:13px}
+.cart-code-header .cc-code{font-weight:700;color:#1C1C1C;font-size:12px}
+.cart-code-header .cc-price{color:#C8A56D;font-weight:600;font-size:12px}
+.cart-color-item{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-top:1px solid #EBE8E3}
+.cart-color-item:first-of-type{border-top:none}
+.cart-color-swatch{width:26px;height:34px;border-radius:4px;border:1px solid #ddd;flex-shrink:0;margin-top:2px;background-size:contain;background-position:center;background-repeat:no-repeat;background-color:#f7f6f3}
+.cart-color-info{flex:1;min-width:0}
+.cart-color-name{font-size:11px;font-weight:600;color:#555;margin-bottom:1px}
+.cart-qty-ctrl{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.cart-qty-cell{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid #EBE8E3;border-radius:6px;padding:4px 5px 3px;background:#fafaf8;min-width:36px}
+.cart-qty-btn{width:26px;height:20px;border:1px solid #C8A56D;border-radius:3px;background:#fff;color:#C8A56D;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;padding:0}
+.cart-qty-val{font-size:12px;font-weight:700;color:#1C1C1C}
+.cart-qty-lbl{font-size:9px;color:#999;font-weight:500}
+.cart-modal .cm-footer{padding:10px 14px;border-top:1px solid #EBE8E3;display:flex;gap:12px;align-items:flex-start}
+.cart-modal .cm-footer .guest-select{flex:1;padding:10px 8px;border:1px solid #EBE8E3;border-radius:6px;font-size:12px;font-family:inherit;outline:none;color:#333;background:#fff}
+.cart-modal .cm-footer .submit-btn{flex:1;padding:14px 0;background:#C8A56D;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center}
+.cart-modal .cm-footer .submit-btn:disabled{opacity:.5;cursor:default;background:#ddd}
+.cart-backdrop{display:none;position:fixed;inset:0;z-index:898;background:transparent}
+.cart-backdrop.show{display:block}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;align-items:center;justify-content:center;padding:12px;flex-direction:column}
+.lightbox.show{display:flex}
+.lightbox .lb-close{position:fixed;top:14px;right:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;z-index:2}
+.lightbox .lb-img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;width:auto;height:auto}
+.lightbox .lb-name{color:rgba(255,255,255,.7);text-align:center;margin-top:12px;font-size:13px;position:fixed;bottom:20px;left:0;right:0}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1C1C1C;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.history-section{margin:12px 0;padding:16px;background:#fff;border:1px solid #EBE8E3;border-radius:8px}
+.history-title{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#999;font-weight:500;margin-bottom:8px;display:flex;justify-content:space-between}
+.history-title .action{font-size:10px;color:#C8A56D;cursor:pointer}
+.history-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.history-card{border:1px solid #EBE8E3;border-radius:6px;overflow:hidden;cursor:pointer;transition:all .15s;background:#fff;position:relative}
+.history-card:hover{border-color:#C8A56D}
+.history-card .h-thumb{width:100%;aspect-ratio:3/4;object-fit:contain;background:#f7f6f3;display:block}
+.history-card .h-info{padding:4px 5px}
+.history-card .h-code{font-size:9px;color:#C8A56D;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cropCanvas{display:none}
+/* 手动裁剪弹窗全屏 */
+.crop-modal{display:none;position:fixed;inset:0;background:#fff;z-index:99999;flex-direction:column;padding:0}
+.crop-modal.show{display:flex}
+.crop-modal .cm-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #EBE8E3;flex-shrink:0}
+.crop-modal .cm-header .cm-title{font-size:13px;font-weight:600;color:#333}
+.crop-modal .cm-body{flex:1;overflow:hidden;position:relative}
+.crop-modal canvas{width:100%;height:100%;touch-action:none}
+.crop-modal .cm-footer{display:flex;gap:8px;padding:10px 14px;border-top:1px solid #EBE8E3;flex-shrink:0}
+.crop-modal .cm-footer button{flex:1;padding:12px 0;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.crop-modal .cm-footer .done-btn{background:#C8A56D;color:#fff}
+.crop-modal .cm-footer .cancel-btn{background:#f0ede8;color:#666}
+.crop-modal .cm-img-bg{display:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <a class="back" href="javascript:history.back()">&larr;</a>
+  <span class="logo">LUNA <span>A</span></span>
+  <button class="cart-icon" onclick="toggleCart()">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+</div>
+<div class="pdp-wrap">
+  <div class="carousel-wrap" id="carouselWrap">
+    <div class="swiper" id="carouselSwiper"><div class="swiper-wrapper" id="carouselTrack"></div><div class="swiper-pagination" id="carouselDots"></div></div>
+    <div class="swiper-button-prev"></div><div class="swiper-button-next"></div>
+    <div class="carousel-counter" id="carouselCounter"></div>
+  </div>
+  <div class="product-info" id="productInfo"></div>
+<div class="upload-section">
+    <div class="section-title">�?花版图片</div>
+    <div class="upload-actions">
+      <button type="button" class="upload-zone" id="uploadZone">
+        <span class="icon">📸</span>
+        <span class="hint">上传新图�?/span>
+        <span class="sub-hint"></span>
+      </button>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <div class="ai-progress" id="aiProgress">
+      <div class="progress-head">
+        <span class="progress-stage" id="aiProgressStage">准备上传</span>
+        <span class="progress-percent" id="aiProgressPercent">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-bar" id="aiProgressBar"></div></div>
+      <div class="progress-detail" id="aiProgressDetail">等待图片...</div>
+    </div>
+  </div>
+  <div id="analysisResult" style="display:none">
+    <div class="master-preview">
+      <div class="mp-title">
+        <span>大图缩略�?<span style="font-size:10px;color:#C8A56D;font-weight:400" id="swatchCount"></span></span>
+        <span class="action" onclick="openManualCropModal()" style="font-size:10px;color:#C8A56D;cursor:pointer">✏️ 手动裁剪</span>
+      </div>
+      <div class="mp-img-wrap">
+        <img id="masterPreviewImg" src="" alt="" style="max-height:180px">
+        <div class="mp-overlay">👁 点击放大</div>
+      </div>
+      <div class="pattern-fields">
+        <div class="field-group"><label>花版编号</label><input type="text" id="patternNoInput" placeholder="Gemini 识别�?.."></div>
+      </div>
+    </div>
+  </div>
+  <div class="opt-block">
+    <div class="opt-label">�?选择色卡 <span id="selectedCount" style="font-size:10px;color:#C8A56D;font-weight:400"></span></div>
+    <div id="swatchGrid" class="color-card-grid"></div>
+  </div>
+  <div class="opt-block">
+    <div class="opt-label">�?尺码 & 数量</div>
+    <div class="size-btn-row" id="sizeBtns"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <span style="font-size:13px;color:#666">数量</span>
+      <input type="number" class="qty-select" id="qtyInput" value="1" min="1" onclick="this.select()" style="width:70px">
+    </div>
+    <div class="order-note"><textarea id="orderNoteInput" placeholder="订单备注（选填�? rows="2"></textarea></div>
+    <button class="add-btn" id="addToCartBtn" disabled>加入购物�?<span class="sub" id="addSub">�?请选择色卡</span></button>
+  </div>
+  <div class="history-section" id="historySection" style="display:none">
+    <div class="history-title"><span>📂 历史花版</span><span class="action" onclick="loadHistory()">🔄 刷新</span></div>
+    <div class="history-grid" id="historyGrid"></div>
+  </div>
+</div>
+<canvas id="cropCanvas"></canvas>
+<div class="cart-backdrop" id="cartBackdrop" onclick="toggleCart()"></div>
+<div class="cart-float" id="cartFloat" onclick="toggleCart()">🛒<span class="badge" id="floatBadge">0</span></div>
+<div class="cart-modal" id="cartModal">
+  <div class="cm-header"><span class="cm-title">购物�?/span><button class="cm-close" onclick="toggleCart()">×</button></div>
+  <div class="cm-body" id="cartBody"><div class="cart-empty">购物车是空的</div></div>
+  <div class="cm-footer">
+    <select class="guest-select" id="guestSelect"><option value="">�?选择客人 �?/option></select>
+    <button class="submit-btn" id="submitBtn" disabled onclick="submitOrder()">📋 下单 <span class="sub" id="submitSub"></span></button>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lb-close" onclick="closeLightbox()">×</button>
+  <img class="lb-img" id="lightboxImg" src="" alt="">
+  <div class="lb-name" id="lightboxName"></div>
+</div>
+<!-- 手动裁剪全屏弹窗 -->
+<div class="crop-modal" id="cropModal">
+  <div class="cm-header">
+    <span class="cm-title">框选色卡区�?/span>
+    <button style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;padding:4px;font-family:inherit" onclick="closeCropModal()">×</button>
+  </div>
+  <div class="cm-body"><canvas id="cropModalCanvas"></canvas></div>
+  <div class="cm-footer">
+    <button class="cancel-btn" onclick="closeCropModal()">取消</button>
+    <button class="done-btn" onclick="cropModalDone()">确认添加</button>
+  </div>
+  <img id="cropModalImg" class="cm-img-bg">
+</div>
+<div class="toast" id="toast"></div>
+<script src="luna-data.js?v=39"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+<script>
+var style, styleCode, colorways=[], selectedSwatches={}, ALL_SIZES=['XS','S','M','L','XL','XXL','XXXL','UNICA'];
+var masterImageDataUrl='', masterImageUrl='', patternNo='', masterImg=null;
+var autoSaveInFlight=false;
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function showToast(m,err){var t=document.getElementById('toast');t.textContent=(err?'× ':'�?')+m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},3000)}
+
+function init(){
+  styleCode=new URLSearchParams(location.search).get('code');
+  if(!styleCode){showToast('缺少款式编号',true);history.back();return}
+  style=LUNA.findStyle(styleCode);
+  if(!style){showToast('款式不存�?,true);return}
+  if(style.type!=='stampa'&&style.type!=='print'){
+    window.location.href='order-page.html?code='+encodeURIComponent(styleCode);return
+  }
+  renderCarousel();renderInfo();setupUpload();moveHistoryUnderCarousel();loadHistory();
+  renderCartBody();updateBadge();renderGuestDropdown();renderSizes();
+}
+
+function moveHistoryUnderCarousel(){
+  var history=document.getElementById('historySection');
+  var carousel=document.getElementById('carouselWrap');
+  if(history&&carousel&&history.parentNode!==carousel.parentNode){
+    carousel.insertAdjacentElement('afterend',history);
+  }else if(history&&carousel){
+    carousel.insertAdjacentElement('afterend',history);
+  }
+}
+
+function renderCarousel(){
+  var track=document.getElementById('carouselTrack'),ct=document.getElementById('carouselCounter');
+  var imgs=style.images||[];
+  if(!imgs.length){track.innerHTML='<div class="swiper-slide"><div style="padding:60px 0;color:#d5d0c9;font-size:14px">暂无图片</div></div>';ct.textContent='';return}
+  if(typeof Swiper==='undefined'){setTimeout(renderCarousel,200);return}
+  track.innerHTML=imgs.map(function(u,i){return '<div class="swiper-slide"><img src="'+esc(u)+'" loading="lazy" data-idx="'+i+'"></div>'}).join('');
+  var wrap=document.getElementById('carouselWrap');
+  if(wrap._swiper)wrap._swiper.destroy(true,true);
+  wrap._swiper=new Swiper('#carouselSwiper',{loop:true,speed:400,grabCursor:true,slidesPerView:1,pagination:{el:'#carouselDots',clickable:true},navigation:{nextEl:'.swiper-button-next',prevEl:'.swiper-button-prev'},on:{init:function(){ct.textContent='1/'+imgs.length},slideChange:function(){ct.textContent=(this.realIndex+1)+'/'+imgs.length}}});
+  track.onclick=function(e){
+    var img=e.target.closest('.swiper-slide img');
+    if(!img)return;
+    var idx=parseInt(img.getAttribute('data-idx'),10)||0;
+    if(window.Fancybox){
+      var sources=imgs.map(function(u){return{src:u}});
+      Fancybox.show(sources,{
+        dragToClose:true,
+        Image:{zoom:true},
+        showClass:false,
+        hideClass:false,
+        closeButton:false,
+        startIndex:idx,
+        on:{
+          "Carousel.selectSlide":function(fb,carousel,slide){
+            var href=slide.src;
+            track.querySelectorAll('.swiper-slide img').forEach(function(el,i){
+              if(el.src===href||el.src.split('?')[0]===href.split('?')[0]){
+                if(wrap._swiper&&wrap._swiper.slideToLoop)wrap._swiper.slideToLoop(i,0);
+              }
+            });
+          }
+        }
+      });
+    }else{
+      openLightbox(imgs[idx]||img.getAttribute('src')||img.src,'ART-'+(style&&style.code?style.code:''));
+    }
+  };
+}
+function renderInfo(){document.getElementById('productInfo').innerHTML='<div class="product-code-line"><span class="product-code">#'+esc(style.code)+'</span><span class="product-price">&euro;'+(style.suggestedPrice||0).toFixed(2)+'</span></div><div class="product-name">'+esc(style.name||'')+'</div>';}
+
+function setupUpload(){
+  var zone=document.getElementById('uploadZone'),input=document.getElementById('fileInput');
+  zone.onclick=function(){input.click()};
+  input.onchange=function(){if(input.files&&input.files[0])processImage(input.files[0])};
+  zone.ondragover=function(e){e.preventDefault();zone.classList.add('drag-over')};
+  zone.ondragleave=function(){zone.classList.remove('drag-over')};
+  zone.ondrop=function(e){e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files&&e.dataTransfer.files[0])processImage(e.dataTransfer.files[0])};
+  document.querySelector('.mp-img-wrap').onclick=function(){openLightbox(masterImageUrl||masterImageDataUrl,'大图色卡')};
+}
+
+function processImage(file){
+  var zone=document.getElementById('uploadZone');
+  zone.classList.add('loading');
+  zone.innerHTML='<div class="spinner"></div><div class="loading-text">分析图片�?..</div>';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    masterImageDataUrl=e.target.result;
+    var img=new Image();masterImg=img;
+    img.onload=function(){
+      var swatches=detectSwatchesOnCanvas(img);
+      if(swatches.length<1){
+        zone.classList.remove('loading');
+        zone.innerHTML='<div class="icon"></div><div class="hint">未检测到色块</div><div class="sub-hint">点击重试，或用“手动裁剪”添�?/div>';
+        return;
+      }
+      colorways=swatches;selectedSwatches={};
+      document.getElementById('masterPreviewImg').src=masterImageDataUrl;
+      document.getElementById('swatchCount').textContent='�?'+colorways.length+' 个色�?;
+      document.getElementById('analysisResult').style.display='block';
+      renderSwatches();
+      zone.classList.remove('loading');
+      zone.innerHTML='<div class="icon"></div><div class="hint">点击上传新图�?/div><div class="sub-hint">切割 '+colorways.length+' 个色�?/div>';
+      recognizeWithGemini();
+    };
+    img.src=masterImageDataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setAIProgress(percent,stage,detail){
+  var wrap=document.getElementById('aiProgress');
+  var bar=document.getElementById('aiProgressBar');
+  var pct=document.getElementById('aiProgressPercent');
+  var st=document.getElementById('aiProgressStage');
+  var de=document.getElementById('aiProgressDetail');
+  percent=Math.max(0,Math.min(100,Math.round(percent||0)));
+  wrap.classList.add('show');
+  bar.style.width=percent+'%';
+  pct.textContent=percent+'%';
+  st.textContent=stage||'处理�?;
+  de.textContent=detail||'';
+}
+function progressStageText(stage,status){
+  if(status==='success'||stage==='done')return '识别完成';
+  if(status==='error'||stage==='failed')return '识别失败';
+  if(stage==='queued')return '排队分析';
+  if(stage==='prepare')return '准备图片';
+  if(stage==='ai')return '图片识别�?;
+  if(stage==='crop')return '切割色卡';
+  if(stage==='finalize')return '整理结果';
+  return '图片识别�?;
+}
+function resetUploadZone(text,sub){
+  var zone=document.getElementById('uploadZone');
+  zone.classList.remove('loading');
+  zone.innerHTML='<div class="icon"></div><div class="hint">'+esc(text||'点击上传新图�?)+'</div><div class="sub-hint">'+esc(sub||'AI 自动识别色卡图和名称')+'</div>';
+}
+function applyAIAnalysis(data){
+  data=data||{};
+  colorways=(data.colorways||[]).map(function(c,i){
+    return {
+      index:c.index||i+1,
+      color_name:c.color_name||'',
+      sub_code:c.sub_code||'',
+      sku_code:c.sku_code||c.sub_code||c.color_name||'',
+      image_url:c.image_url||'',
+      dominant_color:c.dominant_color||'#888888',
+      ocr_text:c.ocr_text||''
+    };
+  });
+  selectedSwatches={};
+  patternNo=data.pattern_no||'';
+  if(patternNo)document.getElementById('patternNoInput').value=patternNo;
+  if(data.master_image){
+    masterImageUrl=data.master_image;
+    document.getElementById('masterPreviewImg').src=data.master_image;
+  }
+  document.getElementById('swatchCount').textContent='�?'+colorways.length+' 个色�?;
+  document.getElementById('analysisResult').style.display='block';
+  renderSwatches();
+  autoSaveToWarehouse();
+}
+function pollAnalysisJob(jobId,startedAt){
+  fetch('/api/ai/analyze-pattern-job/'+encodeURIComponent(jobId))
+  .then(function(r){return r.json()})
+  .then(function(job){
+    if(job.status==='success'){
+      setAIProgress(100,'识别完成','识别完成');
+      applyAIAnalysis(job.result&&job.result.data?job.result.data:{});
+      resetUploadZone('点击上传新图�?,'已识�?'+colorways.length+' 个色�?);
+      return;
+    }
+    if(job.status==='error'){
+      setAIProgress(100,'识别失败','识别失败，请重试或使用手动裁�?);
+      resetUploadZone('识别失败，点击重�?,'也可以使用手动裁剪补�?);
+      showToast(job.error||job.message||'识别失败',true);
+      return;
+    }
+    var elapsed=Math.round((Date.now()-startedAt)/1000);
+    setAIProgress(job.progress||35,progressStageText(job.stage,job.status),'图片识别中，已用�?'+elapsed+' �?);
+    setTimeout(function(){pollAnalysisJob(jobId,startedAt)},1000);
+  })
+  .catch(function(){
+    setAIProgress(100,'网络错误','无法读取识别进度，请检查服务是否运�?);
+    resetUploadZone('网络错误，点击重�?,'请确认本地服务正�?);
+  });
+}
+function processImage(file){
+  var zone=document.getElementById('uploadZone');
+  masterImageUrl='';
+  zone.classList.add('loading');
+  zone.innerHTML='<div class="spinner"></div><div class="loading-text">正在上传并识�?..</div>';
+  setAIProgress(1,'读取图片','准备预览和上�?);
+  var reader=new FileReader();
+  reader.onload=function(e){
+    masterImageDataUrl=e.target.result;
+    var img=new Image();masterImg=img;
+    img.onload=function(){
+      document.getElementById('masterPreviewImg').src=masterImageDataUrl;
+      document.getElementById('swatchCount').textContent='识别�?..';
+      document.getElementById('analysisResult').style.display='block';
+    };
+    img.src=masterImageDataUrl;
+  };
+  reader.readAsDataURL(file);
+
+  var form=new FormData();
+  form.append('file',file);
+  var xhr=new XMLHttpRequest();
+  var startedAt=Date.now();
+  xhr.open('POST','/api/ai/analyze-pattern-job',true);
+  xhr.upload.onprogress=function(e){
+    if(e.lengthComputable){
+      var pct=Math.round((e.loaded/e.total)*100);
+      setAIProgress(Math.min(12,Math.round(pct*0.12)),'上传图片','已上�?'+pct+'%');
+    }
+  };
+  xhr.onload=function(){
+    var res={};
+    try{res=JSON.parse(xhr.responseText||'{}')}catch(e){}
+    if(xhr.status>=200&&xhr.status<300&&res.job_id){
+      setAIProgress(15,'排队分析','后端已收到图�?);
+      pollAnalysisJob(res.job_id,startedAt);
+    }else{
+      setAIProgress(100,'启动失败',res.error||'无法启动 AI 识别');
+      resetUploadZone('启动失败，点击重�?,res.error||'请检�?AI Key 和登录状�?);
+      showToast(res.error||'无法启动 AI 识别',true);
+    }
+  };
+  xhr.onerror=function(){
+    setAIProgress(100,'上传失败','网络错误');
+    resetUploadZone('上传失败，点击重�?,'请确认本地服务正�?);
+    showToast('上传失败',true);
+  };
+  xhr.send(form);
+}
+
+function detectSwatchesOnCanvas(img){
+  var W=img.naturalWidth||img.width,H=img.naturalHeight||img.height;
+  var useW=Math.min(W,2000),scale=useW/W,useH=Math.round(H*scale);
+  var canvas=document.getElementById('cropCanvas');
+  canvas.width=useW;canvas.height=useH;
+  var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,useW,useH);
+  var d=ctx.getImageData(0,0,useW,useH).data;
+
+  var rowW=new Array(useH).fill(0),colW=new Array(useW).fill(0);
+  for(var y=0;y<useH;y++){for(var x=0;x<useW;x++){
+    var idx=(y*useW+x)*4;
+    var r=d[idx],g=d[idx+1],b=d[idx+2];
+    var mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+    // 缝隙判断：低饱和�?+ 高亮度，但排除过于鲜艳的颜色
+    // 当前阈值：饱和�?55，亮�?190
+    if(mx-mn<55&&mn>190){rowW[y]++;colW[x]++}
+  }}
+  for(var y=0;y<useH;y++)rowW[y]/=useW;
+  for(var x=0;x<useW;x++)colW[x]/=useH;
+
+  function smooth(arr,r){
+    var out=new Array(arr.length);
+    for(var i=0;i<arr.length;i++){
+      var s=0,c=0;
+      for(var j=-r;j<=r;j++){var k=i+j;if(k>=0&&k<arr.length){s+=arr[k];c++}}
+      out[i]=s/c;
+    }
+    return out;
+  }
+  rowW=smooth(rowW,3);
+  colW=smooth(colW,3);
+
+  // 自适应阈值：取投影值的分割点，避免白底标签被误判为间隙
+  function autoTh(profile){
+    var sorted=profile.slice().sort(function(a,b){return a-b});
+    var n=sorted.length;
+    var best=0.85,bestScore=0;
+    for(var p=50;p<97;p++){
+      var th=p/100;
+      var below=[],above=[];
+      for(var i=0;i<n;i++){if(sorted[i]<=th)below.push(sorted[i]);else above.push(sorted[i])}
+      if(below.length<3||above.length<3)continue;
+      var mb=below.reduce(function(s,v){return s+v},0)/below.length;
+      var ma=above.reduce(function(s,v){return s+v},0)/above.length;
+      var score=(ma-mb)*(below.length/n)*(above.length/n);
+      if(score>bestScore){bestScore=score;best=th}
+    }
+    return Math.max(0.60,Math.min(0.95,best));
+  }
+  var th=(autoTh(rowW)+autoTh(colW))/2;
+
+  // 提取内容区域，并合并过近的区�?  function findRanges(arr,threshold,minW){
+    var ranges=[],start=-1;
+    for(var i=0;i<arr.length;i++){
+      if(arr[i]<threshold){if(start<0)start=i}
+      else{if(start>=0){if(i-start>minW)ranges.push({s:start,e:i});start=-1}}
+    }
+    if(start>=0&&arr.length-start>minW)ranges.push({s:start,e:arr.length});
+    return ranges;
+  }
+  function merge(ranges,maxGap){
+    if(!ranges.length)return ranges;
+    var r=[ranges[0]];
+    for(var i=1;i<ranges.length;i++){
+      if(ranges[i].s-r[r.length-1].e<maxGap)r[r.length-1].e=ranges[i].e;
+      else r.push(ranges[i]);
+    }
+    return r;
+  }
+  var xs=merge(findRanges(colW,th,20),40);
+  var ys=merge(findRanges(rowW,th,20),40);
+  xs=xs.filter(function(r){return r.e-r.s>30});
+  ys=ys.filter(function(r){return r.e-r.s>30});
+
+  // 组合网格
+  var rects=[];
+  for(var yi=0;yi<ys.length;yi++){for(var xi=0;xi<xs.length;xi++){
+    var rw=xs[xi].e-xs[xi].s,rh=ys[yi].e-ys[yi].s;
+    if(rw>40&&rh>40)rects.push({x:xs[xi].s,y:ys[yi].s,w:rw,h:rh});
+  }}
+  rects.sort(function(a,b){return a.y-b.y||a.x-b.x});
+
+  // 还原原图尺寸裁剪
+  var swatches=[];
+  for(var ri=0;ri<rects.length;ri++){
+    var r=rects[ri];
+    var sx=Math.round(r.x/scale),sy=Math.round(r.y/scale),sw=Math.round(r.w/scale),sh=Math.round(r.h/scale);
+    // 向外 1.5% 保留边缘文字
+    var px=Math.max(2,Math.round(sw*0.015)),py=Math.max(2,Math.round(sh*0.015));
+    sx=Math.max(0,sx-px);sy=Math.max(0,sy-py);
+    sw=Math.min(W,sx+sw+px*2)-sx;sh=Math.min(H,sy+sh+py*2)-sy;
+    if(sw<30||sh<30)continue;
+    var c=document.createElement('canvas');c.width=sw;c.height=sh;
+    var cx=c.getContext('2d');cx.drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
+    var pd=cx.getImageData(0,0,sw,sh).data,tr=0,tg=0,tb=0,tc=0;
+    for(var i=0;i<pd.length;i+=4){tr+=pd[i];tg+=pd[i+1];tb+=pd[i+2];tc++;}
+    swatches.push({index:ri+1,color_name:'',sub_code:'',sku_code:'',image_url:c.toDataURL('image/jpeg',0.92),dominant_color:tc?'#'+[tr,tg,tb].map(function(v){return Math.round(v/tc).toString(16).padStart(2,'0')}).join(''):'#888888'});
+  }
+  return swatches;
+}
+
+function recognizeWithGemini(){
+  if(!masterImageDataUrl)return;
+  // 一次性发送整张大图，Gemini 识别所有色卡文�?+ 花版编号
+  fetch('/api/ai/analyze-master',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:masterImageDataUrl})})
+  .then(function(r){return r.json()}).then(function(res){
+    if(res.status==='success'&&res.data){
+      if(res.data.pattern_no){
+        patternNo=res.data.pattern_no;
+        document.getElementById('patternNoInput').value=patternNo;
+      }
+      var ocrList=res.data.colorways||[];
+      ocrList.forEach(function(ocr){
+        var idx=ocr.index-1;
+        if(idx>=0&&idx<colorways.length&&ocr.color_name){
+          colorways[idx].color_name=ocr.color_name||'';
+          colorways[idx].sub_code=ocr.sub_code||'';
+          var card=document.getElementById('cwCard_'+idx);
+          if(card){
+            var lbl=card.querySelector('.color-label');
+            if(lbl)lbl.textContent=ocr.color_name||'色块'+(idx+1);
+            var sub=card.querySelector('.color-sub');
+            if(sub)sub.textContent=ocr.sub_code?'#'+ocr.sub_code:'';
+          }
+        }
+      });
+    }else{
+      document.getElementById('patternNoInput').placeholder='识别失败';
+    }
+  }).catch(function(){document.getElementById('patternNoInput').placeholder='识别失败'});
+}
+
+function openManualCropModal(){
+  if(!masterImageDataUrl||!masterImg){showToast('请先上传图片',true);return}
+  var modal=document.getElementById('cropModal');
+  var img=document.getElementById('cropModalImg');
+  img.src=masterImageDataUrl;
+  modal.classList.add('show');
+  img.onload=function(){
+    var canvas=document.getElementById('cropModalCanvas');
+    var wrap=canvas.parentElement;
+    canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;
+    var ctx=canvas.getContext('2d');
+    ctx.fillStyle='#f0ede8';ctx.fillRect(0,0,canvas.width,canvas.height);
+    // 适应显示
+    var scale=Math.min(canvas.width/img.width,canvas.height/img.height)*0.95;
+    var dx=(canvas.width-img.width*scale)/2,dy=(canvas.height-img.height*scale)/2;
+    ctx.drawImage(img,dx,dy,img.width*scale,img.height*scale);
+    canvas._scaleX=img.width*scale;canvas._scaleY=img.height*scale;
+    canvas._dx=dx;canvas._dy=dy;canvas._imgScale=scale;
+    canvas._rects=[];
+  };
+}
+
+function cropModalDone(){
+  var canvas=document.getElementById('cropModalCanvas');
+  var rects=canvas._rects||[];
+  if(!rects.length){showToast('请先在图上框选色卡区�?,true);return}
+  var scale=canvas._imgScale||1;
+  var dx=canvas._dx||0,dy=canvas._dy||0;
+  rects.forEach(function(r){
+    var sx=Math.round((r.x-dx)/scale),sy=Math.round((r.y-dy)/scale);
+    var sw=Math.round(r.w/scale),sh=Math.round(r.h/scale);
+    if(sw<10||sh<10)return;
+    var c=document.createElement('canvas');c.width=sw;c.height=sh;
+    var cx=c.getContext('2d');
+    cx.drawImage(masterImg,sx,sy,sw,sh,0,0,sw,sh);
+    var url=c.toDataURL('image/jpeg',0.92);
+    var pd=cx.getImageData(0,0,sw,sh).data,tr=0,tg=0,tb=0,tc=0;
+    for(var i=0;i<pd.length;i+=4){tr+=pd[i];tg+=pd[i+1];tb+=pd[i+2];tc++;}
+    var avg=tc?'#'+[tr,tg,tb].map(function(v){return Math.round(v/tc).toString(16).padStart(2,'0')}).join(''):'#888888';
+    var idx=colorways.length+1;
+    colorways.push({index:idx,color_name:'',sub_code:'',sku_code:'',image_url:url,dominant_color:avg});
+    fetch('/api/ai/recognize-swatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:url,index:idx-1})}).catch(function(){});
+  });
+  closeCropModal();
+  renderSwatches();
+  showToast('已添�?'+rects.length+' 个色�?);
+}
+function closeCropModal(){
+  document.getElementById('cropModal').classList.remove('show');
+  var canvas=document.getElementById('cropModalCanvas');
+  if(canvas._rects)canvas._rects=[];
+}
+
+// 裁剪画布事件
+(function(){
+  var canvas=document.getElementById('cropModalCanvas');
+  var drawing=false,sx=0,sy=0;
+  function pos(e){
+    var r=canvas.getBoundingClientRect();
+    var t=e.touches?e.touches[0]:e;
+    return {x:t.clientX-r.left,y:t.clientY-r.top};
+  }
+  function sd(e){e.preventDefault();drawing=true;var p=pos(e);sx=p.x;sy=p.y;}
+  function dr(e){e.preventDefault();if(!drawing)return;
+    var p=pos(e),c=canvas.getContext('2d');
+    c.drawImage(document.getElementById('cropModalImg'),canvas._dx||0,canvas._dy||0,canvas._scaleX||0,canvas._scaleY||0);
+    (canvas._rects||[]).forEach(function(r){c.strokeStyle='#c41e3a';c.lineWidth=2;c.strokeRect(r.x,r.y,r.w,r.h);c.fillStyle='rgba(196,30,58,.12)';c.fillRect(r.x,r.y,r.w,r.h);});
+    c.strokeStyle='#c41e3a';c.lineWidth=2;c.setLineDash([5,3]);
+    c.strokeRect(Math.min(sx,p.x),Math.min(sy,p.y),Math.abs(p.x-sx),Math.abs(p.y-sy));
+    c.setLineDash([]);
+  }
+  function ed(e){e.preventDefault();if(!drawing)return;drawing=false;
+    var p=pos(e);var w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);
+    if(w>20&&h>20){if(!canvas._rects)canvas._rects=[];canvas._rects.push({x:Math.min(sx,p.x),y:Math.min(sy,p.y),w:w,h:h});
+      var c=canvas.getContext('2d');
+      c.drawImage(document.getElementById('cropModalImg'),canvas._dx||0,canvas._dy||0,canvas._scaleX||0,canvas._scaleY||0);
+      canvas._rects.forEach(function(r){c.strokeStyle='#c41e3a';c.lineWidth=2;c.strokeRect(r.x,r.y,r.w,r.h);c.fillStyle='rgba(196,30,58,.12)';c.fillRect(r.x,r.y,r.w,r.h);});
+    }
+  }
+  canvas.addEventListener('mousedown',sd);canvas.addEventListener('mousemove',dr);
+  canvas.addEventListener('mouseup',ed);canvas.addEventListener('mouseleave',ed);
+  canvas.addEventListener('touchstart',sd,{passive:false});canvas.addEventListener('touchmove',dr,{passive:false});canvas.addEventListener('touchend',ed,{passive:false});
+})();
+
+function deleteSwatch(idx){
+  if(!confirm('删除色卡 #'+(idx+1)+'�?))return;
+  var swatch=colorways[idx]||{};
+  var savedId=swatch.warehouse_id||swatch.id||0;
+  function removeFromPage(){
+    colorways.splice(idx,1);selectedSwatches={};renderSwatches();
+  }
+  if(!savedId){removeFromPage();showToast('已删除未保存的色�?);return;}
+  fetch('/api/print-warehouse/'+encodeURIComponent(savedId),{method:'DELETE'})
+  .then(function(r){return r.json()}).then(function(res){
+    if(!res.ok){showToast(res.error||'删除失败',true);return;}
+    removeFromPage();loadHistory();showToast('已彻底删除色卡图�?);
+  }).catch(function(){showToast('删除失败：网络错�?,true)});
+}
+
+function renderSwatches(){
+  var grid=document.getElementById('swatchGrid');
+  if(!colorways.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#bbb">暂无结果，可用“手动裁剪”添�?/div>';return}
+  grid.innerHTML=colorways.map(function(cw,i){
+    var name=cw.color_name||'色块'+(i+1),sub=cw.sub_code||'',sel=selectedSwatches[i]?' selected':'';
+    return '<div class="color-card'+sel+'" id="cwCard_'+i+'" onclick="toggleSwatch('+i+',this)">'+
+      '<div class="swatch-area" onclick="event.stopPropagation();openLightbox(\''+esc(cw.image_url)+'\',\''+name+'\')">'+
+      '<img src="'+esc(cw.image_url)+'"></div>'+
+      '<div class="color-label">'+name+'</div>'+(sub?'<div class="color-sub">#'+esc(sub)+'</div>':'')+
+      '<button class="swatch-del-btn" onclick="event.stopPropagation();deleteSwatch('+i+')">×</button></div>';
+  }).join('');
+  document.getElementById('swatchCount').textContent='�?'+colorways.length+' �?;
+  updateSelectedCount();updateAddBtn();
+}
+function toggleSwatch(idx,el){
+  var wasSelected=!!selectedSwatches[idx];
+  selectedSwatches={};
+  document.querySelectorAll('.color-card.selected').forEach(function(card){card.classList.remove('selected')});
+  if(!wasSelected){selectedSwatches[idx]=true;if(el)el.classList.add('selected')}
+  updateSelectedCount();updateAddBtn();
+}
+function updateSelectedCount(){var c=Object.keys(selectedSwatches).length;document.getElementById('selectedCount').textContent='已�?'+c+' �?}
+function renderSizes(){document.getElementById('sizeBtns').innerHTML=ALL_SIZES.map(function(s){return '<button class="size-btn" onclick="toggleSize(this,\''+s+'\')">'+s+'</button>'}).join('')}
+function toggleSize(btn,sz){
+  if(btn.classList.contains('selected')){btn.classList.remove('selected')}else{
+    if(sz==='UNICA'){document.querySelectorAll('.size-btn').forEach(function(b){b.classList.remove('selected')})}
+    else{document.querySelectorAll('.size-btn').forEach(function(b){if(b.textContent==='UNICA')b.classList.remove('selected')})}
+    btn.classList.add('selected');
+  }
+  updateAddBtn();
+}
+function getSelectedSizes(){var q=parseInt(document.getElementById('qtyInput').value)||1,r={};document.querySelectorAll('.size-btn.selected').forEach(function(b){r[b.textContent]=q});return r}
+function updateAddBtn(){
+  var btn=document.getElementById('addToCartBtn'),sub=document.getElementById('addSub');
+  var c=Object.keys(selectedSwatches).length,s=getSelectedSizes(),t=0;
+  Object.keys(s).forEach(function(k){t+=s[k]});
+  if(c===0||t===0){btn.disabled=true;sub.textContent=c===0?'�?请选择色卡':'�?请选择尺码'}
+  else{btn.disabled=false;sub.textContent='�?'+c+'个色�?· '+Object.keys(s).map(function(k){return k+'×'+s[k]}).join(', ')}
+}
+function getPrimaryFabricName(){
+  var fabrics=(style&&style.fabrics)||[];
+  if(fabrics.length){
+    var f=fabrics[0];
+    return (typeof f==='string'?f:(f.name||''))||'';
+  }
+  return '';
+}
+document.getElementById('addToCartBtn').addEventListener('click',function(){
+  var btn=this;btn.innerHTML='添加�?..';btn.disabled=true;setTimeout(function(){btn.disabled=false;updateAddBtn()},400);
+  var ids=Object.keys(selectedSwatches);if(!ids.length){showToast('请先选择色卡',true);return}
+  var sz=getSelectedSizes();if(!Object.keys(sz).length){showToast('请选择尺码',true);return}
+  var i=parseInt(ids[0]),cw=colorways[i];if(!cw)return;
+  LUNA.addToCart(styleCode,style.name||'',cw.color_name||'色块'+(i+1),sz,style.suggestedPrice||0,getPrimaryFabricName(),'',
+    [],'stampa',cw.image_url||'',cw.sku_code||cw.sub_code||'',cw.warehouse_id||cw.id||0);
+  renderCartBody();updateBadge();showToast('已加入购物车');toggleCart()
+});
+
+function autoSaveToWarehouse(){
+  if(autoSaveInFlight||!colorways.length)return;
+  var pn=document.getElementById('patternNoInput').value.trim()||patternNo;
+  if(!pn){pn='AUTO-'+styleCode+'-'+Date.now().toString(36);document.getElementById('patternNoInput').value=pn;}
+  autoSaveInFlight=true;
+  fetch('/api/ai/confirm-pattern',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    pattern_no:pn,cycle_size:'',style_code:styleCode,master_image:masterImageUrl||masterImageDataUrl,
+    colorways:colorways.map(function(c,i){return{index:i+1,color_name:c.color_name||'',sub_code:c.sub_code||'',sku_code:c.sku_code||'',image_url:c.image_url||'',dominant_color:c.dominant_color||'',confirmed:true}})
+  })}).then(function(r){return r.json()}).then(function(res){
+    if(res.status==='success'||res.saved){
+      (res.saved||[]).forEach(function(saved,i){if(colorways[i]){colorways[i].warehouse_id=saved.id;colorways[i].id=saved.id;}});
+      showToast('AI 识别完成，已自动保存');loadHistory();
+    }else showToast((res.error||'自动保存失败'),true);
+  }).catch(function(){showToast('自动保存失败：网络错�?,true)}).finally(function(){autoSaveInFlight=false});
+}
+
+function loadHistory(){fetch('/api/print-warehouse/groups?style_code='+encodeURIComponent(styleCode)).then(function(r){return r.json()}).then(function(groups){
+  if(!groups||!groups.length){document.getElementById('historySection').style.display='none';return}
+  document.getElementById('historyGrid').innerHTML=groups.map(function(g){return '<div class="history-card" onclick="loadHistoryPrints(\''+esc(g.print_code)+'\')">'+
+    '<button class="swatch-del-btn" title="删除" onclick="event.stopPropagation();deleteHistoryGroup(\''+esc(g.print_code)+'\')">×</button>'+
+    (g.thumb?'<img class="h-thumb" src="'+esc(g.thumb)+'">':'<div class="h-thumb" style="display:flex;align-items:center;justify-content:center;color:#ddd;font-size:24px">📁</div>')+
+    '<div class="h-info"><div class="h-code">'+esc(g.print_code)+'</div></div></div>';}).join('');
+  document.getElementById('historySection').style.display='block'}).catch(function(){})}
+function loadHistoryPrints(c){fetch('/api/print-warehouse/by-style/'+encodeURIComponent(styleCode)+'?print_code='+encodeURIComponent(c)).then(function(r){return r.json()}).then(function(prints){
+  if(!prints||!prints.length){showToast('暂无数据',true);return}
+  colorways=prints.map(function(p,i){var n={};try{n=p.notes?JSON.parse(p.notes):{}}catch(e){}return{index:i+1,id:p.id,warehouse_id:p.id,color_name:n.color_name||'',sub_code:n.sub_code||'',sku_code:p.print_code||'',image_url:p.big_img||p.thumb_img||'',dominant_color:'#888888'}});
+  selectedSwatches={};document.getElementById('patternNoInput').value=c;document.getElementById('analysisResult').style.display='block';renderSwatches();showToast('已加�?'+prints.length+' 个花�?)}).catch(function(){showToast('加载失败',true)})}
+function deleteHistoryGroup(c){
+  if(!confirm('删除当前款式下的花版 '+c+' �?))return;
+  fetch('/api/print-warehouse/group?style_code='+encodeURIComponent(styleCode)+'&print_code='+encodeURIComponent(c),{method:'DELETE'})
+  .then(function(r){return r.json()}).then(function(res){
+    if(res.ok){showToast('已删�?);loadHistory()}
+    else showToast(res.error||'删除失败',true);
+  }).catch(function(){showToast('删除失败',true)});
+}
+
+function toggleCart(){document.getElementById('cartModal').classList.toggle('open');document.getElementById('cartBackdrop').classList.toggle('show');if(document.getElementById('cartModal').classList.contains('open'))renderCartBody()}
+function renderCartBody(){
+  var cart=LUNA.getCart()||[],el=document.getElementById('cartBody');
+  if(!cart.length){el.innerHTML='<div class="cart-empty">购物车是空的</div>';updateSubmitBtn();return}
+  var g={};
+  cart.forEach(function(item,i){var k=item.code;if(!g[k])g[k]={code:k,price:item.price||0,items:[]};g[k].items.push({idx:i,color:item.color||'',qty:item.qty||{},img:item.stampa_img_url||''})});
+  var html='';
+  Object.keys(g).forEach(function(k){var gr=g[k];
+    html+='<div class="cart-code-group"><div class="cart-code-header"><span class="cc-code">'+esc(k)+'</span><span class="cc-price">&euro;'+(gr.price||0).toFixed(2)+'</span></div>';
+    gr.items.forEach(function(item){var q=item.qty||{};
+      html+='<div class="cart-color-item">'+(item.img?'<div class="cart-color-swatch" onclick="openLightbox(\''+esc(item.img)+'\',\''+esc(item.color)+'\')" style="cursor:pointer;background-image:url('+esc(item.img)+')"></div>':'')+
+      '<div class="cart-color-info"><div class="cart-color-name">'+esc(item.color)+'</div><div class="cart-qty-ctrl">';
+      Object.keys(q).forEach(function(s){if(q[s]<=0)return;
+        html+='<div class="cart-qty-cell"><button class="cart-qty-btn" onclick="cartQty('+item.idx+',\''+s+'\',-1)">�?/button><span class="cart-qty-val">'+q[s]+'</span><button class="cart-qty-btn" onclick="cartQty('+item.idx+',\''+s+'\',1)">+</button><span class="cart-qty-lbl">'+s+'</span></div>'});
+      html+='</div></div><button class="del-btn" onclick="cartRemove('+item.idx+')">×</button></div>'});
+    html+='</div>'});
+  el.innerHTML=html;updateSubmitBtn()}
+function cartQty(idx,s,d){LUNA.updateCartQty(idx,s,d);renderCartBody();updateBadge()}
+function cartRemove(idx){LUNA.removeFromCart(idx);renderCartBody();updateBadge()}
+function updateBadge(){var cart=LUNA.getCart()||[],t=0;cart.forEach(function(i){var q=i.qty||{};Object.keys(q).forEach(function(s){t+=q[s]||0})});document.getElementById('cartBadge').textContent=t;document.getElementById('floatBadge').textContent=t}
+function updateSubmitBtn(){var cart=LUNA.getCart()||[];document.getElementById('submitBtn').disabled=!cart.length;document.getElementById('submitSub').textContent=cart.length?'':'购物车为�?}
+function renderGuestDropdown(){var sel=document.getElementById('guestSelect');var u=LUNA.getUser&&LUNA.getUser();if(u&&u.role==='guest'){var selfName=u.name||u.username||'';sel.innerHTML='<option value="'+esc(selfName)+'">'+esc(selfName)+'</option>';sel.value=selfName;sel.style.display='none';return}try{var guests=LUNA.getGuests()||[];sel.innerHTML='<option value="">�?选择客人 �?/option>';guests.forEach(function(g){if(g.enabled!==false)sel.innerHTML+='<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>'})}catch(e){}}
+function submitOrder(){var u=LUNA.getUser&&LUNA.getUser();var guest=document.getElementById('guestSelect').value;if(!guest&&u&&u.role==='guest')guest=u.name||u.username||'';if(!guest){showToast('请选择客人',true);return}
+  var btn=document.getElementById('submitBtn');btn.disabled=true;btn.textContent='提交�?..';
+  var result=LUNA.checkout(guest,document.getElementById('orderNoteInput').value.trim());
+  if(result&&result.ok!==false){showToast('下单成功');renderCartBody();updateBadge();setTimeout(function(){window.location.href='my-orders.html'},800)}
+  else{showToast('下单失败',true);btn.disabled=false;updateSubmitBtn()}}
+function openLightbox(url,name){if(!url)return;document.getElementById('lightboxImg').src=url;document.getElementById('lightboxName').textContent=name||'';document.getElementById('lightbox').classList.add('show')}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('show')}
+(function(){var done=false;window.addEventListener('luna-data-initialized',function(){if(!done){done=true;init()}});setTimeout(function(){if(!done){done=true;init()}},500)})();
+</script>
+</body>
+</html>

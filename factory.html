@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>工厂页面 - LUNA</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="luna-data.js?v=31"></script>
+<script src="luna-data.js?v=39"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f8f6f2;color:#26231f;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -58,10 +58,11 @@ h1{font-family:"Playfair Display",Georgia,serif;font-size:26px;margin:0;color:#2
 .viewer-prev{left:16px}.viewer-next{right:16px}
 @media(max-width:640px){.item{grid-template-columns:76px 1fr}.photo{width:76px;height:102px}.card-head{flex-direction:column}.badge{align-self:flex-start}.print-chip{width:100%}}
 </style>
+<style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
 <div class="header">
-  <a class="logo" href="dashboard.html">LUNA <span>A</span></a>
+  <span class="logo" data-luna-brand>LUNA ATELIER</span>
   <div class="user" id="userLine"></div>
 </div>
 <main class="container">
@@ -83,6 +84,7 @@ h1{font-family:"Playfair Display",Georgia,serif;font-size:26px;margin:0;color:#2
 </div>
 <script>
 var user = LUNA.checkAuth();
+LUNA.renderNav();
 if (user) document.getElementById('userLine').textContent = (user.name || user.username || '') + (user.factory ? ' · ' + user.factory : '');
 var viewerImages = [];
 var viewerIndex = 0;

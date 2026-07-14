@@ -1,13 +1,12 @@
 ﻿#!/usr/bin/env python3
 """LUNA ATELIER — Flask + SQLite 后端"""
-import json, os, sqlite3, uuid, re, base64, mimetypes, threading, time
+import json, os, sqlite3, uuid, re, base64, mimetypes, threading, time, secrets, shutil, zipfile
 from PIL import Image, ImageOps, ImageDraw
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from flask import Flask, request, session, jsonify, send_from_directory, g
+from flask import Flask, request, session, jsonify, send_from_directory, g, redirect, url_for
 
 app = Flask(__name__, static_folder='.')
-app.secret_key = 'luna-atelier-secret-key-2026'
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'luna.db')
 PHOTO_DIR = os.path.join(os.path.dirname(__file__), 'photos')
@@ -16,7 +15,7 @@ os.makedirs(PHOTO_DIR, exist_ok=True)
 # ── White-label config ──
 
 SYSTEM_CONFIG = {
-    'brand_name': 'Diana Moda',
+    'brand_name': 'LUNA ATELIER',
     'brand_prefix': 'dm',
     'port': 8766
 }
@@ -28,9 +27,12 @@ _local_cfg_path = os.path.join(os.path.dirname(__file__), 'local_config.json')
 _local_cfg = {}
 if os.path.exists(_local_cfg_path):
     try:
-        with open(_local_cfg_path, 'r') as _f:
+        with open(_local_cfg_path, 'r', encoding='utf-8') as _f:
             _local_cfg = json.load(_f)
     except: pass
+
+if _local_cfg.get('brand_name'):
+    SYSTEM_CONFIG['brand_name'] = _local_cfg.get('brand_name')
 
 QWEN_API_KEY = os.environ.get('QWEN_API_KEY', '') or _local_cfg.get('qwen_api_key', '')
 QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen-vl-plus')
@@ -44,7 +46,80 @@ GEMINI_FALLBACK_MODELS = [
     if m.strip()
 ]
 
+# Do not use a publicly known Flask signing key. Set LUNA_SECRET_KEY in the
+# production environment (or secret_key in local_config.json). For local
+# installs, create one private, persistent secret so restarts do not log users
+# out or invalidate their signed session cookies.
+_secret_file = os.path.join(os.path.dirname(__file__), '.luna-session-secret')
+def load_session_secret():
+    configured = os.environ.get('LUNA_SECRET_KEY') or _local_cfg.get('secret_key')
+    if configured:
+        return configured
+    try:
+        with open(_secret_file, 'r', encoding='utf-8') as secret_handle:
+            stored = secret_handle.read().strip()
+            if stored:
+                return stored
+    except OSError:
+        pass
+    generated = secrets.token_urlsafe(48)
+    try:
+        with open(_secret_file, 'x', encoding='utf-8') as secret_handle:
+            secret_handle.write(generated)
+    except FileExistsError:
+        with open(_secret_file, 'r', encoding='utf-8') as secret_handle:
+            generated = secret_handle.read().strip() or generated
+    return generated
+
+app.secret_key = load_session_secret()
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=(os.environ.get('LUNA_HTTPS', '').lower() in ('1', 'true', 'yes')),
+    MAX_CONTENT_LENGTH=512 * 1024 * 1024,
+)
+
 AI_ANALYSIS_JOBS = {}
+
+# Login challenges are intentionally kept server-side.  A visitor cannot reset
+# the counter simply by clearing browser storage or changing a cookie.
+LOGIN_GUARDS = {}
+LOGIN_GUARDS_LOCK = threading.Lock()
+LOGIN_GUARD_TTL = 30 * 60
+
+def login_guard_key(ip, username):
+    return '%s|%s' % (ip or 'unknown', (username or '').strip().lower())
+
+def new_login_challenge():
+    left = secrets.randbelow(8) + 2
+    right = secrets.randbelow(8) + 2
+    return {'answer': str(left + right), 'question': '%d + %d = ?' % (left, right)}
+
+def login_challenge_status(ip, username):
+    key = login_guard_key(ip, username)
+    now = time.time()
+    with LOGIN_GUARDS_LOCK:
+        item = LOGIN_GUARDS.get(key)
+        if item and now - item.get('updated_at', now) > LOGIN_GUARD_TTL:
+            LOGIN_GUARDS.pop(key, None)
+            item = None
+        return item
+
+def record_login_failure(ip, username):
+    key = login_guard_key(ip, username)
+    now = time.time()
+    with LOGIN_GUARDS_LOCK:
+        item = LOGIN_GUARDS.get(key, {'failures': 0})
+        item['failures'] = item.get('failures', 0) + 1
+        item['updated_at'] = now
+        if item['failures'] >= 3 and not item.get('challenge'):
+            item['challenge'] = new_login_challenge()
+        LOGIN_GUARDS[key] = item
+        return item
+
+def clear_login_failures(ip, username):
+    with LOGIN_GUARDS_LOCK:
+        LOGIN_GUARDS.pop(login_guard_key(ip, username), None)
 
 # ── Image processing utility ──
 
@@ -174,6 +249,39 @@ def cleanup_photo_urls(urls, force=False):
             skipped.append({'url': rel, 'reason': str(e)})
     return {'deleted': deleted, 'skipped': skipped}
 
+
+def cleanup_orphan_photos(min_age_hours=24, limit=500):
+    """Delete local photos that are no longer referenced anywhere in SQLite."""
+    try:
+        min_age_hours = max(0, float(min_age_hours))
+    except Exception:
+        min_age_hours = 24
+    try:
+        limit = max(1, min(int(limit), 5000))
+    except Exception:
+        limit = 500
+
+    cutoff = time.time() - (min_age_hours * 3600)
+    deleted, skipped = [], []
+    for name in os.listdir(PHOTO_DIR):
+        if len(deleted) >= limit:
+            break
+        abs_path = os.path.join(PHOTO_DIR, name)
+        if not os.path.isfile(abs_path):
+            continue
+        rel = 'photos/' + name
+        try:
+            if os.path.getmtime(abs_path) > cutoff:
+                skipped.append({'url': rel, 'reason': 'too_new'})
+                continue
+        except Exception as e:
+            skipped.append({'url': rel, 'reason': str(e)})
+            continue
+        result = cleanup_photo_urls([rel])
+        deleted.extend(result.get('deleted', []))
+        skipped.extend(result.get('skipped', []))
+    return {'deleted': deleted, 'skipped': skipped}
+
 # ── Database helpers ──
 
 def get_db():
@@ -193,7 +301,7 @@ def init_db():
     db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL, name TEXT NOT NULL,
+            password TEXT NOT NULL, password_display TEXT DEFAULT '', name TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'guest', phone TEXT DEFAULT '',
             enabled INTEGER DEFAULT 1
         );
@@ -238,6 +346,7 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS orders (
             id TEXT PRIMARY KEY, customer TEXT NOT NULL,
+            customer_username TEXT DEFAULT '',
             date TEXT NOT NULL, total_qty INTEGER DEFAULT 0,
             note TEXT DEFAULT '',
             order_placed_completed INTEGER DEFAULT 1,
@@ -330,6 +439,33 @@ def init_db():
     db.execute("CREATE INDEX IF NOT EXISTS idx_style_prints_code ON style_prints(style_code)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_style_prints_print ON style_prints(print_id)")
     db.commit()
+    # Persist account ownership separately from the customer display name.
+    # Display names can change or be duplicated; usernames are stable.
+    try:
+        db.execute("SELECT customer_username FROM orders LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE orders ADD COLUMN customer_username TEXT DEFAULT ''")
+        db.commit()
+    # Backfill unambiguous historical guest orders once, so existing orders
+    # remain visible after the account-ownership upgrade.
+    db.execute("""
+        UPDATE orders
+        SET customer_username=(
+            SELECT u.username FROM users u
+            WHERE u.role='guest' AND (u.username=orders.customer OR u.name=orders.customer)
+            LIMIT 1
+        )
+        WHERE (customer_username IS NULL OR customer_username='')
+          AND 1=(SELECT COUNT(*) FROM users u WHERE u.role='guest' AND (u.username=orders.customer OR u.name=orders.customer))
+    """)
+    db.commit()
+    # Track who created a print so guest accounts can only manage their own
+    # uploads. Existing internal prints remain available to administrators.
+    try:
+        db.execute("SELECT created_by FROM print_warehouse LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE print_warehouse ADD COLUMN created_by TEXT DEFAULT ''")
+        db.commit()
     # Migration: add order_operations for old databases
     try:
         db.execute("SELECT 1 FROM order_operations LIMIT 1")
@@ -374,6 +510,22 @@ def init_db():
         db.execute("SELECT factory FROM users LIMIT 1")
     except:
         db.execute("ALTER TABLE users ADD COLUMN factory TEXT DEFAULT ''")
+        db.commit()
+    # Per-employee page permissions.  An empty legacy value keeps the
+    # position defaults; an explicit JSON list (including []) is managed by
+    # the administrator in 人员管理.
+    try:
+        db.execute("SELECT employee_permissions FROM users LIMIT 1")
+    except:
+        db.execute("ALTER TABLE users ADD COLUMN employee_permissions TEXT DEFAULT ''")
+        db.commit()
+    # The administrator requested an in-app, readable password register.
+    # Authentication still uses the one-way hash in `password`; this separate
+    # field is only returned by the administrator-only people-management APIs.
+    try:
+        db.execute("SELECT password_display FROM users LIMIT 1")
+    except:
+        db.execute("ALTER TABLE users ADD COLUMN password_display TEXT DEFAULT ''")
         db.commit()
     # Migration: create login_logs table
     try:
@@ -449,6 +601,11 @@ def init_db():
     except:
         db.execute("ALTER TABLE fabric_colors ADD COLUMN anchor_x REAL DEFAULT 0")
         db.execute("ALTER TABLE fabric_colors ADD COLUMN anchor_y REAL DEFAULT 0")
+    # Guest-added colors are private to the account that created them.
+    try:
+        db.execute("SELECT created_by FROM fabric_colors LIMIT 1")
+    except:
+        db.execute("ALTER TABLE fabric_colors ADD COLUMN created_by TEXT DEFAULT ''")
         db.commit()
     # Migration: add fabric column to cutting_layers for multi-fabric orders
     try:
@@ -576,13 +733,16 @@ def init_db():
         pw = row['password']
         if pw and not pw.startswith(('scrypt:', 'pbkdf2:', 'bcrypt:', 'argon2:')):
             db.execute("UPDATE users SET password=? WHERE id=?", (generate_password_hash(pw), row['id']))
-    # Ensure admin user exists in DB with hashed password
-    admin_cnt = db.execute("SELECT COUNT(*) FROM users WHERE username='admin'").fetchone()[0]
+    # Ensure one administrator exists. Do not recreate the old default
+    # admin/admin account once the real administrator has been configured.
+    admin_cnt = db.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
     if admin_cnt == 0:
         db.execute(
-            "INSERT INTO users (id, username, password, name, role) VALUES (?,?,?,?,?)",
-            ('admin', 'admin', generate_password_hash('admin'), '管理员', 'admin')
+            "INSERT INTO users (id, username, password, password_display, name, role) VALUES (?,?,?,?,?,?)",
+            ('admin', 'songcde', generate_password_hash('123456'), '123456', '管理员', 'admin')
         )
+    else:
+        db.execute("DELETE FROM users WHERE role='admin' AND username='admin'")
     db.commit()
     # Seed virtual guest accounts if none exist
     cnt = db.execute("SELECT COUNT(*) FROM users WHERE role='guest'").fetchone()[0]
@@ -596,8 +756,8 @@ def init_db():
         ]
         for g in guests:
             db.execute(
-                "INSERT OR REPLACE INTO users (id, username, password, name, role, phone, enabled, parent_id, address, tax_id, shop_name) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (g[0], g[1], generate_password_hash(g[2]), g[3], g[4], g[5], g[6], g[7], g[8], g[9], g[10])
+                "INSERT OR REPLACE INTO users (id, username, password, password_display, name, role, phone, enabled, parent_id, address, tax_id, shop_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (g[0], g[1], generate_password_hash(g[2]), g[2], g[3], g[4], g[5], g[6], g[7], g[8], g[9], g[10])
             )
         db.commit()
     # Migration: create luna_style_images + luna_order_stickers (框选反单系统)
@@ -684,23 +844,36 @@ def get_user():
         user_id = uid
         employee_role = session.get('employee_role', '')
         factory = session.get('factory', '')
+        permissions = session.get('employee_permissions')
         if role != 'admin':
             try:
                 db = get_db()
-                row = db.execute("SELECT id, employee_role, factory FROM users WHERE username=?", (uid,)).fetchone()
+                row = db.execute("SELECT id, employee_role, factory, employee_permissions FROM users WHERE username=?", (uid,)).fetchone()
                 if row:
                     user_id = row['id']
                     employee_role = normalize_employee_role(row['employee_role'] or employee_role)
                     factory = row['factory'] or factory
+                    if role == 'employee':
+                        raw_permissions = row['employee_permissions']
+                        if raw_permissions not in (None, ''):
+                            try:
+                                parsed = json.loads(raw_permissions)
+                                permissions = parsed if isinstance(parsed, list) else []
+                            except (TypeError, ValueError):
+                                permissions = []
             except: pass
-        return {'username': uid, 'role': role, 'name': name, 'id': user_id, 'employee_role': employee_role, 'factory': factory}
+        result = {'username': uid, 'role': role, 'name': name, 'id': user_id, 'employee_role': employee_role, 'factory': factory}
+        if role == 'employee' and permissions is not None:
+            result['permissions'] = permissions
+        return result
     return None
 
 EMPLOYEE_ROLE_ALIASES = {
     '裁剪': '裁剪员',
     '车缝': '车工',
     '发货': '发货员',
-    '排版': '排版师'
+    '排版': '排版师',
+    '工厂': '加工工厂'
 }
 
 def normalize_employee_role(value):
@@ -716,6 +889,40 @@ EMPLOYEE_SCOPES = {
     'factory': {'车工'}
 }
 
+EMPLOYEE_DEFAULT_PAGES = {
+    '裁剪员': {'cutting.html'},
+    '发货员': {'shipping.html'},
+    '排版师': {'marker.html', 'cutting.html'},
+    # 车工 is retained only for legacy accounts. New external factory logins
+    # use 加工工厂 and are bound to one factory below.
+    '车工': {'ready-pickup.html', 'factory.html'},
+    '加工工厂': {'factory.html'}
+}
+EMPLOYEE_PERMISSION_PAGES = {
+    'guest-styles.html', 'order-page.html', 'order-print.html',
+    'style-manage.html', 'add-style.html',
+    'marker.html', 'cutting.html', 'cutting_history.html',
+    'ready-pickup.html', 'shipping.html', 'factory.html'
+}
+EMPLOYEE_SCOPE_PAGES = {
+    'cutting': 'cutting.html', 'cutting_history': 'cutting_history.html',
+    'shipping': 'shipping.html', 'marker': 'marker.html',
+    'pickup': 'ready-pickup.html', 'factory': 'factory.html'
+}
+
+def employee_allowed_pages(user=None):
+    user = user or get_user()
+    if not user or user.get('role') != 'employee':
+        return set()
+    # Presence of permissions means the administrator has explicitly set the
+    # list.  Legacy employees without the field retain their position default.
+    if 'permissions' in user:
+        pages = set(user.get('permissions') or []) & EMPLOYEE_PERMISSION_PAGES
+        if 'guest-styles.html' in pages:
+            pages.update({'order-page.html', 'order-print.html'})
+        return pages
+    return EMPLOYEE_DEFAULT_PAGES.get(normalize_employee_role(user.get('employee_role')), set())
+
 def employee_can(scope, user=None):
     user = user or get_user()
     if not user:
@@ -724,6 +931,9 @@ def employee_can(scope, user=None):
         return True
     if user.get('role') != 'employee':
         return False
+    page = EMPLOYEE_SCOPE_PAGES.get(scope)
+    if page:
+        return page in employee_allowed_pages(user)
     return normalize_employee_role(user.get('employee_role')) in EMPLOYEE_SCOPES.get(scope, set())
 
 def forbid():
@@ -811,10 +1021,16 @@ def get_settings_list(key):
         rows = db.execute("SELECT id, username, name, phone, enabled, parent_id, address, tax_id, shop_name FROM users WHERE role='guest'").fetchall()
         return rows_to_dicts(rows)
     elif key == 'employees':
-        rows = db.execute("SELECT id, username, name, phone, enabled, employee_role AS role, factory FROM users WHERE role='employee'").fetchall()
+        rows = db.execute("SELECT id, username, name, phone, enabled, employee_role AS role, factory, employee_permissions FROM users WHERE role='employee' AND (employee_role IS NULL OR employee_role!='加工工厂')").fetchall()
         result = rows_to_dicts(rows)
         for r in result:
             r['role'] = normalize_employee_role(r.get('role', ''))
+            raw = r.pop('employee_permissions', '')
+            if raw not in (None, ''):
+                try:
+                    r['permissions'] = json.loads(raw)
+                except (TypeError, ValueError):
+                    r['permissions'] = []
         return result
     elif key == 'fabrics':
         rows = db.execute("SELECT * FROM fabrics ORDER BY name").fetchall()
@@ -839,6 +1055,15 @@ def get_settings_list(key):
         for r in rows:
             d = dict(r)
             d['hourlyRate'] = d.pop('hourly_rate', 0)
+            account = db.execute("SELECT username FROM users WHERE role='employee' AND employee_role='加工工厂' AND factory=? LIMIT 1", (d['name'],)).fetchone()
+            if account:
+                d['login_username'] = account['username']
+            else:
+                # Keep the settings UI aligned with the factory-login model:
+                # when a legacy factory exists without an account, show the
+                # factory name as the default login username so saving the row
+                # recreates the account instead of silently leaving it blank.
+                d['login_username'] = d.get('name', '')
             result.append(d)
         return result
     elif key == 'procacc':
@@ -861,7 +1086,10 @@ def save_settings_list(key, data):
     tbl = TABLE_MAP.get(key)
     if not tbl: return False
     db = get_db()
+    cleanup_urls = []
     if key == 'fabrics':
+        old_colors = db.execute("SELECT img_path FROM fabric_colors WHERE img_path IS NOT NULL AND img_path != ''").fetchall()
+        cleanup_urls = [r['img_path'] for r in old_colors]
         db.execute("DELETE FROM fabric_colors")
         db.execute("DELETE FROM fabrics")
         for item in data:
@@ -879,35 +1107,75 @@ def save_settings_list(key, data):
                      c.get('anchorX', 0), c.get('anchorY', 0))
                 )
     elif key == 'guests':
+        existing_passwords = {
+            r['id']: (r['password'], r['password_display']) for r in db.execute(
+                "SELECT id, password, password_display FROM users WHERE role='guest'").fetchall()
+        }
         db.execute("DELETE FROM users WHERE role='guest'")
         for item in data:
-            pw = item.get('password', '')
+            entered_password = item.get('password', '')
+            old_password, old_display = existing_passwords.get(item.get('id', ''), ('', ''))
+            pw = entered_password or old_password
+            display_password = entered_password or old_display
             # Only hash if not already hashed
             if pw and not pw.startswith(('scrypt:', 'pbkdf2:', 'bcrypt:', 'argon2:')):
                 pw = generate_password_hash(pw)
             db.execute(
-                "INSERT OR REPLACE INTO users (id, username, password, name, role, phone, enabled, parent_id, address, tax_id, shop_name) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO users (id, username, password, password_display, name, role, phone, enabled, parent_id, address, tax_id, shop_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 (item.get('id', 'g-'+uuid.uuid4().hex[:6]), item.get('username',''),
-                 pw, item.get('name', ''),
+                 pw, display_password, item.get('name', ''),
                  'guest', item.get('phone', ''), item.get('enabled', 1),
                  item.get('parent_id', ''),
                  item.get('address', ''), item.get('tax_id', ''),
                  item.get('shop_name', ''))
             )
     elif key == 'employees':
-        db.execute("DELETE FROM users WHERE role='employee'")
+        data = [item for item in data if normalize_employee_role(item.get('role', '')) != '加工工厂']
+        # Validate before replacing rows.  The old implementation deleted all
+        # employee accounts first, so a duplicate username could silently make
+        # newly created accounts impossible to use.
+        usernames = set()
         for item in data:
-            pw = item.get('password', '')
+            username = (item.get('username') or '').strip()
+            if len(username) < 2:
+                raise ValueError('员工账号至少需要 2 个字符')
+            if username in usernames:
+                raise ValueError('员工账号不能重复：' + username)
+            usernames.add(username)
+        if usernames:
+            marks = ','.join('?' for _ in usernames)
+            conflicts = db.execute(
+                f"SELECT username FROM users WHERE role!='employee' AND username IN ({marks})",
+                tuple(usernames)).fetchall()
+            if conflicts:
+                raise ValueError('账号已被其他账户使用：' + conflicts[0]['username'])
+        existing_passwords = {
+            r['id']: (r['password'], r['password_display']) for r in db.execute(
+                "SELECT id, password, password_display FROM users WHERE role='employee' AND (employee_role IS NULL OR employee_role!='加工工厂')").fetchall()
+        }
+        db.execute("DELETE FROM users WHERE role='employee' AND (employee_role IS NULL OR employee_role!='加工工厂')")
+        for item in data:
+            entered_password = item.get('password', '')
+            old_password, old_display = existing_passwords.get(item.get('id', ''), ('', ''))
+            pw = entered_password or old_password
+            display_password = entered_password or old_display
             if not pw:
                 pw = generate_password_hash('123456')
+                display_password = '123456'
             elif not pw.startswith(('scrypt:', 'pbkdf2:', 'bcrypt:', 'argon2:')):
                 pw = generate_password_hash(pw)
+            permissions = item.get('permissions')
+            if permissions is None:
+                permissions = sorted(EMPLOYEE_DEFAULT_PAGES.get(normalize_employee_role(item.get('role', '')), set()))
+            if not isinstance(permissions, list):
+                permissions = []
+            permissions = [p for p in permissions if p in EMPLOYEE_PERMISSION_PAGES]
             db.execute(
-                "INSERT OR REPLACE INTO users (id, username, password, name, role, phone, enabled, employee_role, factory) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO users (id, username, password, password_display, name, role, phone, enabled, employee_role, factory, employee_permissions) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (item.get('id', 'e-'+uuid.uuid4().hex[:6]), item.get('username',''),
-                 pw, item.get('name', ''), 'employee', item.get('phone', ''),
+                 pw, display_password, item.get('name', ''), 'employee', item.get('phone', ''),
                  item.get('enabled', 1), normalize_employee_role(item.get('role', '')),
-                 item.get('factory', ''))
+                 item.get('factory', ''), json.dumps(permissions, ensure_ascii=False))
             )
     elif key == 'categories':
         db.execute("DELETE FROM categories")
@@ -920,12 +1188,66 @@ def save_settings_list(key, data):
             db.execute("INSERT INTO procacc (id, name, price) VALUES (?,?,?)",
                        (item['id'], item['name'], item.get('price', 0)))
     elif key == 'factories':
+        factory_accounts = {}
+        factory_accounts_by_username = {}
+        for row in db.execute("SELECT id, username, password, factory FROM users WHERE role='employee' AND employee_role='加工工厂'").fetchall():
+            account = dict(row)
+            factory_accounts[row['factory']] = account
+            factory_accounts_by_username[row['username']] = account
+        account_names = set()
+        for item in data:
+            username = (item.get('login_username') or '').strip()
+            if not username:
+                continue
+            if len(username) < 2:
+                raise ValueError('工厂登录账号至少需要 2 个字符')
+            if username in account_names:
+                raise ValueError('工厂登录账号不能重复：' + username)
+            account_names.add(username)
+        if account_names:
+            marks = ','.join('?' for _ in account_names)
+            conflicts = db.execute(
+                f"SELECT username FROM users WHERE username IN ({marks}) AND NOT (role='employee' AND employee_role='加工工厂')",
+                tuple(account_names)).fetchall()
+            if conflicts:
+                raise ValueError('工厂登录账号已被使用：' + conflicts[0]['username'])
+        for item in data:
+            username = (item.get('login_username') or '').strip()
+            if not username:
+                continue
+            old = factory_accounts.get(item.get('name', '')) or factory_accounts_by_username.get(username)
+            password = item.get('login_password', '')
+            if not old and not password:
+                raise ValueError('新加工工厂请同时填写登录密码')
         db.execute("DELETE FROM factories")
+        db.execute("DELETE FROM users WHERE role='employee' AND employee_role='加工工厂'")
         for item in data:
             db.execute("INSERT INTO factories (id, name, phone, workers, hourly_rate) VALUES (?,?,?,?,?)",
                        (item['id'], item['name'], item.get('phone', ''),
                         item.get('workers', 0), item.get('hourlyRate', 0)))
+            username = (item.get('login_username') or '').strip()
+            if username:
+                # Preserve the password if an administrator renames the
+                # factory but leaves its login account unchanged.
+                old = factory_accounts.get(item.get('name', '')) or factory_accounts_by_username.get(username) or {}
+                pw = item.get('login_password', '')
+                if not pw or pw == '******':
+                    pw = old.get('password', '')
+                if not pw:
+                    # New accounts are validated before deletion above. This
+                    # branch is only a defensive fallback for legacy data.
+                    pw = generate_password_hash('123456')
+                elif not pw.startswith(('scrypt:', 'pbkdf2:', 'bcrypt:', 'argon2:')):
+                    pw = generate_password_hash(pw)
+                db.execute(
+                    "INSERT INTO users (id, username, password, name, role, enabled, employee_role, factory, employee_permissions) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (old.get('id', 'factory-'+item.get('id', uuid.uuid4().hex[:6])), username, pw,
+                     item.get('name', ''), 'employee', 1, '加工工厂', item.get('name', ''),
+                     json.dumps(['factory.html'], ensure_ascii=False))
+                )
     db.commit()
+    if cleanup_urls:
+        cleanup_photo_urls(cleanup_urls)
     return True
 
 def save_single_order(order):
@@ -934,16 +1256,20 @@ def save_single_order(order):
     o = order
     # Read old state BEFORE any writes for step transition logging
     old_order = db.execute("SELECT * FROM orders WHERE id=?", (o['id'],)).fetchone()
+    customer_username = o.get('customer_username', '')
+    if not customer_username and old_order:
+        try: customer_username = old_order['customer_username'] or ''
+        except (IndexError, KeyError): pass
     # Main order
     db.execute("""INSERT OR REPLACE INTO orders
-        (id, customer, date, total_qty, note, sub_customer,
+        (id, customer, customer_username, date, total_qty, note, sub_customer,
          order_placed_completed, marker_completed, marker_length, marker_hands,
          marker_operator, marker_time, marker_data,
          cutting_completed, cutting_total, cutting_operator, cutting_time, cutting_data,
          pickup_completed, pickup_factory, pickup_operator, pickup_time, pickup_data,
          shipping_completed, shipping_qty, shipping_operator, shipping_time, shipping_data)
-        VALUES (?,?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?,?,?, ?,?,?,?, ?,?,?,?,?,?,?)""",
-        (o['id'], o.get('customer',''), o.get('date',''), o.get('total_qty',0), o.get('note',''), o.get('sub_customer',''),
+        VALUES (?,?,?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?,?,?, ?,?,?,?, ?,?,?,?,?,?,?)""",
+        (o['id'], o.get('customer',''), customer_username, o.get('date',''), o.get('total_qty',0), o.get('note',''), o.get('sub_customer',''),
          o.get('order_placed',{}).get('completed',1),
          o.get('marker_complete',{}).get('completed',0),
          o.get('marker_complete',{}).get('length',0),
@@ -1070,6 +1396,7 @@ def read_order(order_id):
     result = {
         'id': d['id'],
         'customer': d['customer'],
+        'customer_username': d.get('customer_username', ''),
         'date': d['date'],
         'total_qty': d['total_qty'],
         'note': d['note'],
@@ -1318,6 +1645,11 @@ def order_belongs_to_guest(order, user):
         return False
     uname = user.get('username', '')
     name = user.get('name', '')
+    # New orders use the stable account field. Fall back to historical display
+    # name matching for records created before this field existed.
+    owner = order.get('customer_username', '')
+    if owner:
+        return owner == uname
     return order.get('customer') in (uname, name) or order.get('sub_customer') in (uname, name)
 
 def order_factory(order):
@@ -1338,7 +1670,7 @@ def filter_orders_for_user(orders, user=None):
         erole = normalize_employee_role(user.get('employee_role'))
         if erole in ('裁剪员', '排版师', '发货员'):
             return orders
-        if erole == '车工':
+        if erole in ('车工', '加工工厂'):
             factory = user.get('factory', '')
             return [o for o in orders if factory and order_factory(o) == factory]
     return []
@@ -1382,6 +1714,8 @@ def save_single_style(style):
     """Save a style with all nested data"""
     db = get_db()
     s = style
+    old_imgs = db.execute("SELECT file_path FROM style_images WHERE style_code=?", (s.get('code',''),)).fetchall()
+    cleanup_urls = [r['file_path'] for r in old_imgs]
     db.execute("""INSERT OR REPLACE INTO styles
         (code, name, category, type, labor_cost, iron_cost,
          edge_note, processing_note, total_cost, suggested_price,
@@ -1519,10 +1853,47 @@ def filter_styles_for_user(styles, user=None):
         return styles
     return [s for s in styles if style_visible_to_user(s, user)]
 
+def public_style(style):
+    """Return only the fields a customer needs to browse and order a style."""
+    return {
+        'code': style.get('code', ''), 'name': style.get('name', ''),
+        'category': style.get('category', ''), 'type': style.get('type', 'solid'),
+        'suggestedPrice': style.get('suggestedPrice', 0),
+        'images': style.get('images', []), 'mainPhoto': style.get('mainPhoto', 0),
+        'fabrics': [{'id': f.get('id', ''), 'name': f.get('name', '')}
+                    for f in style.get('fabrics', [])],
+        'accessories': [{'name': a.get('name', '')} for a in style.get('accessories', [])]
+    }
+
+def public_fabrics():
+    """Hide purchasing cost and inventory from customer accounts."""
+    return [{'id': f.get('id', ''), 'name': f.get('name', ''),
+             'composition': f.get('composition', ''), 'colors': f.get('colors', [])}
+            for f in get_settings_list('fabrics')]
+
 # ── API Routes ──
 
-@app.route('/api/config', methods=['GET'])
+def save_local_config_value(key, value):
+    cfg = dict(_local_cfg or {})
+    cfg[key] = value
+    with open(_local_cfg_path, 'w', encoding='utf-8') as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    _local_cfg.clear()
+    _local_cfg.update(cfg)
+
+@app.route('/api/config', methods=['GET', 'POST'])
 def api_config():
+    if request.method == 'POST':
+        user = get_user()
+        if not user or user.get('role') != 'admin':
+            return forbid()
+        data = request.get_json(silent=True) or {}
+        brand_name = (data.get('brandName') or data.get('brand_name') or '').strip()
+        if brand_name:
+            if len(brand_name) > 80:
+                return jsonify({'error': '名称太长'}), 400
+            SYSTEM_CONFIG['brand_name'] = brand_name
+            save_local_config_value('brand_name', brand_name)
     return jsonify({
         'brandName': SYSTEM_CONFIG['brand_name'],
         'brandPrefix': SYSTEM_CONFIG['brand_prefix'],
@@ -1532,47 +1903,80 @@ def api_config():
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.get_json(silent=True) or {}
-    username = data.get('username', '')
+    username = (data.get('username', '') or '').strip()
     password = data.get('password', '')
     db = get_db()
     ip = get_client_ip()
+    guard = login_challenge_status(ip, username)
+    challenge = guard and guard.get('challenge')
+    if challenge:
+        if str(data.get('captcha_answer', '')).strip() != challenge['answer']:
+            return jsonify({'error': '请完成验证', 'captcha_required': True,
+                            'captcha_question': challenge['question']}), 401
+        # A correctly solved challenge permits one password attempt.  If that
+        # attempt fails, record_login_failure immediately creates a new one.
+        with LOGIN_GUARDS_LOCK:
+            current = LOGIN_GUARDS.get(login_guard_key(ip, username))
+            if current:
+                current.pop('challenge', None)
     # Check if user exists at all
     existing = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
     if not existing:
         log_login('', username, False, ip)
-        return jsonify({'error': '账号不存在'}), 401
+        item = record_login_failure(ip, username)
+        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
+                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
     # Check if disabled
     ud = dict(existing)
     if not ud.get('enabled', 1):
         log_login(ud.get('id', ''), username, False, ip)
-        return jsonify({'error': '该账号已被禁用，请联系管理员'}), 401
+        item = record_login_failure(ip, username)
+        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
+                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
     # 二级客人不能独立登录
     if ud.get('parent_id') and ud['role'] == 'guest':
         log_login(ud.get('id', ''), username, False, ip)
-        return jsonify({'error': '该账号为二级账号，不能独立登录'}), 401
+        item = record_login_failure(ip, username)
+        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
+                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
     if not check_password_hash(ud['password'], password):
         log_login(ud.get('id', ''), username, False, ip)
-        return jsonify({'error': '密码错误'}), 401
+        item = record_login_failure(ip, username)
+        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
+                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
     # Successful login — fetch location
     location = get_ip_location(ip)
     log_login(ud.get('id', ''), username, True, ip, location)
+    clear_login_failures(ip, username)
     session['user_id'] = ud['username']
     session['role'] = ud['role']
     session['name'] = ud['name']
     session['employee_role'] = normalize_employee_role(ud.get('employee_role', ''))
     session['factory'] = ud.get('factory', '')
+    permissions = None
+    if ud['role'] == 'employee' and ud.get('employee_permissions') not in (None, ''):
+        try:
+            parsed = json.loads(ud['employee_permissions'])
+            permissions = parsed if isinstance(parsed, list) else []
+        except (TypeError, ValueError):
+            permissions = []
+    if permissions is not None:
+        session['employee_permissions'] = permissions
     return jsonify({
         'username': ud['username'],
         'role': ud['role'],
         'name': ud['name'],
         'id': ud['id'],
         'employee_role': session.get('employee_role', ''),
-        'factory': session.get('factory', '')
+        'factory': session.get('factory', ''),
+        **({'permissions': permissions} if permissions is not None else {})
     })
 
-@app.route('/api/logout', methods=['POST'])
+@app.route('/api/logout', methods=['GET', 'POST'])
 def api_logout():
     session.clear()
+    if request.method == 'GET':
+        return redirect('/index.html?logout=1')
     return jsonify({'ok': True})
 
 @app.route('/api/me')
@@ -1585,6 +1989,7 @@ def api_change_password():
     data = request.get_json(silent=True) or {}
     old_password = data.get('old_password', '')
     new_password = data.get('new_password', '')
+    new_username = (data.get('new_username', '') or '').strip()
     if not new_password or len(new_password) < 4:
         return jsonify({'error': '新密码至少4位'}), 400
     db = get_db()
@@ -1595,10 +2000,22 @@ def api_change_password():
     ud = dict(row)
     if not check_password_hash(ud['password'], old_password):
         return jsonify({'error': '原密码错误'}), 401
+    if new_username and new_username != username:
+        if ud.get('role') != 'admin':
+            return jsonify({'error': '只有管理员可以修改账号'}), 403
+        if len(new_username) < 2:
+            return jsonify({'error': '账号至少2位'}), 400
+        exists = db.execute("SELECT id FROM users WHERE username=? AND username!=?", (new_username, username)).fetchone()
+        if exists:
+            return jsonify({'error': '账号已存在，请换一个'}), 400
     new_hashed = generate_password_hash(new_password)
-    db.execute("UPDATE users SET password=? WHERE username=?", (new_hashed, username))
+    if new_username and new_username != username:
+        db.execute("UPDATE users SET username=?, password=?, password_display=? WHERE username=?", (new_username, new_hashed, new_password, username))
+        session['user_id'] = new_username
+    else:
+        db.execute("UPDATE users SET password=?, password_display=? WHERE username=?", (new_hashed, new_password, username))
     db.commit()
-    return jsonify({'ok': True, 'message': '密码修改成功'})
+    return jsonify({'ok': True, 'message': '修改成功', 'username': session['user_id']})
 
 # ── Generic data endpoints ──
 
@@ -1610,6 +2027,8 @@ def api_data_get(key):
             return forbid()
     if key in ('categories', 'procacc', 'factories', 'fabrics', 'guests', 'employees', 'users'):
         result = get_settings_list(key)
+        if key == 'fabrics' and (get_user() or {}).get('role') == 'guest':
+            result = public_fabrics()
         return jsonify(result if result else [])
     elif key == 'styles':
         return jsonify(filter_styles_for_user(read_all_styles()))
@@ -1638,22 +2057,26 @@ def api_data_get(key):
 @app.route('/api/data/<key>', methods=['POST'])
 def api_data_save(key):
     if key in ('categories', 'procacc', 'factories', 'fabrics', 'guests', 'employees'):
-        # Skip admin check for fabrics (allows cross-browser sync)
-        if key != 'fabrics':
-            u = get_user()
-            if not u or u.get('role') != 'admin':
-                return forbid()
+        u = get_user()
+        if not u or u.get('role') != 'admin':
+            return forbid()
     if key in ('categories', 'procacc', 'factories', 'fabrics', 'guests', 'employees'):
         data = request.get_json(silent=True) or []
-        ok = save_settings_list(key, data)
-        return jsonify({'ok': ok})
+        try:
+            ok = save_settings_list(key, data)
+            return jsonify({'ok': ok})
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
     return jsonify({'error': 'unsupported'}), 400
 
 # ── Style endpoints ──
 
 @app.route('/api/styles', methods=['GET'])
 def api_styles_list():
-    return jsonify(filter_styles_for_user(read_all_styles()))
+    styles = filter_styles_for_user(read_all_styles())
+    if (get_user() or {}).get('role') == 'guest':
+        styles = [public_style(style) for style in styles]
+    return jsonify(styles)
 
 @app.route('/api/styles', methods=['POST'])
 @require_admin
@@ -1674,22 +2097,28 @@ def api_styles_get(code):
         return jsonify({'error': 'not found'}), 404
     if not style_visible_to_user(style):
         return forbid()
+    if (get_user() or {}).get('role') == 'guest':
+        return jsonify(public_style(style))
     return jsonify(style)
 
 @app.route('/api/styles/<code>', methods=['DELETE'])
 @require_admin
 def api_styles_delete(code):
     db = get_db()
+    imgs = db.execute("SELECT file_path FROM style_images WHERE style_code=?", (code,)).fetchall()
+    cleanup_urls = [r['file_path'] for r in imgs]
     db.execute("DELETE FROM style_images WHERE style_code=?", (code,))
     db.execute("DELETE FROM style_fabrics WHERE style_code=?", (code,))
     db.execute("DELETE FROM style_accessories WHERE style_code=?", (code,))
     db.execute("DELETE FROM styles WHERE code=?", (code,))
     db.commit()
-    return jsonify({'ok': True})
+    cleanup = cleanup_photo_urls(cleanup_urls)
+    return jsonify({'ok': True, 'cleanup': cleanup})
 
 # ── Fabric add-color endpoint ──
 
 @app.route('/api/fabrics/add-color', methods=['POST'])
+@require_admin
 def api_fabric_add_color():
     data = request.get_json(silent=True) or {}
     fabric_id = data.get('fabric_id')
@@ -1708,6 +2137,7 @@ def api_fabric_add_color():
     return jsonify({'ok': True})
 
 @app.route('/api/fabrics/update-color', methods=['POST'])
+@require_admin
 def api_fabric_update_color():
     """Update color metadata fields (name, hex, img_path, rapporto_cm, verso_unico) by fabric_id + name"""
     data = request.get_json(silent=True) or {}
@@ -1753,6 +2183,7 @@ def api_fabric_update_color():
 # ── Quick add color (order page) + anchor points ──
 
 @app.route('/api/order/quick-add-color', methods=['POST'])
+@require_auth
 def api_order_quick_add_color():
     """Quick-add a color from the order page: save image and insert/update fabric_colors."""
     data = request.get_json(silent=True) or {}
@@ -1762,7 +2193,20 @@ def api_order_quick_add_color():
     hex_color = data.get('hex_color', '')    # hex color for solid mode
     if not style_code or not color_name:
         return jsonify({'error': 'missing style_code or color_name'}), 400
+    if len(color_name) > 80:
+        return jsonify({'error': '颜色名称过长'}), 400
     db = get_db()
+    user = get_user() or {}
+    is_guest = user.get('role') == 'guest'
+    creator = user.get('username', '') if is_guest else ''
+
+    # A guest may add colors only to a style they are allowed to order, and
+    # never to a fabric outside that style.
+    guest_style = None
+    if is_guest:
+        guest_style = read_style(style_code)
+        if not guest_style or not style_visible_to_user(guest_style, user):
+            return forbid()
 
     # 1. Save image to photos/ (process via WebP pipeline)
     file_path = ''
@@ -1809,6 +2253,20 @@ def api_order_quick_add_color():
             if first_fabric:
                 fabric_ids.append(first_fabric['id'])
 
+    if is_guest:
+        allowed_ids = set()
+        for sf in guest_style.get('fabrics', []):
+            fid = sf.get('id', '')
+            if fid:
+                allowed_ids.add(fid)
+            elif sf.get('name'):
+                row = db.execute("SELECT id FROM fabrics WHERE name=?", (sf['name'],)).fetchone()
+                if row:
+                    allowed_ids.add(row['id'])
+        fabric_ids = [fid for fid in fabric_ids if fid in allowed_ids]
+        if not fabric_ids:
+            return jsonify({'error': '该款式没有可添加颜色的面料'}), 400
+
     for fid in set(fabric_ids):
         existing = db.execute(
             "SELECT id FROM fabric_colors WHERE fabric_id=? AND name=?",
@@ -1816,10 +2274,10 @@ def api_order_quick_add_color():
         ).fetchone()
         if not existing:
             db.execute(
-                "INSERT INTO fabric_colors (fabric_id, name, hex, img_path, anchor_x, anchor_y) VALUES (?,?,?,?,?,?)",
+                "INSERT INTO fabric_colors (fabric_id, name, hex, img_path, anchor_x, anchor_y, created_by) VALUES (?,?,?,?,?,?,?)",
                 (fid, color_name, hex_color or '#cccccc', file_path,
                  anchor_x if has_anchor else 0,
-                 anchor_y if has_anchor else 0)
+                 anchor_y if has_anchor else 0, creator)
             )
         elif file_path:
             # Update img_path if we have a new image
@@ -1834,7 +2292,7 @@ def api_order_quick_add_color():
     db.commit()
 
     # Return updated fabrics + image path
-    updated_fabrics = get_settings_list('fabrics')
+    updated_fabrics = public_fabrics() if is_guest else get_settings_list('fabrics')
     return jsonify({
         'ok': True,
         'image_path': file_path,
@@ -1842,6 +2300,7 @@ def api_order_quick_add_color():
     })
 
 @app.route('/api/order/add-anchor-color', methods=['POST'])
+@require_auth
 def api_order_add_anchor_color():
     """Add an additional anchor-point color to an existing image"""
     data = request.get_json(silent=True) or {}
@@ -1853,6 +2312,13 @@ def api_order_add_anchor_color():
     if not style_code or not color_name or not image_path:
         return jsonify({'error': 'missing fields'}), 400
     db = get_db()
+    user = get_user() or {}
+    is_guest = user.get('role') == 'guest'
+    creator = user.get('username', '') if is_guest else ''
+    if is_guest:
+        style = read_style(style_code)
+        if not style or not style_visible_to_user(style, user):
+            return forbid()
 
     # Find associated fabrics and insert
     sf_rows = db.execute(
@@ -1877,12 +2343,12 @@ def api_order_add_anchor_color():
         ).fetchone()
         if not existing:
             db.execute(
-                "INSERT INTO fabric_colors (fabric_id, name, hex, img_path, anchor_x, anchor_y) VALUES (?,?,?,?,?,?)",
-                (fid, color_name, '#cccccc', image_path, anchor_x, anchor_y)
+                "INSERT INTO fabric_colors (fabric_id, name, hex, img_path, anchor_x, anchor_y, created_by) VALUES (?,?,?,?,?,?,?)",
+                (fid, color_name, '#cccccc', image_path, anchor_x, anchor_y, creator)
             )
 
     db.commit()
-    updated_fabrics = get_settings_list('fabrics')
+    updated_fabrics = public_fabrics() if is_guest else get_settings_list('fabrics')
     return jsonify({'ok': True, 'fabrics': updated_fabrics})
 
 # ── Fabric stock deduction (called from cutting page) ──
@@ -1891,6 +2357,8 @@ def api_order_add_anchor_color():
 @require_auth
 def api_fabrics_deduct_stock():
     """Deduct stock for one or more fabrics. Body: {deductions: [{name, amount}], order_id: '...'}"""
+    if not employee_can('cutting', get_user()):
+        return forbid()
     data = request.get_json(silent=True) or {}
     deductions = data.get('deductions', [])
     if not deductions:
@@ -2049,15 +2517,27 @@ def api_print_warehouse_get(pid):
     return jsonify(dict(row))
 
 @app.route('/api/print-warehouse/<int:pid>', methods=['DELETE'])
+@require_auth
 def api_print_warehouse_delete(pid):
-    """Delete a print record"""
+    """Delete one saved colorway and its local image when no record still uses it."""
     db = get_db()
-    row = db.execute("SELECT big_img, thumb_img FROM print_warehouse WHERE id=?", (pid,)).fetchone()
-    cleanup_urls = []
-    if row:
-        cleanup_urls = [row['big_img'], row['thumb_img']]
+    row = db.execute("SELECT big_img, thumb_img, created_by FROM print_warehouse WHERE id=?", (pid,)).fetchone()
+    if not row:
+        return jsonify({'error': 'not found'}), 404
+    user = get_user() or {}
+    if user.get('role') == 'guest' and row['created_by'] != user.get('username', ''):
+        return forbid()
+    if user.get('role') not in ('admin', 'guest'):
+        return forbid()
+    cleanup_urls = [row['big_img'], row['thumb_img']]
+    style_rows = db.execute("SELECT style_code FROM style_prints WHERE print_id=?", (pid,)).fetchall()
     db.execute("DELETE FROM style_prints WHERE print_id=?", (pid,))
     db.execute("DELETE FROM print_warehouse WHERE id=?", (pid,))
+    # Remove the matching gallery link too; otherwise it would retain a
+    # database reference and prevent the physical image cleanup.
+    for style_row in style_rows:
+        for url in cleanup_urls:
+            db.execute("DELETE FROM luna_style_images WHERE style_code=? AND image_url=?", (style_row['style_code'], url))
     db.commit()
     cleanup = cleanup_photo_urls(cleanup_urls)
     return jsonify({'ok': True, 'cleanup': cleanup})
@@ -2065,10 +2545,17 @@ def api_print_warehouse_delete(pid):
 # ── Print warehouse: groups & by-style ──
 
 @app.route('/api/print-warehouse/groups', methods=['GET'])
+@require_auth
 def api_print_warehouse_groups():
     """Return distinct print_code groups with counts and latest thumbnail"""
     db = get_db()
     style_code = request.args.get('style_code', '').strip()
+    user = get_user() or {}
+    owner_filter = ""
+    owner_params = []
+    if user.get('role') == 'guest':
+        owner_filter = " AND pw.created_by=?"
+        owner_params = [user.get('username', '')]
     if style_code:
         rows = db.execute("""
             SELECT pw.print_code,
@@ -2076,14 +2563,14 @@ def api_print_warehouse_groups():
                    MAX(pw.updated_at) as last_updated,
                    (SELECT pw2.thumb_img FROM print_warehouse pw2
                     JOIN style_prints sp2 ON sp2.print_id = pw2.id
-                    WHERE sp2.style_code = ? AND pw2.print_code = pw.print_code AND pw2.thumb_img != ''
+                    WHERE sp2.style_code = ? AND pw2.print_code = pw.print_code AND pw2.created_by = pw.created_by AND pw2.thumb_img != ''
                     ORDER BY pw2.id DESC LIMIT 1) as thumb
             FROM print_warehouse pw
             JOIN style_prints sp ON sp.print_id = pw.id
-            WHERE sp.style_code = ? AND pw.print_code != ''
+            WHERE sp.style_code = ? AND pw.print_code != '' """ + owner_filter + """
             GROUP BY pw.print_code
             ORDER BY last_updated DESC
-        """, (style_code, style_code)).fetchall()
+        """, tuple([style_code, style_code] + owner_params)).fetchall()
     else:
         rows = db.execute("""
             SELECT pw.print_code,
@@ -2100,6 +2587,7 @@ def api_print_warehouse_groups():
     return jsonify([dict(r) for r in rows])
 
 @app.route('/api/print-warehouse/by-style/<style_code>', methods=['GET'])
+@require_auth
 def api_print_warehouse_by_style(style_code):
     """Return all colorway prints for a style, optionally scoped to one print_code."""
     db = get_db()
@@ -2109,6 +2597,10 @@ def api_print_warehouse_by_style(style_code):
     if print_code:
         where += " AND pw.print_code=?"
         params.append(print_code)
+    user = get_user() or {}
+    if user.get('role') == 'guest':
+        where += " AND pw.created_by=?"
+        params.append(user.get('username', ''))
     rows = db.execute(
         "SELECT pw.*, sp.last_used, lsi.id as image_id FROM style_prints sp "
         "JOIN print_warehouse pw ON pw.id=sp.print_id "
@@ -2213,6 +2705,7 @@ def api_print_warehouse_tree():
     return jsonify(tree)
 
 @app.route('/api/print-warehouse/group', methods=['DELETE'])
+@require_auth
 def api_print_warehouse_delete_group():
     """Delete one saved print group for a style."""
     style_code = request.args.get('style_code', '').strip()
@@ -2220,10 +2713,13 @@ def api_print_warehouse_delete_group():
     if not style_code or not print_code:
         return jsonify({'error': 'style_code and print_code required'}), 400
     db = get_db()
-    rows = db.execute(
-        "SELECT pw.id FROM print_warehouse pw JOIN style_prints sp ON sp.print_id=pw.id WHERE sp.style_code=? AND pw.print_code=?",
-        (style_code, print_code)
-    ).fetchall()
+    user = get_user() or {}
+    query = "SELECT pw.id FROM print_warehouse pw JOIN style_prints sp ON sp.print_id=pw.id WHERE sp.style_code=? AND pw.print_code=?"
+    params = [style_code, print_code]
+    if user.get('role') == 'guest':
+        query += " AND pw.created_by=?"
+        params.append(user.get('username', ''))
+    rows = db.execute(query, tuple(params)).fetchall()
     ids = [r['id'] for r in rows]
     cleanup_urls = []
     for pid in ids:
@@ -2429,7 +2925,21 @@ def api_workflow_orders(scope):
     u = get_user()
     if not employee_can(scope, u):
         return forbid()
-    return jsonify(filter_orders_for_user(read_all_orders(), u))
+    orders = filter_orders_for_user(read_all_orders(), u)
+    if scope == 'marker':
+        orders = [o for o in orders if not bool((o.get('marker_complete') or {}).get('completed'))]
+    elif scope == 'cutting':
+        orders = [o for o in orders if bool((o.get('marker_complete') or {}).get('completed')) and not bool((o.get('cutting_complete') or {}).get('completed'))]
+    elif scope == 'cutting_history':
+        def has_cutting_history(order):
+            cutting = order.get('cutting_complete') or {}
+            return bool(cutting.get('completed')) or int(cutting.get('total_cut') or 0) > 0 or bool(str(cutting.get('time') or '').strip())
+        orders = [o for o in orders if has_cutting_history(o)]
+    elif scope == 'pickup':
+        orders = [o for o in orders if bool((o.get('cutting_complete') or {}).get('completed')) and not bool((o.get('pickup_complete') or {}).get('completed'))]
+    elif scope == 'shipping':
+        orders = [o for o in orders if bool((o.get('pickup_complete') or {}).get('completed')) and not bool((o.get('shipping_complete') or {}).get('completed'))]
+    return jsonify(orders)
 
 @app.route('/api/factory/orders', methods=['GET'])
 @require_auth
@@ -2616,8 +3126,27 @@ def api_checkout():
     order_note = body.get('note', '')
     order_sub_customer = body.get('sub_customer', '')
     if u.get('role') == 'guest':
-        customer = u.get('name') or u.get('username') or customer
-        order_sub_customer = ''
+        primary_name = u.get('name') or u.get('username') or customer
+        primary_refs = [x for x in (u.get('id'), u.get('username')) if x]
+        allowed_secondaries = []
+        if primary_refs:
+            placeholders = ','.join('?' for _ in primary_refs)
+            allowed_secondaries = db.execute(
+                f"SELECT name, username FROM users WHERE role='guest' AND enabled=1 AND parent_id IN ({placeholders})",
+                primary_refs
+            ).fetchall()
+        allowed_secondary_names = set()
+        for row in allowed_secondaries:
+            if row['name']:
+                allowed_secondary_names.add(row['name'])
+            if row['username']:
+                allowed_secondary_names.add(row['username'])
+        if order_sub_customer:
+            if order_sub_customer not in allowed_secondary_names:
+                return jsonify({'error': '二级客人不属于当前客人账号'}), 403
+        elif order_customer and order_customer in allowed_secondary_names:
+            order_sub_customer = order_customer
+        customer = primary_name
 
     # Group cart items by style code → separate orders
     groups = {}  # code -> items list
@@ -2656,6 +3185,7 @@ def api_checkout():
         order = {
             'id': order_id,
             'customer': customer,
+            'customer_username': u.get('username', '') if u.get('role') == 'guest' else '',
             'sub_customer': order_sub_customer,
             'date': today,
             'items': items,
@@ -2686,6 +3216,7 @@ def api_order_operations(order_id):
     return jsonify([dict(r) for r in rows])
 
 @app.route('/api/export/csv')
+@require_admin
 def api_export_csv():
     import datetime
     month = request.args.get('month', '')
@@ -2757,6 +3288,37 @@ def api_export_csv():
     output.close()
     return csv_content, 200, {'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': f'attachment; filename=luna_{month or "all"}.csv'}
 
+@app.route('/api/orders/export', methods=['GET'])
+@require_admin
+def api_orders_export():
+    """Export every order field, including unshipped orders, in a spreadsheet-friendly CSV."""
+    import io, csv as csv_module
+    month = request.args.get('month', '').strip()
+    if month and not re.fullmatch(r'\d{4}-\d{2}', month):
+        return jsonify({'error': '月份格式必须为 YYYY-MM'}), 400
+    orders = read_all_orders()
+    if month:
+        orders = [order for order in orders if str(order.get('date', '')).startswith(month)]
+    output = io.StringIO()
+    writer = csv_module.writer(output)
+    writer.writerow(['订单号', '下单日期', '客户', '二级客户', '款式明细(JSON)', '订单备注',
+                     '下单流程(JSON)', '排版流程(JSON)', '裁剪流程(JSON)', '取货流程(JSON)', '发货流程(JSON)'])
+    for order in orders:
+        writer.writerow([
+            order.get('id', ''), order.get('date', ''), order.get('customer', ''), order.get('sub_customer', ''),
+            json.dumps(order.get('items', []), ensure_ascii=False), order.get('note', ''),
+            json.dumps(order.get('order_placed', {}), ensure_ascii=False),
+            json.dumps(order.get('marker_complete', {}), ensure_ascii=False),
+            json.dumps(order.get('cutting_complete', {}), ensure_ascii=False),
+            json.dumps(order.get('pickup_complete', {}), ensure_ascii=False),
+            json.dumps(order.get('shipping_complete', {}), ensure_ascii=False),
+        ])
+    filename = f'luna_all_orders_{month or "all"}.csv'
+    return '\ufeff' + output.getvalue(), 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': f'attachment; filename={filename}'
+    }
+
 @app.route('/api/init-defaults', methods=['POST'])
 def api_init_defaults():
     db = get_db()
@@ -2809,13 +3371,28 @@ def api_upload():
 
 
 @app.route('/api/photos/cleanup-urls', methods=['POST'])
+@require_auth
 def api_photos_cleanup_urls():
     """Delete unreferenced local photos by URL. Refuses files still referenced in DB."""
     data = request.get_json(silent=True) or {}
     urls = data.get('urls') or []
     if not isinstance(urls, list):
         return jsonify({'error': 'urls must be a list'}), 400
-    result = cleanup_photo_urls(urls, force=bool(data.get('force')))
+    user = get_user() or {}
+    force = bool(data.get('force')) and user.get('role') == 'admin'
+    result = cleanup_photo_urls(urls, force=force)
+    return jsonify({'ok': True, **result})
+
+
+@app.route('/api/photos/cleanup-orphans', methods=['POST'])
+@require_admin
+def api_photos_cleanup_orphans():
+    """Delete local photos that are not referenced by any DB text field."""
+    data = request.get_json(silent=True) or {}
+    result = cleanup_orphan_photos(
+        min_age_hours=data.get('min_age_hours', data.get('minAgeHours', 24)),
+        limit=data.get('limit', 500)
+    )
     return jsonify({'ok': True, **result})
 
 # ── Login logs & user control ──
@@ -2856,26 +3433,377 @@ def api_toggle_enabled(username):
 
 # ── Backup ──
 
+def create_database_backup(label='manual'):
+    """Create a consistent private SQLite snapshot and return its filesystem name."""
+    from datetime import datetime
+    safe_label = re.sub(r'[^A-Za-z0-9_.-]+', '-', label).strip('-') or 'manual'
+    backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    filename = f'luna_{safe_label}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.db'
+    backup_path = os.path.join(backup_dir, filename)
+    db = get_db()
+    db.commit()
+    db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    shutil.copy2(DB_PATH, backup_path)
+    return filename, os.path.getsize(backup_path)
+
+def validate_sqlite_backup(path):
+    """Return basic metadata for a usable Luna SQLite backup, or raise ValueError."""
+    conn = None
+    try:
+        conn = sqlite3.connect(path)
+        conn.row_factory = sqlite3.Row
+        integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if integrity != 'ok':
+            raise ValueError('数据库文件校验失败')
+        rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        tables = {row['name'] for row in rows}
+        required = {'users', 'orders', 'order_items', 'styles'}
+        missing = sorted(required - tables)
+        if missing:
+            raise ValueError('不是完整的 Luna 数据库备份，缺少表：' + ', '.join(missing))
+        return {'tables': len(tables)}
+    except sqlite3.DatabaseError:
+        raise ValueError('文件不是有效的 SQLite 数据库')
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+def create_full_website_backup(label='full'):
+    """Create a ZIP containing the database and uploaded photos."""
+    from datetime import datetime
+    safe_label = re.sub(r'[^A-Za-z0-9_.-]+', '-', label).strip('-') or 'full'
+    backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'luna_{safe_label}_{stamp}.zip'
+    zip_path = os.path.join(backup_dir, filename)
+    db_snapshot = os.path.join(backup_dir, f'.{uuid.uuid4().hex}_luna.db')
+    try:
+        db = get_db()
+        db.commit()
+        db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        shutil.copy2(DB_PATH, db_snapshot)
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.write(db_snapshot, 'luna.db')
+            if os.path.isdir(PHOTO_DIR):
+                for root, dirs, files in os.walk(PHOTO_DIR):
+                    dirs[:] = [d for d in dirs if not d.startswith('.')]
+                    for name in files:
+                        if name.startswith('.'):
+                            continue
+                        abs_path = os.path.join(root, name)
+                        rel = os.path.relpath(abs_path, os.path.dirname(__file__)).replace('\\', '/')
+                        zf.write(abs_path, rel)
+        return filename, os.path.getsize(zip_path)
+    finally:
+        if os.path.exists(db_snapshot):
+            try:
+                os.remove(db_snapshot)
+            except OSError:
+                pass
+
+def safe_zip_member(name):
+    normalized = name.replace('\\', '/').lstrip('/')
+    parts = normalized.split('/')
+    if not normalized or any(part in ('', '.', '..') for part in parts):
+        return ''
+    return normalized
+
+def table_columns(db, table):
+    try:
+        return [row['name'] for row in db.execute(f"PRAGMA table_info({table})").fetchall()]
+    except sqlite3.DatabaseError:
+        return []
+
+def fetch_table_rows(db, table, where='', params=()):
+    return [dict(row) for row in db.execute(f"SELECT * FROM {table} {where}", params).fetchall()]
+
+def insert_rows(db, table, rows, drop_auto_id=False):
+    columns = table_columns(db, table)
+    if not columns:
+        return 0
+    inserted = 0
+    for row in rows:
+        data = {k: row.get(k) for k in columns if k in row}
+        if drop_auto_id and 'id' in data:
+            data.pop('id', None)
+        if not data:
+            continue
+        col_names = list(data.keys())
+        placeholders = ','.join('?' for _ in col_names)
+        sql = f"INSERT INTO {table} ({','.join(col_names)}) VALUES ({placeholders})"
+        db.execute(sql, [data[c] for c in col_names])
+        inserted += 1
+    return inserted
+
 @app.route('/api/backup', methods=['POST'])
 @require_admin
 def api_backup():
     """Create a timestamped backup of the SQLite database"""
-    from datetime import datetime
-    backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
-    os.makedirs(backup_dir, exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_path = os.path.join(backup_dir, f'luna_backup_{timestamp}.db')
     try:
-        db = get_db()
-        db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        import shutil
-        shutil.copy2(DB_PATH, backup_path)
-        backups = sorted([f for f in os.listdir(backup_dir) if f.startswith('luna_backup_') and f.endswith('.db')], reverse=True)
+        filename, size = create_database_backup('backup')
+        backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+        backups = sorted([f for f in os.listdir(backup_dir) if f.startswith('luna_') and f.endswith('.db')], reverse=True)
         for old in backups[30:]:
             try: os.remove(os.path.join(backup_dir, old))
             except: pass
-        return jsonify({'ok': True, 'filename': os.path.basename(backup_path), 'size': os.path.getsize(backup_path)})
+        return jsonify({'ok': True, 'filename': filename, 'size': size})
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/backup/full', methods=['POST'])
+@require_admin
+def api_full_backup():
+    """Create a complete website backup ZIP: database plus uploaded photos."""
+    try:
+        filename, size = create_full_website_backup('full')
+        return jsonify({'ok': True, 'filename': filename, 'size': size})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/backups/<filename>/download', methods=['GET'])
+@require_admin
+def api_backup_download(filename):
+    """Authenticated download for saving a backup on a phone or computer."""
+    if not re.fullmatch(r'luna_[A-Za-z0-9_.-]+\.(db|zip)', filename):
+        return jsonify({'error': 'invalid backup filename'}), 400
+    backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+    if not os.path.isfile(os.path.join(backup_dir, filename)):
+        return jsonify({'error': 'backup not found'}), 404
+    return send_from_directory(backup_dir, filename, as_attachment=True, download_name=filename)
+
+@app.route('/api/backup/full/import', methods=['POST'])
+@require_admin
+def api_full_backup_import():
+    """Import a complete website backup ZIP made by /api/backup/full."""
+    upload = request.files.get('backup')
+    if not upload or not upload.filename:
+        return jsonify({'error': '请选择要导入的 .zip 完整备份文件'}), 400
+    if not upload.filename.lower().endswith('.zip'):
+        return jsonify({'error': '只能导入 .zip 完整备份文件'}), 400
+
+    backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    tmp_zip = os.path.join(backup_dir, 'import_full_%s.zip' % uuid.uuid4().hex)
+    tmp_db = os.path.join(backup_dir, 'import_full_%s.db' % uuid.uuid4().hex)
+    imported_photos = 0
+    try:
+        upload.save(tmp_zip)
+        if not zipfile.is_zipfile(tmp_zip):
+            return jsonify({'error': '文件不是有效的 ZIP 备份'}), 400
+        with zipfile.ZipFile(tmp_zip, 'r') as zf:
+            members = zf.namelist()
+            db_member = 'luna.db' if 'luna.db' in members else ''
+            if not db_member:
+                db_candidates = [m for m in members if safe_zip_member(m).endswith('.db')]
+                db_member = db_candidates[0] if db_candidates else ''
+            if not db_member:
+                return jsonify({'error': '完整备份中没有找到 luna.db'}), 400
+            with zf.open(db_member) as src, open(tmp_db, 'wb') as dst:
+                shutil.copyfileobj(src, dst)
+            meta = validate_sqlite_backup(tmp_db)
+            before_filename, before_size = create_full_website_backup('before-full-import')
+
+            close_db()
+            for suffix in ('-wal', '-shm'):
+                sidecar = DB_PATH + suffix
+                if os.path.exists(sidecar):
+                    try:
+                        os.remove(sidecar)
+                    except OSError:
+                        pass
+            os.replace(tmp_db, DB_PATH)
+
+            for member in members:
+                rel = safe_zip_member(member)
+                if not rel or not rel.startswith('photos/') or rel.endswith('/'):
+                    continue
+                target = os.path.abspath(os.path.join(os.path.dirname(__file__), rel))
+                photo_root = os.path.abspath(PHOTO_DIR)
+                if not (target == photo_root or target.startswith(photo_root + os.sep)):
+                    continue
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with zf.open(member) as src, open(target, 'wb') as dst:
+                    shutil.copyfileobj(src, dst)
+                imported_photos += 1
+
+        init_db()
+        session.modified = True
+        log_operation('system', 'full_backup_import', '导入完整网站备份',
+                      f'导入文件: {upload.filename} | 导入前完整备份: {before_filename}')
+        return jsonify({'ok': True, 'backup_filename': before_filename,
+                        'backup_size': before_size, 'tables': meta.get('tables', 0),
+                        'photos': imported_photos})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        for path in (tmp_zip, tmp_db):
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+
+@app.route('/api/backup/import', methods=['POST'])
+@require_admin
+def api_backup_import():
+    """Replace the current database with an uploaded Luna SQLite backup."""
+    upload = request.files.get('backup')
+    if not upload or not upload.filename:
+        return jsonify({'error': '请选择要导入的 .db 备份文件'}), 400
+    if not upload.filename.lower().endswith('.db'):
+        return jsonify({'error': '只能导入 .db 数据库备份文件'}), 400
+
+    backup_dir = os.path.join(os.path.dirname(__file__), 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    tmp_name = 'import_upload_%s.db' % uuid.uuid4().hex
+    tmp_path = os.path.join(backup_dir, tmp_name)
+
+    try:
+        upload.save(tmp_path)
+        if os.path.getsize(tmp_path) == 0:
+            return jsonify({'error': '上传的备份文件为空'}), 400
+        meta = validate_sqlite_backup(tmp_path)
+        before_filename, before_size = create_database_backup('before-import')
+
+        # Close this request's open connection before replacing the DB file,
+        # which is required on Windows and keeps the swap deterministic.
+        close_db()
+        for suffix in ('-wal', '-shm'):
+            sidecar = DB_PATH + suffix
+            if os.path.exists(sidecar):
+                try:
+                    os.remove(sidecar)
+                except OSError:
+                    pass
+        os.replace(tmp_path, DB_PATH)
+        init_db()
+        session.modified = True
+        log_operation('system', 'backup_import', '导入数据库备份',
+                      f'导入文件: {upload.filename} | 导入前备份: {before_filename}')
+        return jsonify({'ok': True, 'backup_filename': before_filename,
+                        'backup_size': before_size, 'tables': meta.get('tables', 0)})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+@app.route('/api/orders/backup', methods=['GET'])
+@require_admin
+def api_orders_backup():
+    """Export orders and related workflow rows as a restorable JSON file."""
+    from datetime import datetime
+    month = str(request.args.get('month', '')).strip()
+    if month and not re.fullmatch(r'\d{4}-\d{2}', month):
+        return jsonify({'error': '月份格式必须为 YYYY-MM'}), 400
+    db = get_db()
+    where = "WHERE date LIKE ?" if month else ""
+    params = (month + '%',) if month else ()
+    orders = fetch_table_rows(db, 'orders', where, params)
+    order_ids = [row['id'] for row in orders]
+    tables = {'orders': orders, 'order_items': [], 'cutting_layers': [],
+              'cutting_checkmarks': [], 'order_operations': []}
+    if order_ids:
+        placeholders = ','.join('?' for _ in order_ids)
+        for table in ('order_items', 'cutting_layers', 'cutting_checkmarks', 'order_operations'):
+            tables[table] = fetch_table_rows(db, table, f"WHERE order_id IN ({placeholders})", order_ids)
+    payload = {
+        'format': 'luna-orders-backup-v1',
+        'exported_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'month': month or 'all',
+        'order_count': len(orders),
+        'tables': tables
+    }
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    filename = f'luna_orders_{month or "all"}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+    return body, 200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': f'attachment; filename={filename}'
+    }
+
+@app.route('/api/orders/import', methods=['POST'])
+@require_admin
+def api_orders_import():
+    """Import an orders JSON backup, replacing matching order ids."""
+    upload = request.files.get('orders')
+    try:
+        if upload and upload.filename:
+            payload = json.loads(upload.read().decode('utf-8-sig'))
+        else:
+            payload = request.get_json(force=True)
+    except Exception:
+        return jsonify({'error': '订单备份文件不是有效 JSON'}), 400
+    if not isinstance(payload, dict) or payload.get('format') != 'luna-orders-backup-v1':
+        return jsonify({'error': '不是 Luna 订单备份文件'}), 400
+    tables = payload.get('tables') or {}
+    orders = tables.get('orders') or []
+    if not isinstance(orders, list) or not orders:
+        return jsonify({'error': '订单备份中没有订单数据'}), 400
+    order_ids = [str(row.get('id', '')).strip() for row in orders if row.get('id')]
+    if not order_ids:
+        return jsonify({'error': '订单备份缺少订单号'}), 400
+
+    db = get_db()
+    try:
+        before_filename, before_size = create_database_backup('before-orders-import')
+        placeholders = ','.join('?' for _ in order_ids)
+        for table in ('order_operations', 'cutting_checkmarks', 'cutting_layers', 'order_items'):
+            db.execute(f"DELETE FROM {table} WHERE order_id IN ({placeholders})", order_ids)
+        db.execute(f"DELETE FROM orders WHERE id IN ({placeholders})", order_ids)
+        inserted = {}
+        inserted['orders'] = insert_rows(db, 'orders', orders)
+        for table in ('order_items', 'cutting_layers', 'cutting_checkmarks', 'order_operations'):
+            inserted[table] = insert_rows(db, table, tables.get(table) or [], drop_auto_id=True)
+        db.commit()
+        log_operation('system', 'orders_import', '导入订单备份',
+                      f'订单数: {inserted.get("orders", 0)} | 导入前备份: {before_filename}')
+        return jsonify({'ok': True, 'orders': inserted.get('orders', 0), 'inserted': inserted,
+                        'backup_filename': before_filename, 'backup_size': before_size})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders/cleanup-month', methods=['POST'])
+@require_admin
+def api_orders_cleanup_month():
+    """Back up, then permanently remove one calendar month's order records."""
+    data = request.get_json(silent=True) or {}
+    month = str(data.get('month', '')).strip()
+    if not re.fullmatch(r'\d{4}-\d{2}', month):
+        return jsonify({'error': '月份格式必须为 YYYY-MM'}), 400
+    if data.get('confirmation') != f'DELETE {month}':
+        return jsonify({'error': '需要确认文本 DELETE ' + month}), 400
+    db = get_db()
+    order_rows = db.execute("SELECT id FROM orders WHERE date LIKE ?", (month + '%',)).fetchall()
+    order_ids = [row['id'] for row in order_rows]
+    if not order_ids:
+        return jsonify({'error': '该月份没有订单，未执行清理'}), 404
+    try:
+        # A successful backup is mandatory before any destructive operation.
+        backup_filename, backup_size = create_database_backup('before-cleanup-' + month)
+        placeholders = ','.join('?' for _ in order_ids)
+        db.execute(f"DELETE FROM order_operations WHERE order_id IN ({placeholders})", order_ids)
+        db.execute(f"DELETE FROM orders WHERE id IN ({placeholders})", order_ids)
+        db.commit()
+        db.execute("VACUUM")
+        log_operation('system', 'order_cleanup', '按月清理订单',
+                      f'月份: {month} | 删除订单: {len(order_ids)} | 备份: {backup_filename}')
+        return jsonify({'ok': True, 'month': month, 'deleted_orders': len(order_ids),
+                        'backup_filename': backup_filename, 'backup_size': backup_size})
+    except Exception as e:
+        db.rollback()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/backups', methods=['GET'])
@@ -2887,7 +3815,7 @@ def api_backups_list():
         return jsonify([])
     backups = []
     for f in sorted(os.listdir(backup_dir), reverse=True):
-        if f.startswith('luna_backup_') and f.endswith('.db'):
+        if f.startswith('luna_') and (f.endswith('.db') or f.endswith('.zip')):
             fpath = os.path.join(backup_dir, f)
             backups.append({
                 'filename': f,
@@ -2904,7 +3832,9 @@ def index():
 
 @app.route('/<path:path>')
 def static_files(path):
-    if path.endswith('.db'):
+    normalized_path = path.replace('\\', '/').lower()
+    sensitive_suffixes = ('.db', '.py', '.env', '.pem', '.key')
+    if normalized_path.endswith(sensitive_suffixes) or normalized_path in ('local_config.json', 'migration_data.json') or normalized_path.startswith(('.git/', 'backups/', '_data/')):
         return jsonify({'error': 'forbidden'}), 403
     if path.startswith('photos/'):
         return send_from_directory(PHOTO_DIR, path[7:])
@@ -2919,10 +3849,60 @@ def add_cors(response):
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
 
+GUEST_PAGES = {'index.html', 'guest-styles.html', 'order-page.html', 'order-print.html', 'cart.html', 'my-orders.html',
+               'order-detail.html', 'change-password.html'}
+GUEST_API_PREFIXES = ('/api/styles', '/api/cart')
+GUEST_API_EXACT = {'/api/config', '/api/me', '/api/logout', '/api/checkout', '/api/change-password',
+                   '/api/data/categories', '/api/data/fabrics', '/api/login'}
+
 @app.before_request
-def handle_options():
+def handle_options_and_access():
     if request.method == 'OPTIONS':
         return jsonify({'ok': True})
+    path = request.path
+    user = get_user()
+
+    # All business data requires a signed-in account.  The login page itself,
+    # configuration, and static assets remain public.
+    if not user:
+        if path.startswith('/api/') and path not in GUEST_API_EXACT and not path.startswith(GUEST_API_PREFIXES):
+            return jsonify({'error': 'unauthorized'}), 401
+        if path.endswith('.html') and os.path.basename(path) != 'index.html':
+            return redirect(url_for('index'))
+
+    # Customer accounts are intentionally limited to browsing styles and placing orders.
+    # This is server-side so typing an internal URL cannot bypass the menu restrictions.
+    if user and user.get('role') == 'guest':
+        if path.startswith('/api/'):
+            # Guests may read only their own orders; api_orders_list/detail
+            # applies filter_orders_for_user before returning any data.
+            guest_order_read = request.method == 'GET' and (
+                path == '/api/orders' or bool(re.fullmatch(r'/api/orders/[^/]+', path))
+            )
+            guest_ai_analysis = (
+                (path == '/api/ai/analyze-pattern-job' and request.method == 'POST') or
+                (bool(re.fullmatch(r'/api/ai/analyze-pattern-job/[^/]+', path)) and request.method == 'GET') or
+                (path == '/api/ai/confirm-pattern' and request.method == 'POST')
+            )
+            guest_print_history = (
+                (path == '/api/print-warehouse/groups' and request.method == 'GET') or
+                (bool(re.fullmatch(r'/api/print-warehouse/by-style/[^/]+', path)) and request.method == 'GET') or
+                (path == '/api/print-warehouse/group' and request.method == 'DELETE') or
+                (bool(re.fullmatch(r'/api/print-warehouse/\d+', path)) and request.method == 'DELETE')
+            )
+            guest_custom_color = path in {'/api/order/quick-add-color', '/api/order/add-anchor-color'} and request.method == 'POST'
+            allowed = path in GUEST_API_EXACT or path.startswith(GUEST_API_PREFIXES) or guest_order_read or guest_ai_analysis or guest_print_history or guest_custom_color
+            if not allowed or (path == '/api/checkout' and request.method != 'POST'):
+                return forbid()
+        elif path.endswith('.html') and os.path.basename(path) not in GUEST_PAGES:
+            return forbid()
+
+    if user and user.get('role') == 'employee' and path.endswith('.html'):
+        page = os.path.basename(path)
+        common = {'index.html', 'change-password.html', 'composition-print.html'}
+        allowed = employee_allowed_pages(user) | common
+        if page not in allowed:
+            return forbid()
 
 @app.after_request
 def no_cache(response):
@@ -2981,26 +3961,32 @@ Do not include model/lifestyle images as colorways.
 If a white sticker only shows numbers like 20 or 30, ignore that sticker and still read the swatch name/code around it.
 Make sure every visible usable small swatch is included."""
 
-def refine_and_crop(img, box_1000):  
-    """  
-    基于 AI 的千分比坐标，进行像素级的边缘微调裁剪  
-    """  
-    img_w, img_h = img.size  
-    ymin, xmin, ymax, xmax = box_1000  
+def refine_and_crop(img, box_1000):
+    """
+    基于 AI 的千分比坐标，进行像素级的边缘微调裁剪
+    """
+    img_w, img_h = img.size
+    if not box_1000 or len(box_1000) != 4:
+        return None
+    ymin, xmin, ymax, xmax = box_1000
+    ymin, ymax = sorted((float(ymin), float(ymax)))
+    xmin, xmax = sorted((float(xmin), float(xmax)))
 
-    # 1. 映射回真实像素坐标  
-    left = int((xmin / 1000.0) * img_w)  
-    top = int((ymin / 1000.0) * img_h)  
-    right = int((xmax / 1000.0) * img_w)  
+    # 1. 映射回真实像素坐标
+    left = int((xmin / 1000.0) * img_w)
+    top = int((ymin / 1000.0) * img_h)
+    right = int((xmax / 1000.0) * img_w)
     bottom = int((ymax / 1000.0) * img_h)  
 
-    # 限制边界  
-    left, top = max(0, left), max(0, top)  
-    right, bottom = min(img_w, right), min(img_h, bottom)  
+    # 限制边界
+    left, top = max(0, left), max(0, top)
+    right, bottom = min(img_w, right), min(img_h, bottom)
+    if right <= left or bottom <= top:
+        return None
 
-    # 2. 局部裁出稍微大一点的区域（比如往外扩大10个像素），让算法有容错空间  
-    pad = 10  
-    crop_l = max(0, left - pad)  
+    # 2. 局部裁出稍微大一点的区域（比如往外扩大10个像素），让算法有容错空间
+    pad = 10
+    crop_l = max(0, left - pad)
     crop_t = max(0, top - pad)  
     crop_r = min(img_w, right + pad)  
     crop_b = min(img_h, bottom + pad)  
@@ -3019,10 +4005,12 @@ def refine_and_crop(img, box_1000):
         bottom -= int(h * 0.04)  
     else: # 认为是中间的大图  
         left += int(w * 0.01)  
-        right -= int(w * 0.01)  
-        top += int(h * 0.01)  
-        bottom -= int(h * 0.01)  
+        right -= int(w * 0.01)
+        top += int(h * 0.01)
+        bottom -= int(h * 0.01)
 
+    if right <= left or bottom <= top:
+        return img.crop((crop_l, crop_t, crop_r, crop_b)) if crop_r > crop_l and crop_b > crop_t else None
     return img.crop((left, top, right, bottom))  
 
 
@@ -3392,11 +4380,13 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
 
     # 1. 裁剪主花版图（大图）  
     main_data = data.get("main_pattern", {})  
-    if main_data and "box_2d" in main_data:  
-        main_img = refine_and_crop(img, main_data["box_2d"])  
-        main_filename = f"{base_name}_main.jpg"  
-        main_img.convert("RGB").save(os.path.join(output_dir, main_filename), "JPEG", quality=95)  
-        results["main_pattern_url"] = f"/photos/{main_filename}"  
+    main_box = (main_data.get("box_2d") or []) if isinstance(main_data, dict) else []
+    if len(main_box) == 4:
+        main_img = refine_and_crop(img, main_box)  
+        if main_img and main_img.size[0] > 0 and main_img.size[1] > 0:
+            main_filename = f"{base_name}_main.jpg"  
+            main_img.convert("RGB").save(os.path.join(output_dir, main_filename), "JPEG", quality=95)  
+            results["main_pattern_url"] = f"/photos/{main_filename}"  
 
     # 2. 裁剪周围的小色卡  
     colorways = data.get("colorways", [])  
@@ -3442,14 +4432,16 @@ def process_luna_pattern_image(image_path, ai_response_str, output_dir=None):
     saved_crop_paths = []
     for cw, detected_box, fallback_idx in crop_items:  
         idx = cw.get("color_index", fallback_idx)  
-        box = cw.get("box_2d", [])  
+        box = cw.get("box_2d") or []
         if detected_box:
             cw_img = crop_box_with_padding(img, detected_box)
             idx = fallback_idx
         else:
             if len(box) != 4: continue
-            cw_img = refine_and_crop(img, box)  
-        cw_filename = f"{base_name}_cw_{idx}.jpg"  
+            cw_img = refine_and_crop(img, box)
+        if not cw_img or cw_img.size[0] <= 0 or cw_img.size[1] <= 0:
+            continue
+        cw_filename = f"{base_name}_cw_{idx}.jpg"
         cw_path = os.path.join(output_dir, cw_filename)
         cw_img.convert("RGB").save(cw_path, "JPEG", quality=95)  
         saved_crop_paths.append(cw_path)
@@ -3799,6 +4791,7 @@ def api_ai_analyze_pattern():
 
 
 @app.route('/api/ai/analyze-pattern-job', methods=['POST'])
+@require_auth
 def api_ai_analyze_pattern_job():
     """Start background pattern analysis and return a pollable job id."""
     _cleanup_ai_jobs()
@@ -3815,40 +4808,46 @@ def api_ai_analyze_pattern_job():
 
     job_id = uuid.uuid4().hex
     _set_ai_job(job_id, progress=12, stage='queued', status='running', message='Upload received')
+    AI_ANALYSIS_JOBS[job_id]['owner'] = (get_user() or {}).get('username', '')
 
     def run():
-        started = time.time()
-        try:
-            def progress_cb(progress, stage, message):
-                elapsed = int(time.time() - started)
-                _set_ai_job(job_id, progress=progress, stage=stage, status='running', message=f'{message} ({elapsed}s)')
+        with app.app_context():
+            started = time.time()
+            try:
+                def progress_cb(progress, stage, message):
+                    elapsed = int(time.time() - started)
+                    _set_ai_job(job_id, progress=progress, stage=stage, status='running', message=f'{message} ({elapsed}s)')
 
-            payload = _analyze_pattern_file(filepath, progress_cb=progress_cb)
-            _set_ai_job(
-                job_id,
-                progress=100,
-                stage='done',
-                status='success',
-                message=f"Done. Found {len(payload.get('colorways', []))} swatches.",
-                result={'status': 'success', 'data': payload}
-            )
-        except Exception as e:
-            print('AI job error:', e)
-            import traceback; traceback.print_exc()
-            _set_ai_job(job_id, progress=100, stage='failed', status='error', message=str(e), error=str(e))
-        finally:
-            try: os.remove(filepath)
-            except: pass
+                payload = _analyze_pattern_file(filepath, progress_cb=progress_cb)
+                _set_ai_job(
+                    job_id,
+                    progress=100,
+                    stage='done',
+                    status='success',
+                    message=f"Done. Found {len(payload.get('colorways', []))} swatches.",
+                    result={'status': 'success', 'data': payload}
+                )
+            except Exception as e:
+                print('AI job error:', e)
+                import traceback; traceback.print_exc()
+                _set_ai_job(job_id, progress=100, stage='failed', status='error', message=str(e), error=str(e))
+            finally:
+                try: os.remove(filepath)
+                except: pass
 
     threading.Thread(target=run, daemon=True).start()
     return jsonify({'status': 'running', 'job_id': job_id})
 
 
 @app.route('/api/ai/analyze-pattern-job/<job_id>', methods=['GET'])
+@require_auth
 def api_ai_analyze_pattern_job_status(job_id):
     job = AI_ANALYSIS_JOBS.get(job_id)
     if not job:
         return jsonify({'status': 'error', 'error': 'job not found'}), 404
+    user = get_user() or {}
+    if user.get('role') != 'admin' and job.get('owner') != user.get('username'):
+        return forbid()
     return jsonify(job)
 
 
@@ -3863,6 +4862,7 @@ def api_ai_confirm_pattern():
     colorways = data.get('colorways', [])
     style_code = data.get('style_code', '')
     master_image = data.get('master_image', '')
+    created_by = (get_user() or {}).get('username', '')
 
     saved = []
     db = get_db()
@@ -3879,8 +4879,8 @@ def api_ai_confirm_pattern():
             'master_image': master_image
         }, ensure_ascii=False)
         db.execute(
-            "INSERT INTO print_warehouse (print_code, big_img, thumb_img, notes) VALUES (?, ?, ?, ?)",
-            (pattern_no, cw.get('image_url',''), master_image or cw.get('image_url',''), notes)
+            "INSERT INTO print_warehouse (print_code, big_img, thumb_img, notes, created_by) VALUES (?, ?, ?, ?, ?)",
+            (pattern_no, cw.get('image_url',''), master_image or cw.get('image_url',''), notes, created_by)
         )
         pid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         if style_code:

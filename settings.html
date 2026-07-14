@@ -14,6 +14,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .tabs::-webkit-scrollbar{height:0}
 .tab{white-space:nowrap;padding:10px 14px;font-size:11px;font-weight:500;border:none;border-radius:4px;cursor:pointer;background:transparent;color:#888;font-family:inherit;transition:all .15s;flex-shrink:0}
 .tab.active{background:#fff;color:#1a1a1a;box-shadow:0 1px 3px rgba(0,0,0,.06);font-weight:600}
+.tab-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 .panel{display:none}
 .panel.active{display:block}
 .btn-sm{padding:4px 10px;border:none;border-radius:3px;font-size:10px;cursor:pointer;font-family:inherit;font-weight:500}
@@ -158,34 +159,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <body>
 <div class="header">
   <button class="hamburger" onclick="toggleMenu()">☰</button>
-  <span class="logo" id="settingsLogo">LUNA ATELIER</span>
+  <span class="logo" id="settingsLogo" data-luna-brand>LUNA ATELIER</span>
 </div>
 <div class="setting-wrap">
-  <div class="settings-hero">
-    <div class="settings-title">统一设置</div>
-    <div class="settings-subtitle">集中管理系统名称、加工资料、分类和结算入口。面料仓库保留在工作台，方便日常操作直接进入。</div>
+  <div class="settings-hero" style="margin-bottom:16px">
+    <div class="settings-title" style="font-size:18px">Logo名称设置</div>
+    <div class="settings-subtitle">这里修改全站页眉/Logo显示名称。</div>
     <div class="brand-box">
-      <label>页眉名称</label>
+      <label>显示名称</label>
       <input id="brandNameInput" placeholder="LUNA ATELIER">
       <button onclick="saveBrandName()">保存名称</button>
     </div>
   </div>
-  <div class="settings-section">
-    <div class="settings-section-head">
-      <div class="settings-section-title">系统管理</div>
-      <div class="settings-section-note">低频管理入口</div>
-    </div>
-    <div class="settings-shortcuts">
-      <a class="settings-shortcut" href="factory.html"><div class="ico">🏭</div><div><div class="name">工厂页面</div><div class="desc">车工订单详情</div></div></a>
-      <a class="settings-shortcut" href="print-warehouse.html"><div class="ico">🎨</div><div><div class="name">花版仓库</div><div class="desc">印花色卡图库</div></div></a>
-      <a class="settings-shortcut" href="people-manage.html"><div class="ico">👥</div><div><div class="name">人员管理</div><div class="desc">客人与员工权限</div></div></a>
-    </div>
-  </div>
+
   <div class="tabs">
     <button class="tab active" data-tab="factories">🏭 加工工厂</button>
     <button class="tab" data-tab="procacc">🔧 工艺&辅料</button>
     <button class="tab" data-tab="category">📂 分类</button>
     <button class="tab" data-tab="export">📊 月结</button>
+    <a class="tab tab-link" href="people-manage.html">👥 人员管理</a>
+    <a class="tab tab-link" href="print-warehouse.html">🎨 花版仓库</a>
+    <a class="tab tab-link" href="factory.html">🧵 生产工厂</a>
   </div>
 
   <div class="panel active" id="panel-factories"></div>
@@ -240,7 +234,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
 <div class="side-menu" id="sideMenu">
   <div class="sm-header">
-    <span class="sm-logo">LUNA ATELIER</span>
+    <span class="sm-logo" data-luna-brand>LUNA ATELIER</span>
     <button class="sm-close" onclick="toggleMenu()">✕</button>
   </div>
   <div class="sm-section">
@@ -262,7 +256,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </div>
 
-<script src="luna-data.js?v=27"></script>
+<script src="luna-data.js?v=39"></script>
 <script>LUNA.renderNav();</script>
 <script>
 (function(){var u=LUNA.getUser();if(!u||u.role!=='admin'){window.location.href='index.html';return;}})();
@@ -296,8 +290,24 @@ var SETTINGS = {
     return null;
   },
   save: function(key, data) {
+    if (typeof LUNA !== 'undefined') {
+      var result = null;
+      if (key === 'factories' && LUNA.saveFactories) result = LUNA.saveFactories(data);
+      else if (key === 'procacc' && LUNA.saveProcAcc) result = LUNA.saveProcAcc(data);
+      else if (key === 'categories' && LUNA.saveCategories) result = LUNA.saveCategories(data);
+      else if (key === 'fabrics' && LUNA.saveFabrics) result = LUNA.saveFabrics(data);
+      if (result && result.error) {
+        alert(result.error);
+        return false;
+      }
+      if (result !== null) {
+        localStorage.setItem(this.KEYS[key], JSON.stringify(data));
+        return true;
+      }
+    }
     localStorage.setItem(this.KEYS[key], JSON.stringify(data));
     if (typeof LUNA !== 'undefined' && LUNA.syncAllToServer) LUNA.syncAllToServer();
+    return true;
   }
 };
 
@@ -490,23 +500,29 @@ function addNewFabric() {
 function renderFactories() {
   var factories = SETTINGS.get('factories') || [];
   var html = '<table class="proc-table">';
-  html += '<tr><th style="min-width:110px">工厂名称</th><th>电话</th><th style="width:55px">人数</th><th style="width:75px">时薪€</th><th style="width:60px">操作</th></tr>';
+  html += '<tr><th style="min-width:110px">工厂名称</th><th>电话</th><th style="width:55px">人数</th><th style="width:75px">时薪€</th><th style="min-width:95px">登录账号</th><th style="min-width:160px">登录密码</th><th style="width:60px">操作</th></tr>';
   factories.forEach(function(f, i) {
     html += '<tr>';
     html += '<td><input value="' + esc(f.name) + '" onchange="updateFactory(' + i + ',\'name\',this.value)"></td>';
     html += '<td><input value="' + esc(f.phone||'') + '" onchange="updateFactory(' + i + ',\'phone\',this.value)"></td>';
     html += '<td><input class="num" value="' + (f.workers||'') + '" onchange="updateFactory(' + i + ',\'workers\',parseInt(this.value)||0)"></td>';
     html += '<td><input class="num" value="' + (f.hourlyRate||'').toFixed(2) + '" onchange="updateFactory(' + i + ',\'hourlyRate\',parseFloat(this.value)||0)"></td>';
+    html += '<td><input value="' + esc(f.login_username||'') + '" placeholder="账号" onchange="updateFactory(' + i + ',\'login_username\',this.value)"></td>';
+    html += '<td><div style="display:flex;gap:4px"><input id="factoryPass' + i + '" type="password" placeholder="已设置；留空不修改" style="min-width:95px"><button class="btn-sm" onclick="saveFactoryPassword(' + i + ')">保存</button></div></td>';
     html += '<td><button class="btn-sm danger" onclick="deleteFactory(' + i + ')">删除</button></td>';
     html += '</tr>';
   });
+  html += '<tr style="background:#fffdf8">';
+  html += '<td><input placeholder="工厂名称" id="newFactoryName"></td>';
+  html += '<td><input placeholder="电话" id="newFactoryPhone"></td>';
+  html += '<td><input class="num" placeholder="人数" id="newFactoryWorkers"></td>';
+  html += '<td><input class="num" placeholder="时薪" id="newFactoryRate"></td>';
+  html += '<td><input placeholder="登录账号" id="newFactoryLogin"></td>';
+  html += '<td><input placeholder="登录密码" id="newFactoryPassword" type="password"></td>';
+  html += '<td><button class="btn-sm success" onclick="addFactory()">＋ 添加</button></td>';
+  html += '</tr>';
   html += '</table>';
-  html += '<div class="add-row"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 0">';
-  html += '<input placeholder="工厂名称" id="newFactoryName" style="flex:2;min-width:100px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit">';
-  html += '<input placeholder="电话" id="newFactoryPhone" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit">';
-  html += '<input placeholder="人数" id="newFactoryWorkers" style="width:55px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit;text-align:right">';
-  html += '<input placeholder="时薪" id="newFactoryRate" style="width:70px;padding:6px 8px;border:1px solid #ebe8e3;border-radius:3px;font-size:11px;font-family:inherit;text-align:right">';
-  html += '<button class="btn-sm success" onclick="addFactory()">＋ 添加</button></div></div>';
+  html += '<div style="font-size:11px;color:#9b8f82;margin-top:8px">加工工厂账号登录后只开放「加工工厂」页面；后台会按登录工厂过滤订单。</div>';
   document.getElementById('panel-factories').innerHTML = html;
 }
 
@@ -515,6 +531,20 @@ function updateFactory(idx, field, val) {
   if (!data || idx >= data.length) return;
   data[idx][field] = val;
   SETTINGS.save('factories', data);
+}
+function saveFactoryPassword(idx) {
+  var data = SETTINGS.get('factories');
+  if (!data || idx >= data.length) return;
+  var input = document.getElementById('factoryPass' + idx);
+  var val = input ? input.value.trim() : '';
+  if (!data[idx].login_username) { alert('请先填写登录账号'); return; }
+  if (!val) { alert('请输入新密码'); return; }
+  data[idx].login_password = val;
+  if (SETTINGS.save('factories', data)) {
+    delete data[idx].login_password;
+    if (input) input.value = '';
+    alert('工厂登录密码已更新');
+  }
 }
 
 function deleteFactory(idx) {
@@ -535,7 +565,9 @@ function addFactory() {
     name: name,
     phone: document.getElementById('newFactoryPhone').value.trim(),
     workers: parseInt(document.getElementById('newFactoryWorkers').value) || 0,
-    hourlyRate: parseFloat(document.getElementById('newFactoryRate').value) || 0
+    hourlyRate: parseFloat(document.getElementById('newFactoryRate').value) || 0,
+    login_username: document.getElementById('newFactoryLogin').value.trim(),
+    login_password: document.getElementById('newFactoryPassword').value.trim()
   });
   SETTINGS.save('factories', data);
   renderFactories();
@@ -769,6 +801,25 @@ function toggleStyle(code) {
 }
 
 // ========== 7. EXPORT / BILLING (月结) ==========
+function invoiceOrderNo(inv) {
+  return inv.orderNo || inv.id || '';
+}
+function invoiceCode(inv) {
+  return inv.code || inv.styleCode || '-';
+}
+function invoiceQty(inv) {
+  return Number(inv.shippedQty != null ? inv.shippedQty : (inv.qty != null ? inv.qty : 0)) || 0;
+}
+function invoiceTotal(inv) {
+  return Number(inv.total != null ? inv.total : (inv.amount != null ? inv.amount : 0)) || 0;
+}
+function invoicePrice(inv) {
+  var price = Number(inv.price);
+  if (isFinite(price) && price > 0) return price;
+  var qty = invoiceQty(inv);
+  return qty > 0 ? invoiceTotal(inv) / qty : 0;
+}
+
 function loadBilling() {
   var invoices = [];
   try { invoices = LUNA.getInvoices(); } catch(e) {}
@@ -796,7 +847,7 @@ function loadBilling() {
 
   // Stats
   var totalQty = 0, totalAmount = 0;
-  filtered.forEach(function(inv) { totalQty += inv.shippedQty; totalAmount += inv.total; });
+  filtered.forEach(function(inv) { totalQty += invoiceQty(inv); totalAmount += invoiceTotal(inv); });
 
   // Filter controls
   var filterHtml = '<div class="export-card" style="margin-bottom:12px">';
@@ -818,6 +869,27 @@ function loadBilling() {
   filterHtml += '<button class="export-btn" onclick="exportExcel()">📥 导出 Excel</button>';
   filterHtml += '</div></div>';
 
+  filterHtml += '<div class="export-card" style="margin-bottom:12px;border-color:#eadfce">';
+  filterHtml += '<h3>🧰 数据备份、导入与清理</h3>';
+  filterHtml += '<p>完整网站备份包含数据库和图片；数据库备份只包含数据；订单备份只导入/导出订单。按月清理会先自动备份，再删除该月订单。</p>';
+  filterHtml += '<div class="export-row">';
+  filterHtml += '<button class="export-btn" onclick="downloadFullWebsiteBackup()">下载完整网站备份 ZIP</button>';
+  filterHtml += '<button class="export-btn" onclick="downloadDatabaseBackup()">下载完整数据库 DB</button>';
+  filterHtml += '<button class="export-btn" onclick="downloadAllOrdersCsv()">导出全部订单 CSV</button>';
+  filterHtml += '<button class="export-btn" onclick="downloadOrdersBackup()">导出订单备份 JSON</button>';
+  filterHtml += '</div>';
+  filterHtml += '<div class="export-row" style="margin-top:10px">';
+  filterHtml += '<div class="field"><label>导入完整网站备份</label><input id="fullBackupImportFile" type="file" accept=".zip,application/zip" style="max-width:220px;padding:5px 8px;border:1px solid #e8e5e0;border-radius:4px;font:12px inherit;background:#fff"></div>';
+  filterHtml += '<button class="btn-sm danger" style="padding:8px 14px" onclick="uploadFullWebsiteBackup()">导入完整 ZIP</button>';
+  filterHtml += '<div class="field"><label>导入数据库备份</label><input id="backupImportFile" type="file" accept=".db,application/vnd.sqlite3,application/x-sqlite3" style="max-width:220px;padding:5px 8px;border:1px solid #e8e5e0;border-radius:4px;font:12px inherit;background:#fff"></div>';
+  filterHtml += '<button class="btn-sm danger" style="padding:8px 14px" onclick="uploadDatabaseBackup()">导入恢复数据</button>';
+  filterHtml += '<div class="field"><label>导入订单备份</label><input id="ordersImportFile" type="file" accept=".json,application/json" style="max-width:220px;padding:5px 8px;border:1px solid #e8e5e0;border-radius:4px;font:12px inherit;background:#fff"></div>';
+  filterHtml += '<button class="btn-sm danger" style="padding:8px 14px" onclick="uploadOrdersBackup()">导入订单 JSON</button>';
+  filterHtml += '<div class="field"><label>清理订单月份</label><input id="cleanupMonth" type="month" style="padding:6px 10px;border:1px solid #e8e5e0;border-radius:4px;font:12px inherit"></div>';
+  filterHtml += '<button class="btn-sm danger" style="padding:8px 14px" onclick="cleanupOrdersMonth()">永久清理该月订单</button>';
+  filterHtml += '<button class="btn-sm danger" style="padding:8px 14px" onclick="cleanupOrphanPhotos()">清理未引用图片</button>';
+  filterHtml += '</div></div>';
+
   // Stats bar
   filterHtml += '<div style="display:flex;gap:12px;padding:12px 14px;background:#faf9f6;border:1px solid #e8e5e0;border-radius:6px;flex-wrap:wrap;font-size:12px;margin-bottom:8px">';
   filterHtml += '<span>📄 账单数 <strong>' + filtered.length + '</strong></span>';
@@ -831,17 +903,18 @@ function loadBilling() {
   } else {
     filterHtml += '<div style="background:#fff;border:1px solid #e8e5e0;border-radius:6px;overflow-x:auto">';
     filterHtml += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
-    filterHtml += '<tr style="background:#faf9f6;"><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">订单号</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">编号</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">客人</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">发货数</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">批发价€</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">总金额€</th><th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">发货时间</th></tr>';
+    filterHtml += '<tr style="background:#faf9f6;"><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">订单号</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">编号</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">一级客人</th><th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">二级客人</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">发货数</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">批发价€</th><th style="padding:8px 10px;text-align:right;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">总金额€</th><th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8e5e0;font-size:10px;color:#888;">发货时间</th></tr>';
     filtered.forEach(function(inv) {
-      filterHtml += '<tr><td style="padding:6px 10px;border-bottom:1px solid #f0ede8;font-weight:600;">' + esc(inv.orderNo) + '</td>';
-      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;color:#c9a96e;font-weight:600;">' + esc(inv.code) + '</td>';
+      filterHtml += '<tr><td style="padding:6px 10px;border-bottom:1px solid #f0ede8;font-weight:600;">' + esc(invoiceOrderNo(inv)) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;color:#c9a96e;font-weight:600;">' + esc(invoiceCode(inv)) + '</td>';
       filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;">' + esc(inv.customer) + '</td>';
-      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;">' + inv.shippedQty + '</td>';
-      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;">' + inv.price.toFixed(2) + '</td>';
-      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;font-weight:600;">' + inv.total.toFixed(2) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;">' + esc(inv.sub_customer || '') + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;">' + invoiceQty(inv) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;">' + invoicePrice(inv).toFixed(2) + '</td>';
+      filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:right;font-weight:600;">' + invoiceTotal(inv).toFixed(2) + '</td>';
       filterHtml += '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;text-align:center;font-size:11px;color:#888;">' + (inv.shipTime || '-') + '</td></tr>';
     });
-    filterHtml += '<tr style="background:#faf9f6;font-weight:700;"><td colspan="3" style="padding:8px 10px;text-align:right;">合计</td><td style="padding:8px 10px;text-align:right;">' + totalQty + '</td><td></td><td style="padding:8px 10px;text-align:right;">€' + totalAmount.toFixed(2) + '</td><td></td></tr>';
+    filterHtml += '<tr style="background:#faf9f6;font-weight:700;"><td colspan="4" style="padding:8px 10px;text-align:right;">合计</td><td style="padding:8px 10px;text-align:right;">' + totalQty + '</td><td></td><td style="padding:8px 10px;text-align:right;">€' + totalAmount.toFixed(2) + '</td><td></td></tr>';
     filterHtml += '</table></div>';
   }
   document.getElementById('panel-export').innerHTML = filterHtml;
@@ -863,26 +936,153 @@ function exportExcel() {
 
   if (filtered.length === 0) { alert('没有可导出的数据'); return; }
 
-  // Build CSV
-  var BOM = '\uFEFF';
-  var csv = BOM + '订单号,编号,客人,发货数量,批发价€,总金额€,发货时间\n';
+  var html = '\ufeff<html><head><meta charset="utf-8"></head><body><table border="1">';
+  html += '<tr><th>订单号</th><th>编号</th><th>一级客人</th><th>二级客人</th><th>发货数量</th><th>批发价€</th><th>总金额€</th><th>发货时间</th></tr>';
   filtered.forEach(function(inv) {
-    csv += [inv.orderNo, inv.code, inv.customer, inv.shippedQty, inv.price.toFixed(2), inv.total.toFixed(2), inv.shipTime || ''].join(',') + '\n';
+    html += '<tr><td>' + esc(invoiceOrderNo(inv)) + '</td><td>' + esc(invoiceCode(inv)) + '</td><td>' + esc(inv.customer) + '</td><td>' + esc(inv.sub_customer || '') + '</td><td>' + invoiceQty(inv) + '</td><td>' + invoicePrice(inv).toFixed(2) + '</td><td>' + invoiceTotal(inv).toFixed(2) + '</td><td>' + esc(inv.shipTime || '') + '</td></tr>';
   });
   var totalQ = 0, totalA = 0;
-  filtered.forEach(function(inv) { totalQ += inv.shippedQty; totalA += inv.total; });
-  csv += '合计,,,' + totalQ + ',' + ',' + totalA.toFixed(2) + ',\n';
+  filtered.forEach(function(inv) { totalQ += invoiceQty(inv); totalA += invoiceTotal(inv); });
+  html += '<tr><td colspan="4">合计</td><td>' + totalQ + '</td><td></td><td>' + totalA.toFixed(2) + '</td><td></td></tr>';
+  html += '</table></body></html>';
 
   // Download
-  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var blob = new Blob([html], {type: 'application/vnd.ms-excel;charset=utf-8;'});
   var link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   var now = new Date();
   var dateStr = now.getFullYear() + '-' + ('0'+(now.getMonth()+1)).slice(-2) + '-' + ('0'+now.getDate()).slice(-2);
-  link.download = '月结_' + dateStr + '.csv';
+  link.download = '月结_' + dateStr + '.xls';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function requestAdminJson(url, body, cb) {
+  fetch(url, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body || {})
+  }).then(function(r) {
+    return r.json().catch(function(){ return {}; }).then(function(data) {
+      if (!r.ok || data.error) throw new Error(data.error || ('请求失败 ' + r.status));
+      return data;
+    });
+  }).then(function(data) { cb(null, data); }).catch(function(err) { cb(err); });
+}
+
+function clearLunaCache() {
+  try {
+    Object.keys(localStorage).forEach(function(key) {
+      if (key.indexOf('luna_') === 0) localStorage.removeItem(key);
+    });
+  } catch(e) {}
+}
+
+function downloadDatabaseBackup() {
+  requestAdminJson('/api/backup', {}, function(err, data) {
+    if (err) { alert('数据库备份失败：' + err.message); return; }
+    var link = document.createElement('a');
+    link.href = '/api/backups/' + encodeURIComponent(data.filename) + '/download';
+    link.download = data.filename;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    alert('数据库备份已生成，下载已开始。');
+  });
+}
+function downloadFullWebsiteBackup() {
+  requestAdminJson('/api/backup/full', {}, function(err, data) {
+    if (err) { alert('完整备份失败：' + err.message); return; }
+    var link = document.createElement('a');
+    link.href = '/api/backups/' + encodeURIComponent(data.filename) + '/download';
+    link.download = data.filename;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    alert('完整网站备份已生成，包含数据库和图片，下载已开始。');
+  });
+}
+function downloadAllOrdersCsv() {
+  var month = document.getElementById('cleanupMonth') ? document.getElementById('cleanupMonth').value : '';
+  var link = document.createElement('a');
+  link.href = '/api/orders/export' + (month ? '?month=' + encodeURIComponent(month) : '');
+  link.download = 'luna_orders_' + (month || 'all') + '.csv';
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+function downloadOrdersBackup() {
+  var month = document.getElementById('cleanupMonth') ? document.getElementById('cleanupMonth').value : '';
+  var link = document.createElement('a');
+  link.href = '/api/orders/backup' + (month ? '?month=' + encodeURIComponent(month) : '');
+  link.download = 'luna_orders_backup_' + (month || 'all') + '.json';
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+function uploadFullWebsiteBackup() {
+  var input = document.getElementById('fullBackupImportFile');
+  var file = input && input.files && input.files[0];
+  if (!file) { alert('请先选择要导入的 .zip 完整备份文件'); return; }
+  if (!/\.zip$/i.test(file.name)) { alert('只能导入 .zip 完整备份文件'); return; }
+  var phrase = 'IMPORT FULL';
+  var answer = prompt('导入完整备份会覆盖当前数据库，并导入备份里的图片。系统会先自动备份当前完整网站。\n请输入 ' + phrase + ' 确认：');
+  if (answer !== phrase) return;
+  var form = new FormData();
+  form.append('backup', file);
+  fetch('/api/backup/full/import', {method:'POST', credentials:'same-origin', body:form})
+    .then(function(r){ return r.json().then(function(d){ if(!r.ok || d.error) throw new Error(d.error || '导入失败'); return d; }); })
+    .then(function(data){ clearLunaCache(); alert('完整导入完成。导入前已自动备份：' + data.backup_filename + '。导入图片 ' + (data.photos || 0) + ' 个。页面将刷新。'); location.reload(); })
+    .catch(function(err){ alert(err.message); });
+}
+function uploadDatabaseBackup() {
+  var input = document.getElementById('backupImportFile');
+  var file = input && input.files && input.files[0];
+  if (!file) { alert('请先选择要导入的 .db 备份文件'); return; }
+  if (!/\.db$/i.test(file.name)) { alert('只能导入 .db 数据库备份文件'); return; }
+  var phrase = 'IMPORT DB';
+  var answer = prompt('导入会覆盖当前网站所有数据。系统会先自动备份当前数据库。\n请输入 ' + phrase + ' 确认：');
+  if (answer !== phrase) return;
+  var form = new FormData();
+  form.append('backup', file);
+  fetch('/api/backup/import', {method:'POST', credentials:'same-origin', body:form})
+    .then(function(r){ return r.json().then(function(d){ if(!r.ok || d.error) throw new Error(d.error || '导入失败'); return d; }); })
+    .then(function(data){ clearLunaCache(); alert('导入完成。导入前已自动备份当前数据：' + data.backup_filename + '。页面将刷新。'); location.reload(); })
+    .catch(function(err){ alert(err.message); });
+}
+function uploadOrdersBackup() {
+  var input = document.getElementById('ordersImportFile');
+  var file = input && input.files && input.files[0];
+  if (!file) { alert('请先选择要导入的订单 JSON 备份文件'); return; }
+  if (!/\.json$/i.test(file.name)) { alert('只能导入订单 JSON 备份文件'); return; }
+  var phrase = 'IMPORT ORDERS';
+  var answer = prompt('导入订单会按订单号覆盖同名订单，并保留其他订单。系统会先自动备份当前数据库。\n请输入 ' + phrase + ' 确认：');
+  if (answer !== phrase) return;
+  var form = new FormData();
+  form.append('orders', file);
+  fetch('/api/orders/import', {method:'POST', credentials:'same-origin', body:form})
+    .then(function(r){ return r.json().then(function(d){ if(!r.ok || d.error) throw new Error(d.error || '导入失败'); return d; }); })
+    .then(function(data){ clearLunaCache(); alert('订单导入完成：' + data.orders + ' 个订单。导入前备份：' + data.backup_filename + '。'); loadBilling(); })
+    .catch(function(err){ alert(err.message); });
+}
+function cleanupOrdersMonth() {
+  var input = document.getElementById('cleanupMonth');
+  var month = input ? input.value : '';
+  if (!/^\d{4}-\d{2}$/.test(month)) { alert('请选择要清理的月份'); return; }
+  var phrase = 'DELETE ' + month;
+  var answer = prompt('此操作会永久删除 ' + month + ' 的订单和流程记录。系统会先自动备份。\n请输入 ' + phrase + ' 确认：');
+  if (answer !== phrase) return;
+  requestAdminJson('/api/orders/cleanup-month', {month:month, confirmation:answer}, function(err, data) {
+    if (err) { alert('清理失败：' + err.message); return; }
+    clearLunaCache();
+    var link = document.createElement('a');
+    link.href = '/api/backups/' + encodeURIComponent(data.backup_filename) + '/download';
+    link.download = data.backup_filename;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    alert('已清理 ' + data.deleted_orders + ' 个订单。清理前备份：' + data.backup_filename + '。');
+    loadBilling();
+  });
+}
+function cleanupOrphanPhotos() {
+  if (!confirm('将永久删除未被任何数据库记录引用的图片文件。已关联到款式、面料或订单的图片不会删除。是否继续？')) return;
+  requestAdminJson('/api/photos/cleanup-orphans', {minAgeHours:0, limit:5000}, function(err, data) {
+    if (err) { alert('图片清理失败：' + err.message); return; }
+    alert('图片清理完成：删除 ' + ((data.deleted || []).length) + ' 个，跳过 ' + ((data.skipped || []).length) + ' 个。');
+  });
 }
 
 // ===== UTILITY =====
@@ -892,7 +1092,7 @@ function esc(s) {
 }
 
 // ===== TAB SWITCHING =====
-document.querySelectorAll('.tab').forEach(function(t) {
+document.querySelectorAll('.tab[data-tab]').forEach(function(t) {
   t.addEventListener('click', function() {
     document.querySelectorAll('.tab').forEach(function(x) { x.classList.remove('active'); });
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
@@ -1076,8 +1276,7 @@ function toggleMenu() {
 
 // ===== 退出 =====
 function logout() {
-  LUNA.clearUser();
-  window.location.href = 'index.html';
+  LUNA.logout();
 }
 
 // ===== 默认激活第一个面板 =====
@@ -1087,20 +1286,38 @@ function logout() {
 initSettings();
 try{
   var brandInput = document.getElementById('brandNameInput');
-  var currentBrandName = localStorage.getItem('luna_brand_name') || 'LUNA ATELIER';
+  var currentBrandName = (LUNA && LUNA.getBrandName ? LUNA.getBrandName() : (localStorage.getItem('luna_brand_name') || 'LUNA ATELIER'));
   if (brandInput) brandInput.value = currentBrandName;
   var settingsLogo = document.getElementById('settingsLogo');
   if (settingsLogo) settingsLogo.textContent = currentBrandName;
+  if (LUNA && LUNA.syncBrandFromServer) {
+    LUNA.syncBrandFromServer(function(err, data) {
+      if (!err && data && data.brandName) {
+        if (brandInput) brandInput.value = data.brandName;
+        if (settingsLogo) settingsLogo.textContent = data.brandName;
+      }
+    });
+  }
 }catch(e){}
 function saveBrandName() {
   var input = document.getElementById('brandNameInput');
   var name = input ? input.value.trim() : '';
   if (!name) name = 'LUNA ATELIER';
+  if (LUNA && LUNA.saveBrandName) {
+    LUNA.saveBrandName(name, function(err, data) {
+      if (err || !data || data.error) {
+        var msg = (err && err.message) || (data && data.error) || '保存失败';
+        if (LUNA && LUNA.showAlert) LUNA.showAlert(msg); else alert(msg);
+        return;
+      }
+      if (input) input.value = data.brandName || name;
+      if (LUNA && LUNA.showAlert) LUNA.showAlert('Logo名称已保存，所有访问地址会同步生效');
+      else alert('Logo名称已保存，所有访问地址会同步生效');
+    });
+    return;
+  }
   localStorage.setItem('luna_brand_name', name);
-  var settingsLogo = document.getElementById('settingsLogo');
-  if (settingsLogo) settingsLogo.textContent = name;
-  if (LUNA && LUNA.showAlert) LUNA.showAlert('页眉名称已保存，刷新页面后生效');
-  else alert('页眉名称已保存，刷新页面后生效');
+  if (LUNA && LUNA.applyBranding) LUNA.applyBranding();
 }
 // 服务器数据同步后重新渲染
 window.addEventListener('luna-data-changed', function() {

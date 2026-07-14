@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LUNA Godex QZ Tray Test</title>
+  <style>
+    :root {
+      --gold: #C8A56D;
+      --ink: #1f1f1f;
+      --muted: #666;
+      --line: #e7e0d5;
+      --ok: #1f8a4c;
+      --bad: #b3261e;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f8f5ef;
+      color: var(--ink);
+    }
+
+    main {
+      width: min(520px, calc(100vw - 32px));
+      padding: 28px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 36px rgba(31, 31, 31, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    button {
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--gold);
+      color: #17130c;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.68;
+    }
+
+    pre {
+      min-height: 92px;
+      margin: 18px 0 0;
+      padding: 14px;
+      overflow: auto;
+      white-space: pre-wrap;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf7;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .ok {
+      color: var(--ok);
+    }
+
+    .bad {
+      color: var(--bad);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>LUNA ATELIER</h1>
+    <p>QZ Tray 本机通路测试。请先在 Windows 7 上启动 QZ Tray，并确认打印机名称是 <strong>Godex G500</strong>。</p>
+    <button id="printBtn" type="button">测试打印 Godex</button>
+    <pre id="log">等待测试...</pre>
+  </main>
+
+  <script>
+    function loadQzTray() {
+      return new Promise(function(resolve, reject) {
+        if (window.qz) {
+          resolve();
+          return;
+        }
+
+        var localScript = document.createElement('script');
+        localScript.src = 'qz-tray.js';
+        localScript.onload = resolve;
+        localScript.onerror = function() {
+          var cdnScript = document.createElement('script');
+          cdnScript.src = 'https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js';
+          cdnScript.onload = resolve;
+          cdnScript.onerror = function() {
+            reject(new Error('无法加载 qz-tray.js。请把 qz-tray.js 放到 test.html 同一目录，或临时联网加载 CDN。'));
+          };
+          document.head.appendChild(cdnScript);
+        };
+        document.head.appendChild(localScript);
+      });
+    }
+
+    var button = document.getElementById('printBtn');
+    var logBox = document.getElementById('log');
+
+    function log(message, type) {
+      logBox.className = type || '';
+      logBox.textContent = message;
+    }
+
+    function getTsplTestCommand() {
+      return [
+        'SIZE 30 mm,55 mm',
+        'GAP 2 mm,0 mm',
+        'DIRECTION 1',
+        'REFERENCE 0,0',
+        'CLS',
+        'TEXT 34,198,"3",0,2,2,"LUNA TEST"',
+        'PRINT 1,1',
+        ''
+      ].join('\r\n');
+    }
+
+    async function connectQz() {
+      if (!qz.websocket.isActive()) {
+        await qz.websocket.connect();
+      }
+    }
+
+    async function testPrintGodex() {
+      button.disabled = true;
+      log('正在连接 QZ Tray...');
+
+      try {
+        await loadQzTray();
+        await connectQz();
+
+        log('QZ Tray 已连接，正在查找打印机 Godex G500...');
+        var printer = await qz.printers.find('Godex G500');
+        var config = qz.configs.create(printer, {
+          encoding: 'UTF-8',
+          jobName: 'LUNA TEST - Godex G500'
+        });
+
+        var data = [{
+          type: 'raw',
+          format: 'plain',
+          data: getTsplTestCommand()
+        }];
+
+        log('已找到打印机：' + printer + '\n正在发送 30mm x 55mm TSPL 测试标签...');
+        await qz.print(config, data);
+        log('测试指令已发送。若打印机吐出一张 LUNA TEST，说明 QZ Tray 通路正常。', 'ok');
+      } catch (err) {
+        log('打印测试失败：\n' + (err && err.message ? err.message : err), 'bad');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    button.addEventListener('click', testPrintGodex);
+  </script>
+</body>
+</html>

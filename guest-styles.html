@@ -78,13 +78,6 @@ border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
 .home-search span{color:#C8A56D;font-size:15px}
 .home-search input{border:none;outline:none;width:100%;font-family:inherit;font-size:13px;color:#1C1C1C;background:transparent}
 .home-search input::placeholder{color:#B5A58A}
-body:not(.guest-search-open) .home-search{display:none}
-body.guest-search-open .home-search{display:flex;max-width:none;margin-bottom:12px}
-.guest-nav-tools{display:flex;align-items:center;gap:14px;margin-left:auto}
-.guest-nav-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:transparent;color:#999;font-size:18px;cursor:pointer;text-decoration:none;font-family:inherit}
-.guest-nav-icon:hover,.guest-nav-icon.active{color:#1C1C1C}
-.guest-nav-tools .cart-badge{top:1px;right:0}
-#diana-nav .diana-logo{margin-right:auto}
 .filter-bar{position:static;background:#F7F6F3;padding:0 0 12px;margin-bottom:14px}
 .cat-pills{display:flex;gap:7px;overflow-x:auto;padding:0 0 3px;scrollbar-width:none}
 .cat-pills::-webkit-scrollbar{display:none}
@@ -170,7 +163,7 @@ font-size: 11px; color: #B5A58A;
 .scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:700;white-space:nowrap}
 .scroll-card .s-tag{position:absolute;top:6px;left:6px;display:block;font-size:12px;line-height:1;text-shadow:0 1px 3px rgba(255,255,255,.8)}
 </style>
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=39"></script>
 <style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
@@ -180,7 +173,7 @@ font-size: 11px; color: #B5A58A;
 <div class="hamburger" onclick="toggleMenu()">
 <span></span><span></span><span></span>
 </div>
-<a href="#" class="logo">LUNA ATELIER</a>
+<a href="#" class="logo" data-luna-brand>LUNA ATELIER</a>
 <div class="header-right">
 <span class="header-icon" onclick="document.getElementById('searchInput').focus()">🔍</span>
 <a href="cart.html" class="header-icon">🛒<span class="cart-badge" id="cartBadge">0</span></a>
@@ -191,7 +184,7 @@ font-size: 11px; color: #B5A58A;
 <div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
 <div class="side-menu" id="sideMenu">
   <div class="sm-header">
-    <span class="sm-logo">LUNA ATELIER</span>
+    <span class="sm-logo" data-luna-brand>LUNA ATELIER</span>
     <button class="sm-close" onclick="toggleMenu()">✕</button>
   </div>
   <div class="sm-section">
@@ -218,7 +211,7 @@ font-size: 11px; color: #B5A58A;
 <div class="page">
 <section class="home-hero">
   <div>
-    <div class="home-kicker">LUNA ATELIER</div>
+    <div class="home-kicker" data-luna-brand>LUNA ATELIER</div>
     <div class="home-title">款式浏览</div>
     <div class="home-sub">查看最新款式，按分类或编号快速筛选，点击款式即可进入下单。</div>
   </div>
@@ -244,7 +237,7 @@ font-size: 11px; color: #B5A58A;
 <div class="grid" id="stylesGrid"></div>
 </div>
 <footer class="footer">
-<p><span id="footerBrandName">LUNA ATELIER</span> · Prato · Italia</p>
+<p><span id="footerBrandName" data-luna-brand>LUNA ATELIER</span> · Prato · Italia</p>
 </footer>
 <script>
 // 获取分类图标
@@ -261,53 +254,19 @@ function esc(s) {
   return d.innerHTML;
 }
 function getBrandName() {
-  try { return localStorage.getItem('luna_brand_name') || 'LUNA ATELIER'; } catch(e) { return 'LUNA ATELIER'; }
+  return (LUNA && LUNA.getBrandName) ? LUNA.getBrandName() : 'LUNA ATELIER';
 }
 function renderBrandName() {
-  var name = getBrandName();
-  document.querySelectorAll('.logo,.sm-logo,#footerBrandName,.home-kicker').forEach(function(el) {
-    if (el) el.textContent = name;
-  });
+  if (LUNA && LUNA.applyBranding) LUNA.applyBranding();
 }
 // 切换菜单
-function toggleHeaderSearch() {
-  document.body.classList.toggle('guest-search-open');
-  var btn = document.getElementById('guestHeaderSearchBtn');
-  if (btn) btn.classList.toggle('active', document.body.classList.contains('guest-search-open'));
-  if (document.body.classList.contains('guest-search-open')) {
-    setTimeout(function() {
-      var input = document.getElementById('searchInput');
-      if (input) input.focus();
-    }, 30);
-  }
-}
-function renderGuestHeaderTools() {
-  var header = document.querySelector('#diana-nav .diana-header');
-  if (!header) {
-    setTimeout(renderGuestHeaderTools, 100);
-    return;
-  }
-  if (document.getElementById('guestHeaderTools')) {
-    updateCartBadge();
-    return;
-  }
-  var tools = document.createElement('div');
-  tools.id = 'guestHeaderTools';
-  tools.className = 'guest-nav-tools';
-  tools.innerHTML =
-    '<button type="button" class="guest-nav-icon" id="guestHeaderSearchBtn" onclick="toggleHeaderSearch()" aria-label="搜索">🔍</button>' +
-    '<a href="cart.html" class="guest-nav-icon" aria-label="购物车">🛒<span class="cart-badge" id="guestHeaderCartBadge">0</span></a>';
-  header.appendChild(tools);
-  updateCartBadge();
-}
 function toggleMenu() {
 document.getElementById('sideOverlay').classList.toggle('active');
 document.getElementById('sideMenu').classList.toggle('open');
 }
 // 退出
 function logout() {
-  LUNA.clearUser();
-  window.location.href = 'index.html';
+  LUNA.logout();
 }
 // 数据
 var allStyles = [];
@@ -352,7 +311,11 @@ function displayStyleName(s) {
   var name = (s.name || '').trim();
   var category = (s.category || '').trim();
   if (name && name !== category) return name;
-  return s.type === 'print' ? '印花款式' : '常规款式';
+  return isPrintStyle(s) ? '印花款式' : '常规款式';
+}
+function isPrintStyle(s) {
+  var t = String((s && s.type) || '').toLowerCase();
+  return t === 'print' || t === 'stampa' || t === '印花';
 }
 function visibleStylesForCurrentFilters() {
   currentSearch = (document.getElementById('searchInput') && document.getElementById('searchInput').value || '').trim().toLowerCase();
@@ -376,9 +339,9 @@ container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60
 return;
 }
 container.innerHTML = styles.map(function(s) {
-  var tag = (s.type === 'print') ? '<span class="tag">🌸</span>' : '';
+  var tag = isPrintStyle(s) ? '<span class="tag">🌸</span>' : '';
   var imgHtml = getStyleImageHtml(s);
-  var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
+  var page = isPrintStyle(s) ? 'order-print.html' : 'order-page.html';
   return '<div class="card" onclick="window.location.href=\'' + page + '?code=' + s.code + '\'">' +
   '<div class="img-wrap">' + imgHtml + '</div>' +
   tag +
@@ -398,8 +361,8 @@ function renderNewArrivals() {
   document.getElementById("newBadge").textContent = newStyles.length + "款";
   row.innerHTML = newStyles.map(function(s) {
     var img = getStyleImageHtml(s);
-    var page = (s.type === 'print') ? 'order-print.html' : 'order-page.html';
-    var tag = (s.type === 'print') ? '<span class="s-tag">🌸</span>' : '';
+    var page = isPrintStyle(s) ? 'order-print.html' : 'order-page.html';
+    var tag = isPrintStyle(s) ? '<span class="s-tag">🌸</span>' : '';
     return '<div class="scroll-card" onclick="window.location.href=\'' + page + '?code=' + s.code + '\'">' +
       '<div class="s-img">' + img + '</div>' + tag +
       '<div class="s-info"><div class="s-top-line"><span class="s-code">ART-' + s.code + '</span>' +
@@ -448,11 +411,7 @@ return '<button class="cat-pill" onclick="filterByCategory(\'' + c + '\',this)">
 // 更新购物车徽标（兼容新旧两种数据格式）
 function updateCartBadge() {
 var raw = localStorage.getItem('luna_cart_data');
-if (!raw) {
-  if (document.getElementById('cartBadge')) document.getElementById('cartBadge').textContent = '0';
-  if (document.getElementById('guestHeaderCartBadge')) document.getElementById('guestHeaderCartBadge').textContent = '0';
-  return;
-}
+if (!raw) { document.getElementById('cartBadge').textContent = '0'; return; }
 var cart;
 try { cart = JSON.parse(raw); } catch(e) { cart = []; }
 var count = 0;
@@ -468,13 +427,11 @@ for (var i = 0; i < cart.length; i++) {
     });
   }
 }
-if (document.getElementById('cartBadge')) document.getElementById('cartBadge').textContent = count;
-if (document.getElementById('guestHeaderCartBadge')) document.getElementById('guestHeaderCartBadge').textContent = count;
+document.getElementById('cartBadge').textContent = count;
 }
 // 初始化
 function initPage() {
 renderBrandName();
-renderGuestHeaderTools();
 try {
 var raw = localStorage.getItem('luna_styles_data');
 if (raw) {
@@ -514,6 +471,6 @@ if (e.key === 'luna_styles_data') initPage();
 if (e.key === 'luna_cart_data') updateCartBadge();
 });
 </script>
-<script>LUNA.renderNav(); renderGuestHeaderTools();</script>
+<script>LUNA.renderNav();</script>
 </body>
 </html>

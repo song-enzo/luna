@@ -138,7 +138,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 <!-- Header -->
 <div class="header">
-  <div class="logo">LUNA <span>A</span></div>
+  <div class="logo" data-luna-brand>LUNA ATELIER</div>
   <div class="header-right">
     <span class="mode-badge">🧪 流程模拟</span>
     <span style="font-size:13px;color:#888" id="userBadge">管理员</span>
@@ -813,6 +813,13 @@ function resetAll() {
 
 // ===================== INIT =====================
 renderAll();
+</script>
+<script>
+(function(){
+  var name = 'LUNA ATELIER';
+  try { name = localStorage.getItem('luna_brand_name') || name; } catch(e) {}
+  document.querySelectorAll('[data-luna-brand]').forEach(function(el){ el.textContent = name; });
+})();
 </script>
 </body>
 </html>

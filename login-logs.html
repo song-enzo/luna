@@ -66,7 +66,7 @@ tr:last-child td{border-bottom:none}
 <div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
 <div class="side-menu" id="sideMenu">
   <div class="sm-header">
-    <span class="sm-logo">LUNA ATELIER</span>
+    <span class="sm-logo" data-luna-brand>LUNA ATELIER</span>
     <button class="sm-close" onclick="toggleMenu()">✕</button>
   </div>
   <div class="sm-section">
@@ -119,11 +119,11 @@ tr:last-child td{border-bottom:none}
   </div>
   <div class="empty-state" id="emptyState" style="display:none">暂无登录记录</div>
 </div>
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=39"></script>
 <script>LUNA.renderNav();</script>
 <script>
 function toggleMenu(){document.getElementById('sideMenu').classList.toggle('open');document.getElementById('sideOverlay').classList.toggle('active')}
-function logout(){LUNA.clearUser();window.location.href='index.html'}
+function logout(){LUNA.logout()}
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
 var currentFilter='all';
 

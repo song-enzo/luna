@@ -52,7 +52,7 @@
 <style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
-<header class="luna-header"><button class="header-btn" onclick="history.back()">←</button><span class="logo">LUNA <span>A</span></span><span style="font-size:15px;font-weight:500">裁剪历史</span></header>
+<header class="luna-header"><button class="header-btn" onclick="history.back()">←</button><span class="logo" data-luna-brand>LUNA ATELIER</span><span style="font-size:15px;font-weight:500">裁剪历史</span></header>
 <main class="container page-enter" style="padding-top:24px;padding-bottom:48px">
   <div class="section-header"><h2 class="section-title">裁剪历史</h2></div>
   <div class="form-group" style="max-width:300px"><input class="form-input" type="text" id="filterSearch" placeholder="搜索订单编号/款式编号/客人名字..." oninput="render()"></div>
@@ -69,7 +69,7 @@
   </div>
 </div>
 
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=39"></script>
 <script>LUNA.renderNav();</script>
 <script>
 LUNA.checkAuth();
@@ -160,8 +160,28 @@ function openColorPreview(fabricName, colorName) {
   if (src && LUNA.openImagePreview) LUNA.openImagePreview(src, colorName + (fabricName ? ' · ' + fabricName : ''));
 }
 
+function isCuttingHistoryOrder(order) {
+  var cutting = order && order.cutting_complete;
+  if (!cutting) return false;
+  if (cutting.completed === 1 || cutting.completed === true) return true;
+  if (Number(cutting.total_cut || 0) > 0) return true;
+  if ((cutting.time || '').trim()) return true;
+  return false;
+}
+
+function cuttingSortValue(order) {
+  var cutting = (order && order.cutting_complete) || {};
+  var t = (cutting.time || '').trim();
+  if (t) {
+    var parsed = Date.parse(t.replace(/-/g, '/'));
+    if (!isNaN(parsed)) return parsed;
+    return t;
+  }
+  return (order && (order.date || order.id)) || '';
+}
+
 function render() {
-  var orders = LUNA.getOrders().filter(function(o){ return o.cutting_complete; });
+  var orders = LUNA.getOrders().filter(isCuttingHistoryOrder);
   var search = document.getElementById('filterSearch').value.trim().toLowerCase();
   if (search) {
     orders = orders.filter(function(o){
@@ -176,7 +196,12 @@ function render() {
       return false;
     });
   }
-  orders = orders.slice().reverse();
+  orders = orders.slice().sort(function(a, b) {
+    var av = cuttingSortValue(a);
+    var bv = cuttingSortValue(b);
+    if (typeof av === 'number' && typeof bv === 'number') return bv - av;
+    return String(bv).localeCompare(String(av));
+  });
   if (!orders.length) {
     document.getElementById('historyList').innerHTML = '<div class="empty-state"><div class="icon">📁</div><div class="title">暂无裁剪记录</div></div>';
     return;

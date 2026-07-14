@@ -56,6 +56,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
 .hamburger{font-size:22px;cursor:pointer;padding:4px 8px 4px 0;text-decoration:none;color:#666;background:none;border:none;font-family:inherit;line-height:1}
 .hamburger:hover{color:#1a1a1a}
+.order-filter{background:#fff;border:1px solid #e8e5e0;border-radius:8px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr auto;gap:10px}
+.order-filter input{width:100%;border:1px solid #ddd;border-radius:6px;padding:9px 10px;font-size:13px;font-family:inherit;background:#faf9f7}
+.order-filter input:focus{outline:none;border-color:#c9a96e;background:#fff}
+.filter-all-btn{border:none;border-radius:6px;background:#c9a96e;color:#fff;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.filter-all-btn:hover{background:#b8963e}
+.order-summary{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#666;background:#faf8f4;border-radius:6px;padding:8px 10px}
+.order-summary b{color:#1a1a1a}
+@media(max-width:520px){.order-filter{grid-template-columns:1fr}}
 </style>
 <style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
@@ -65,14 +73,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <a href="guest-styles.html" class="back">←</a>
   <span class="logo">📋 我的订单</span>
 </div>
-<div class="page" id="orderPage">
+<div class="page">
+  <div class="order-filter">
+    <input type="month" id="filterMonth" onchange="renderOrders()">
+    <input type="text" id="filterCode" placeholder="搜索订单编号/款式编号" oninput="renderOrders()">
+    <button class="filter-all-btn" type="button" onclick="clearOrderFilters()">全部</button>
+    <div class="order-summary" id="orderSummary">
+      <span>订单：<b>0</b> 笔</span>
+      <span>合计：<b>0</b> 件</span>
+    </div>
+  </div>
+  <div id="orderPage">
   <!-- 动态渲染 -->
+</div>
 </div>
 <!-- Side Menu -->
 <div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
 <div class="side-menu" id="sideMenu">
   <div class="sm-header">
-    <span class="sm-logo">LUNA ATELIER</span>
+    <span class="sm-logo" data-luna-brand>LUNA ATELIER</span>
     <button class="sm-close" onclick="toggleMenu()">✕</button>
   </div>
   <div class="sm-section">
@@ -93,7 +112,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <a class="sm-link danger" href="javascript:void(0)" onclick="logout()">🚪 退出账号</a>
   </div>
 </div>
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=39"></script>
 <script>LUNA.renderNav();</script>
 <script>
 function toggleMenu() {
@@ -101,8 +120,7 @@ function toggleMenu() {
   document.getElementById('sideOverlay').classList.toggle('active');
 }
 function logout() {
-  LUNA.clearUser();
-  window.location.href = 'index.html';
+  LUNA.logout();
 }
 function getFabric1Cut(order) {
   if (!order.cutting_complete || !order.cutting_complete.fabrics) {
@@ -118,6 +136,43 @@ function getFabric1Cut(order) {
     for (var cc in (fabrics[fn].colors || {})) { total += fabrics[fn].colors[cc].total || 0; }
   }
   return total || order.cutting_complete.total_cut || 0;
+}
+function itemQty(item) {
+  var total = 0;
+  var qty = item && item.qty;
+  if (qty && typeof qty === 'object') {
+    Object.keys(qty).forEach(function(k) {
+      total += parseInt(qty[k], 10) || 0;
+    });
+  } else {
+    total += parseInt(item && (item.quantity || item.total_qty || item.qty), 10) || 0;
+  }
+  return total;
+}
+function orderQty(order) {
+  var total = 0;
+  (order.items || []).forEach(function(item) { total += itemQty(item); });
+  return total || parseInt(order.total_qty, 10) || 0;
+}
+function orderSubtotal(order) {
+  var total = 0;
+  (order.items || []).forEach(function(item) {
+    total += itemQty(item) * (parseFloat(item.price) || 0);
+  });
+  return Math.round(total * 100) / 100;
+}
+function orderDisplayQty(order) {
+  if (order.shipping_complete && order.shipping_complete.qty) return parseInt(order.shipping_complete.qty, 10) || 0;
+  if (order.cutting_complete) return getFabric1Cut(order) || orderQty(order);
+  return orderQty(order);
+}
+
+function clearOrderFilters() {
+  var month = document.getElementById('filterMonth');
+  var code = document.getElementById('filterCode');
+  if (month) month.value = '';
+  if (code) code.value = '';
+  renderOrders();
 }
 
 function renderOrders() {
@@ -138,8 +193,34 @@ function renderOrders() {
     });
   }
 
+  var filterMonth = (document.getElementById('filterMonth') || {}).value || '';
+  var filterCode = ((document.getElementById('filterCode') || {}).value || '').trim().toLowerCase();
+  if (filterMonth) {
+    orders = orders.filter(function(o) {
+      return String(o.date || '').indexOf(filterMonth) === 0 || String(o.id || '').indexOf(filterMonth) >= 0;
+    });
+  }
+  if (filterCode) {
+    orders = orders.filter(function(o) {
+      if (String(o.id || '').toLowerCase().indexOf(filterCode) >= 0) return true;
+      var items = o.items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (String(items[i].code || '').toLowerCase().indexOf(filterCode) >= 0) return true;
+        if (String(items[i].name || '').toLowerCase().indexOf(filterCode) >= 0) return true;
+      }
+      return false;
+    });
+  }
+
+  var totalPieces = 0;
+  orders.forEach(function(o) { totalPieces += orderDisplayQty(o); });
+  var summary = document.getElementById('orderSummary');
+  if (summary) {
+    summary.innerHTML = '<span>订单：<b>' + orders.length + '</b> 笔</span><span>合计：<b>' + totalPieces + '</b> 件</span>';
+  }
+
   var html = '';
-  var stepLabels = ['裁剪', '车缝中', '已发货'];
+    var stepLabels = ['待打纸样', '裁剪', '车缝中', '已发货'];
   
   orders.forEach(function(order) {
     var sk = LUNA.getOrderStatus(order);
@@ -148,51 +229,51 @@ function renderOrders() {
     else if (sk === 'sewing' || sk === 'pickup') statusIdx = 1;
     else if (sk === 'shipped') statusIdx = 2;
 
-    var segs = [false, false, false];
-    var labels = ['裁剪', '车缝中', '已发货'];
-    var actives = [false, false, false];
+    var segs = [false, false, false, false];
+    var labels = ['待打纸样', '裁剪', '车缝中', '已发货'];
+    var actives = [false, false, false, false];
 
-    if (sk === 'cutting' || sk === 'confirmed') { segs[0] = true; actives[0] = true; }
-    else if (sk === 'pickup') { segs[0] = true; segs[1] = true; actives[1] = true; }
-    else if (sk === 'sewing') { segs[0] = true; segs[1] = true; actives[1] = true; }
-    else if (sk === 'shipped') { segs[0] = true; segs[1] = true; segs[2] = true; actives[2] = true; }
-    else if (sk === 'completed') { segs = [true, true, true]; actives[2] = true; }
+    if (sk === 'confirmed') { segs[0] = true; actives[0] = true; }
+    else if (sk === 'cutting') { segs[0] = true; segs[1] = true; actives[1] = true; }
+    else if (sk === 'pickup') { segs[0] = true; segs[1] = true; segs[2] = true; actives[2] = true; }
+    else if (sk === 'sewing') { segs[0] = true; segs[1] = true; segs[2] = true; actives[2] = true; }
+    else if (sk === 'shipped') { segs[0] = true; segs[1] = true; segs[2] = true; segs[3] = true; actives[3] = true; }
+    else if (sk === 'completed') { segs = [true, true, true, true]; actives[3] = true; }
 
     var stepsHtml = '';
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       var cls = segs[i] ? 'done' : '';
       stepsHtml += '<span class="s ' + cls + '">' + (segs[i] ? '✓ ' : '') + labels[i] + '</span>';
     }
     
     var segHtml = '';
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       var cls = segs[i] ? 'done' : '';
       segHtml += '<div class="seg ' + cls + '"></div>';
     }
     
     var itemsHtml = '';
+    var displayQty = orderDisplayQty(order);
     order.items.forEach(function(item) {
       var qtyStr = '';
-      for (var sz in item.qty) {
-        qtyStr += (qtyStr ? ' ' : '') + sz + '×' + item.qty[sz];
+      var iq = itemQty(item);
+      for (var sz in (item.qty || {})) {
+        if ((parseInt(item.qty[sz], 10) || 0) > 0) qtyStr += (qtyStr ? ' ' : '') + sz + '×' + item.qty[sz];
       }
       itemsHtml += '<div class="item">';
       itemsHtml += '<div class="thumb">👗</div>';
-      itemsHtml += '<div class="info"><div class="line1">' + item.code + '</div>';
-      itemsHtml += '<div class="line2">' + item.color + ' / ' + qtyStr + '</div></div>';
-      itemsHtml += '<span>×' + (order.cutting_complete ? getFabric1Cut(order) : order.total_qty) + '</span>';
+      itemsHtml += '<div class="info"><div class="line1">' + esc(item.code) + '</div>';
+      itemsHtml += '<div class="line2">' + esc(item.color || '') + (qtyStr ? ' / ' + esc(qtyStr) : '') + '</div></div>';
+      itemsHtml += '<span>×' + iq + '</span>';
       itemsHtml += '</div>';
     });
     
-    var totalPrice = 0;
-    if (order.shipping_complete) {
-      totalPrice = order.shipping_complete.qty * (order.items[0] ? order.items[0].price : 0);
-    }
+    var totalPrice = order.shipping_complete ? LUNA.calcShipSubtotal(order) : orderSubtotal(order);
     
     html += '<div class="order-card">';
-    html += '<div class="top"><span class="id">' + order.id + '</span>';
-    html += '<span style="font-size:12px;color:#888;font-weight:500;">共 ' + (order.cutting_complete ? getFabric1Cut(order) : order.total_qty) + ' 件</span>';
-    html += '<span class="date">' + order.date + '</span></div>';
+    html += '<div class="top"><span class="id">' + esc(order.id) + '</span>';
+    html += '<span style="font-size:12px;color:#888;font-weight:500;">共 ' + displayQty + ' 件</span>';
+    html += '<span class="date">' + esc(order.date) + '</span></div>';
     html += '<div class="items">' + itemsHtml + '</div>';
     if (totalPrice > 0) html += '<div class="total">€' + totalPrice.toFixed(2) + '</div>';
     html += '<div class="progress-bar">' + segHtml + '</div>';

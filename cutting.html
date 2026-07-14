@@ -164,9 +164,10 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
   .layer-row { flex-wrap: wrap; gap: 6px; }
   .layer-right { width: 100%; justify-content: flex-end; }
   .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+}
 /* Custom dialog */
-.dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center}
-.dialog-box{background:#fff;border-radius:10px;padding:24px;max-width:360px;width:85vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;align-items:center;justify-content:center;padding:18px}
+.dialog-box{background:#fff;border-radius:10px;padding:24px;max-width:360px;width:min(360px, calc(100vw - 36px));max-height:calc(100vh - 36px);overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
 .dialog-msg{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:18px;white-space:pre-wrap}
 .dialog-actions{display:flex;gap:10px;justify-content:flex-end}
 .dialog-actions .btn{min-width:72px}
@@ -184,7 +185,7 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
 <div class="header">
   <div class="header-inner">
     <button class="back-btn" onclick="history.back()">←</button>
-    <span class="logo">LUNA <span>A</span></span>
+    <span class="logo" data-luna-brand>LUNA ATELIER</span>
     <span class="page-title">✂️ 裁剪发料 — 裁剪车间</span>
   </div>
 </div>
@@ -223,7 +224,7 @@ body { font-family: 'Inter', sans-serif; background: #F7F6F3; color: var(--text)
   </div>
 </div>
 
-<script src="luna-data.js?v=26"></script>
+<script src="luna-data.js?v=39"></script>
 <script>LUNA.renderNav();</script>
 <script>
 LUNA.checkAuth();
