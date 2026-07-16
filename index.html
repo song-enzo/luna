@@ -72,7 +72,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
 </div>
-<script src="luna-data.js?v=41"></script>
+<script src="luna-data.js?v=42"></script>
 <script>
 (function() {
   var brandName = (LUNA && LUNA.getBrandName) ? LUNA.getBrandName() : 'LUNA ATELIER';
@@ -113,13 +113,43 @@ function submitLogin() {
       captchaInput.value = '';
       setTimeout(function(){ captchaInput.focus(); }, 50);
     }
+  } else {
+    document.getElementById('captchaField').style.display = 'none';
+    if (captchaInput) captchaInput.value = '';
   }
   errEl.textContent = (result && result.error) ? result.error : '登录失败，请重试';
   errEl.style.display = 'block';
 }
 
+function submitCaptcha() {
+  var user = document.getElementById('username').value.trim();
+  var captchaInput = document.getElementById('captchaAnswer');
+  var captcha = captchaInput ? captchaInput.value.trim() : '';
+  var errEl = document.getElementById('errorMsg');
+
+  var result = LUNA.login(user, '', captcha, true);
+  if (result && result.captcha_verified) {
+    document.getElementById('captchaField').style.display = 'none';
+    if (captchaInput) captchaInput.value = '';
+    errEl.style.display = 'none';
+    document.getElementById('password').focus();
+    return;
+  }
+
+  if (result && result.captcha_required) {
+    document.getElementById('captchaField').style.display = 'flex';
+    document.getElementById('captchaLabel').textContent = '\u4eba\u673a\u9a8c\u8bc1\uff1a' + (result.captcha_question || '\u8bf7\u7a0d\u540e\u518d\u8bd5');
+    if (captchaInput) {
+      captchaInput.value = '';
+      setTimeout(function(){ captchaInput.focus(); }, 50);
+    }
+  }
+  errEl.textContent = (result && result.error) ? result.error : '\u9a8c\u8bc1\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5';
+  errEl.style.display = 'block';
+}
+
 document.getElementById('loginBtn').addEventListener('click', submitLogin);
-document.getElementById('captchaSubmit').addEventListener('click', submitLogin);
+document.getElementById('captchaSubmit').addEventListener('click', submitCaptcha);
 
 function loginLandingPage(user) {
   if (!user) return 'index.html';

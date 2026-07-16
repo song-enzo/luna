@@ -1954,8 +1954,6 @@ def api_login():
     db = get_db()
     ip = get_client_ip()
     guard = login_challenge_status(ip, username)
-    if guard and guard.get('locked_until', 0) > time.time():
-        return jsonify(login_guard_response(guard)), 429
     challenge = guard and guard.get('challenge')
     if challenge:
         if str(data.get('captcha_answer', '')).strip() != challenge['answer']:
@@ -1964,6 +1962,12 @@ def api_login():
         # A correct challenge answer unlocks the login gate. If the password is
         # still wrong, that attempt starts the failure counter from 1 again.
         clear_login_failures(ip, username)
+        if data.get('captcha_only'):
+            return jsonify({'captcha_verified': True})
+    elif data.get('captcha_only'):
+        return jsonify({'captcha_verified': True})
+    elif guard and guard.get('locked_until', 0) > time.time():
+        return jsonify(login_guard_response(guard)), 429
     # Check if user exists at all
     existing = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
     if not existing:

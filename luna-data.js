@@ -201,12 +201,13 @@ var LUNA = (function() {
     try { localStorage.removeItem('luna_user_session'); } catch(e) {}
   }
 
-  function login(username, password, captchaAnswer) {
-    var r = api('/api/login', 'POST', {username: username, password: password, captcha_answer: captchaAnswer || ''});
-    if (r && !r.error) {
+  function login(username, password, captchaAnswer, captchaOnly) {
+    var r = api('/api/login', 'POST', {username: username, password: password, captcha_answer: captchaAnswer || '', captcha_only: !!captchaOnly});
+    if (r && !r.error && !r.captcha_verified) {
       setUser(r);
       return r;
     }
+    if (r && r.captcha_verified) return r;
     return r && r.error ? r : {error: '登录失败'};
   }
 
