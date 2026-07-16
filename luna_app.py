@@ -86,6 +86,9 @@ AI_ANALYSIS_JOBS = {}
 LOGIN_GUARDS = {}
 LOGIN_GUARDS_LOCK = threading.Lock()
 LOGIN_GUARD_TTL = 30 * 60
+LOGIN_CHALLENGE_AFTER = 3
+LOGIN_LOCK_AFTER = 6
+LOGIN_LOCK_SECONDS = 10 * 60
 
 def login_guard_key(ip, username):
     return '%s|%s' % (ip or 'unknown', (username or '').strip().lower())
@@ -103,6 +106,8 @@ def login_challenge_status(ip, username):
         if item and now - item.get('updated_at', now) > LOGIN_GUARD_TTL:
             LOGIN_GUARDS.pop(key, None)
             item = None
+        if item and item.get('locked_until', 0) <= now:
+            item.pop('locked_until', None)
         return item
 
 def record_login_failure(ip, username):
@@ -112,10 +117,34 @@ def record_login_failure(ip, username):
         item = LOGIN_GUARDS.get(key, {'failures': 0})
         item['failures'] = item.get('failures', 0) + 1
         item['updated_at'] = now
-        if item['failures'] >= 3 and not item.get('challenge'):
+        if item['failures'] >= LOGIN_LOCK_AFTER:
+            item['locked_until'] = now + LOGIN_LOCK_SECONDS
+            item['challenge'] = new_login_challenge()
+        elif item['failures'] >= LOGIN_CHALLENGE_AFTER and not item.get('challenge'):
             item['challenge'] = new_login_challenge()
         LOGIN_GUARDS[key] = item
         return item
+
+def login_guard_response(item, default_error='账号或密码错误'):
+    now = time.time()
+    locked_until = item.get('locked_until', 0) if item else 0
+    if locked_until and locked_until > now:
+        wait_seconds = int(locked_until - now)
+        wait_minutes = max(1, (wait_seconds + 59) // 60)
+        challenge = item.get('challenge') or {}
+        return {
+            'error': f'登录失败次数过多，请 {wait_minutes} 分钟后再试',
+            'captcha_required': True,
+            'captcha_question': challenge.get('question', ''),
+            'locked': True,
+            'retry_after': wait_seconds,
+        }
+    challenge = (item or {}).get('challenge') or {}
+    return {
+        'error': default_error,
+        'captcha_required': bool(challenge),
+        'captcha_question': challenge.get('question', ''),
+    }
 
 def clear_login_failures(ip, username):
     with LOGIN_GUARDS_LOCK:
@@ -733,16 +762,20 @@ def init_db():
         pw = row['password']
         if pw and not pw.startswith(('scrypt:', 'pbkdf2:', 'bcrypt:', 'argon2:')):
             db.execute("UPDATE users SET password=? WHERE id=?", (generate_password_hash(pw), row['id']))
-    # Ensure one administrator exists. Do not recreate the old default
-    # admin/admin account once the real administrator has been configured.
-    admin_cnt = db.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
-    if admin_cnt == 0:
+    # Ensure exactly one administrator exists. The old default admin/admin
+    # account is deliberately removed and never recreated.
+    db.execute("DELETE FROM users WHERE username='admin'")
+    admin_rows = db.execute("SELECT id, username FROM users WHERE role='admin' ORDER BY username='songcde' DESC, enabled DESC, id").fetchall()
+    if not admin_rows:
         db.execute(
             "INSERT INTO users (id, username, password, password_display, name, role) VALUES (?,?,?,?,?,?)",
-            ('admin', 'songcde', generate_password_hash('123456'), '123456', '管理员', 'admin')
+            ('admin-songcde', 'songcde', generate_password_hash('123456'), '123456', '管理员', 'admin')
         )
     else:
-        db.execute("DELETE FROM users WHERE role='admin' AND username='admin'")
+        keep_admin = admin_rows[0]
+        db.execute("DELETE FROM users WHERE role='admin' AND id!=?", (keep_admin['id'],))
+        if keep_admin['id'] == 'admin':
+            db.execute("UPDATE users SET id='admin-songcde' WHERE id='admin'")
     db.commit()
     # Seed virtual guest accounts if none exist
     cnt = db.execute("SELECT COUNT(*) FROM users WHERE role='guest'").fetchone()[0]
@@ -1908,11 +1941,12 @@ def api_login():
     db = get_db()
     ip = get_client_ip()
     guard = login_challenge_status(ip, username)
+    if guard and guard.get('locked_until', 0) > time.time():
+        return jsonify(login_guard_response(guard)), 429
     challenge = guard and guard.get('challenge')
     if challenge:
         if str(data.get('captcha_answer', '')).strip() != challenge['answer']:
-            return jsonify({'error': '请完成验证', 'captcha_required': True,
-                            'captcha_question': challenge['question']}), 401
+            return jsonify(login_guard_response(guard, '请完成验证')), 401
         # A correctly solved challenge permits one password attempt.  If that
         # attempt fails, record_login_failure immediately creates a new one.
         with LOGIN_GUARDS_LOCK:
@@ -1924,26 +1958,22 @@ def api_login():
     if not existing:
         log_login('', username, False, ip)
         item = record_login_failure(ip, username)
-        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
-                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
+        return jsonify(login_guard_response(item)), 429 if item.get('locked_until', 0) > time.time() else 401
     # Check if disabled
     ud = dict(existing)
     if not ud.get('enabled', 1):
         log_login(ud.get('id', ''), username, False, ip)
         item = record_login_failure(ip, username)
-        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
-                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
+        return jsonify(login_guard_response(item)), 429 if item.get('locked_until', 0) > time.time() else 401
     # 二级客人不能独立登录
     if ud.get('parent_id') and ud['role'] == 'guest':
         log_login(ud.get('id', ''), username, False, ip)
         item = record_login_failure(ip, username)
-        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
-                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
+        return jsonify(login_guard_response(item)), 429 if item.get('locked_until', 0) > time.time() else 401
     if not check_password_hash(ud['password'], password):
         log_login(ud.get('id', ''), username, False, ip)
         item = record_login_failure(ip, username)
-        return jsonify({'error': '账号或密码错误', 'captcha_required': bool(item.get('challenge')),
-                        'captcha_question': (item.get('challenge') or {}).get('question', '')}), 401
+        return jsonify(login_guard_response(item)), 429 if item.get('locked_until', 0) > time.time() else 401
     # Successful login — fetch location
     location = get_ip_location(ip)
     log_login(ud.get('id', ''), username, True, ip, location)

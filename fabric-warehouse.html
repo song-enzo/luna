@@ -693,16 +693,26 @@ function compData(fi) {
     var cpEl = r.querySelector('.cp');
     var ciEl = r.querySelector('.ci');
     if (!cpEl || !ciEl) return;
-    var pct = parseFloat(cpEl.value) || 0;
+    var pctText = (cpEl.value || '').replace(/[^\d.]/g, '');
+    var pct = pctText === '' ? '' : parseFloat(pctText);
     var it = (ciEl.value || '').trim();
-    if (pct > 0 && it) {
-      var obj = {pct:pct,it:it.toUpperCase()};
+    if (pctText !== '' || it) {
+      var obj = {pct:pctText === '' || isNaN(pct) ? '' : pct,it:it.toUpperCase()};
       var ceEl = r.querySelector('.ce');
       if (ceEl && ceEl.value.trim()) obj.en = ceEl.value.trim().toUpperCase();
       data.push(obj);
     }
   });
   return data.length ? JSON.stringify(data) : '';
+}
+function cleanCompPercent(input) {
+  var cleaned = (input.value || '').replace(/[^\d.]/g, '');
+  var firstDot = cleaned.indexOf('.');
+  if (firstDot >= 0) {
+    cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+  }
+  if (cleaned.length > 5) cleaned = cleaned.slice(0, 5);
+  if (cleaned !== input.value) input.value = cleaned;
 }
 function saveComp(fi) {
   var raw = SETTINGS.get("fabrics");
@@ -719,7 +729,7 @@ function saveComp(fi) {
   var h = "";
   list.forEach(function(c) {
     h += '<div class="comp-group">' +
-      '<input class="cp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="' + (c.pct!==undefined&&c.pct!==null&&c.pct!==''?c.pct:'') + '" placeholder="0" oninput="saveComp(' + fi + ')">' +
+      '<input class="cp" type="text" inputmode="decimal" value="' + (c.pct!==undefined&&c.pct!==null&&c.pct!==''?c.pct:'') + '" placeholder="0" oninput="cleanCompPercent(this);saveComp(' + fi + ')">' +
       '<span class="pct-suffix">%</span>' +
       '<input class="ci" type="text" value="' + esc(c.it||"") + '" placeholder="POLIESTERE" oninput="saveComp(' + fi + ')">' +
       '<button class="comp-grp-del" onclick="removeCompRow(this,' + fi + ')" title="删除此组">✕</button>' +
@@ -732,7 +742,7 @@ function saveComp(fi) {
   if (!wrap) return;
   var div = document.createElement("div");
   div.className = "comp-group";
-  div.innerHTML = '<input class="cp" type="text" inputmode="numeric" maxlength="3" value="" placeholder="0" oninput="saveComp(' + fi + ')">' +
+  div.innerHTML = '<input class="cp" type="text" inputmode="decimal" value="" placeholder="0" oninput="cleanCompPercent(this);saveComp(' + fi + ')">' +
     '<span class="pct-suffix">%</span>' +
     '<input class="ci" type="text" value="POLIESTERE" oninput="saveComp(' + fi + ')">' +
     '<button class="comp-grp-del" onclick="removeCompRow(this,' + fi + ')" title="删除此组">✕</button>';
@@ -1041,7 +1051,7 @@ function confirmAddFabric() {
   if (!name) { alert("请输入面料名称"); return; }
   var price = parseFloat(document.getElementById("afPrice").value) || 10;
   var fabrics = SETTINGS.get("fabrics") || [];
-  fabrics.push({id: nextFabricId(fabrics), name: name, pricePerM: price, composition: "[{\"pct\":0,\"it\":\"POLIESTERE\",\"en\":\"POLYESTER\"},{\"pct\":0,\"it\":\"ELASTICO\",\"en\":\"ELASTANO\"}]", stock: 0, lossPerLayer: 6, colors: []});
+  fabrics.push({id: nextFabricId(fabrics), name: name, pricePerM: price, composition: "[{\"pct\":95,\"it\":\"POLIESTERE\",\"en\":\"POLYESTER\"},{\"pct\":5,\"it\":\"ELASTICO\",\"en\":\"ELASTANO\"}]", stock: 0, lossPerLayer: 6, colors: []});
   saveFabricsData(fabrics);
   closeAddFabricModal();
   renderWarehouse();

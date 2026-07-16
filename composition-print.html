@@ -66,14 +66,14 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .preview-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.14);padding-bottom:9px;margin-bottom:12px;color:#cbd5e1;font-size:11px;font-weight:800}
 .paper{width:220px;min-height:362px;background:#fff;color:#000;margin:0 auto;border-radius:2px;padding:16px 14px;text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 .top-dots{font-size:13px;line-height:1;margin-bottom:28px;letter-spacing:4px;white-space:nowrap;overflow:hidden}
-.made{font-family:"Arial Narrow",Arial,sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:0;line-height:1}
-.composition{font-family:"Arial Narrow",Arial,sans-serif;font-size:15px;line-height:1.02;font-weight:700;margin-bottom:10px;text-transform:uppercase}
+.made{font-family:"Arial Narrow",Arial,sans-serif;font-size:27px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:0;line-height:1}
+.composition{font-family:"Arial Narrow",Arial,sans-serif;font-size:20px;line-height:1.02;font-weight:700;margin-bottom:10px;text-transform:uppercase}
 .composition div{margin:0}
-.art{font-family:"Arial Narrow",Arial,sans-serif;font-size:22px;font-weight:700;line-height:1;letter-spacing:0;margin-top:3px}
-.tg{font-family:"Arial Narrow",Arial,sans-serif;font-size:17px;font-weight:700;line-height:1;margin-top:1px;letter-spacing:0}
-.care{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 10px;font-size:13px;font-weight:900;line-height:1}
-.care span{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:24px;padding:0 4px;border:2px solid #000;border-radius:4px}
-.care .plain{border:0;min-width:auto;height:auto;padding:0 2px}
+.art{font-family:"Arial Narrow",Arial,sans-serif;font-size:20px;font-weight:700;line-height:1;letter-spacing:0;margin-top:3px}
+.tg{font-family:"Arial Narrow",Arial,sans-serif;font-size:20px;font-weight:700;line-height:1;margin-top:1px;letter-spacing:0}
+.care{display:flex;align-items:center;justify-content:center;gap:5px;margin:6px 0 10px;line-height:1}
+.care span{display:none}
+.care svg{display:block;width:30px;height:30px;flex:0 0 30px;overflow:visible}
 .distributor{font-family:"Arial Narrow",Arial,sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;line-height:1;margin:4px 0 7px}
 .client{font-family:"Arial Narrow",Arial,sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;line-height:1.02;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tax{font-family:"Arial Narrow",Arial,sans-serif;font-size:17px;font-weight:700;line-height:1.02;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -163,6 +163,30 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
           <div class="art">ART: <span id="viewStyle">-</span></div>
           <div class="tg">TG: <span id="viewSize">-</span></div>
           <div class="care">
+            <svg viewBox="0 0 100 100" aria-label="30 degree wash">
+              <path d="M16 30 L84 30 L76 81 L24 81 Z" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M16 30 C24 18 31 38 39 27 C47 16 55 38 63 27 C71 16 79 38 87 27" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/>
+              <text x="50" y="59" font-family="Arial, sans-serif" font-size="25" font-weight="700" text-anchor="middle">30</text>
+              <circle cx="50" cy="72" r="3.5" fill="#000"/>
+            </svg>
+            <svg viewBox="0 0 100 100" aria-label="do not bleach">
+              <polygon points="50,19 86,80 14,80" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M22 22 L80 82 M78 22 L20 82" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+            <svg viewBox="0 0 100 100" aria-label="do not tumble dry">
+              <rect x="18" y="18" width="64" height="64" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round" rx="4"/>
+              <circle cx="50" cy="50" r="23" fill="none" stroke="#000" stroke-width="5"/>
+              <circle cx="50" cy="50" r="4" fill="#000"/>
+            </svg>
+            <svg viewBox="0 0 100 100" aria-label="do not dry clean">
+              <circle cx="50" cy="50" r="33" fill="none" stroke="#000" stroke-width="5"/>
+              <path d="M22 22 L78 78 M78 22 L22 78" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/>
+            </svg>
+            <svg viewBox="0 0 100 100" aria-label="low iron">
+              <path d="M18 66 L80 66 C84 58 84 50 79 44 C74 38 63 37 55 37 L32 37 C24 37 19 42 18 49 Z" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M34 37 L34 25 L69 25" fill="none" stroke="#000" stroke-width="5" stroke-linejoin="round"/>
+              <circle cx="50" cy="53" r="4" fill="#000"/>
+            </svg>
             <span class="plain">30°</span><span>X</span><span>P</span><span class="plain">⎍</span><span>X</span>
           </div>
           <div class="distributor">DISTRIBUIDO POR</div>

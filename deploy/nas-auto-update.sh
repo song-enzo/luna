@@ -34,7 +34,7 @@ restart_luna() {
   cd "$APP_DIR"
 
   if [ -x "$SERVICE_SCRIPT" ] || [ -f "$SERVICE_SCRIPT" ]; then
-    sh "$SERVICE_SCRIPT" restart >> "$LOG_DIR/auto-update.log" 2>&1
+    bash "$SERVICE_SCRIPT" restart >> "$LOG_DIR/auto-update.log" 2>&1
     return
   fi
 
@@ -63,6 +63,14 @@ restart_luna() {
   fi
 
   log "updating $old_head -> $new_head"
+  # Direct maintenance uploads can leave the NAS checkout dirty.  The NAS
+  # should treat GitHub as the source of truth for code while keeping runtime
+  # database/photos protected by skip-worktree.
+  if [ -n "$(git status --porcelain=v1 -uno)" ]; then
+    log "discarding local code changes before pull"
+    git reset --hard HEAD >> "$LOG_DIR/auto-update.log" 2>&1
+    protect_runtime_files
+  fi
   git pull --ff-only origin "$BRANCH" >> "$LOG_DIR/auto-update.log" 2>&1
   protect_runtime_files
   exec 9>&-
