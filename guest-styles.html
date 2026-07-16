@@ -69,16 +69,21 @@ border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
 .side-menu .sm-link.danger:hover{background:#fef0f0;color:#c33}
 .side-menu .sm-link.active{background:#f7f4ee;color:#1c1c1c;font-weight:500}
 /* Homepage */
-.home-hero{display:block;margin-bottom:14px}
+.home-hero{display:none;margin-bottom:0}
 .home-hero>div:first-child{display:none}
 .home-kicker{font-size:11px;font-weight:700;color:#C8A56D;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
 .home-title{font-family:'Playfair Display',Georgia,serif;font-size:32px;line-height:1.1;color:#1C1C1C;margin-bottom:6px}
 .home-sub{font-size:13px;color:#8d877e;max-width:560px}
-.home-search{background:#fff;border:1px solid #EBE8E3;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(30,25,18,.035);max-width:420px}
+.home-search{background:#fff;border:1px solid #EBE8E3;border-radius:10px;padding:10px 12px;display:none;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(30,25,18,.035);max-width:420px}
 .home-search span{color:#C8A56D;font-size:15px}
 .home-search input{border:none;outline:none;width:100%;font-family:inherit;font-size:13px;color:#1C1C1C;background:transparent}
 .home-search input::placeholder{color:#B5A58A}
-.filter-bar{position:static;background:#F7F6F3;padding:0 0 12px;margin-bottom:14px}
+.filter-bar{display:none;position:static;background:#F7F6F3;padding:0;margin-bottom:0}
+.guest-search-popover{position:fixed;top:56px;right:16px;width:min(360px,calc(100vw - 32px));background:#fff;border:1px solid #EBE8E3;border-radius:8px;box-shadow:0 16px 42px rgba(26,26,26,.14);padding:10px 12px;display:none;align-items:center;gap:8px;z-index:10001}
+.guest-search-popover.open{display:flex}
+.guest-search-popover span{color:#C8A56D;font-size:16px}
+.guest-search-popover input{border:none;outline:none;width:100%;font-family:inherit;font-size:14px;color:#1C1C1C;background:transparent}
+.guest-search-popover button{border:none;background:transparent;color:#999;font-size:18px;line-height:1;cursor:pointer;padding:2px}
 .cat-pills{display:flex;gap:7px;overflow-x:auto;padding:0 0 3px;scrollbar-width:none}
 .cat-pills::-webkit-scrollbar{display:none}
 .cat-pill{white-space:nowrap;padding:6px 14px;border:1px solid #e0dcd5;border-radius:999px;font-size:12px;color:#756f67;cursor:pointer;transition:all .15s;background:#fff;font-family:inherit}
@@ -88,7 +93,7 @@ border-radius: 7px; line-height: 14px; text-align: center; font-weight: 600;
 .section-title{font-size:15px;font-weight:700;color:#1C1C1C;display:flex;align-items:center;gap:7px}
 .section-note{font-size:11px;color:#B5A58A}
 /* PRODUCT GRID */
-.page { max-width: 1200px; margin: 0 auto; padding: 22px 24px 60px; }
+.page { max-width: 1200px; margin: 0 auto; padding: 12px 24px 60px; }
 .grid {
 display: grid;
 grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -137,10 +142,10 @@ padding: 24px; text-align: center;
 font-size: 11px; color: #B5A58A;
 }
 @media (max-width: 600px) {
-.page{padding:16px 14px 50px}
-.home-hero{grid-template-columns:1fr;gap:12px;margin-bottom:10px}
+.page{padding:10px 14px 50px}
+.home-hero{display:none;margin-bottom:0}
 .home-title{font-size:26px}
-.filter-bar{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+.filter-bar{display:none;margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
 .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .card .info{padding:9px 9px 10px;min-height:44px}
 .card .info .category{max-width:74px}
@@ -163,7 +168,7 @@ font-size: 11px; color: #B5A58A;
 .scroll-card .s-info .s-price{font-size:12px;color:#C8A56D;font-weight:700;white-space:nowrap}
 .scroll-card .s-tag{position:absolute;top:6px;left:6px;display:block;font-size:12px;line-height:1;text-shadow:0 1px 3px rgba(255,255,255,.8)}
 </style>
-<script src="luna-data.js?v=39"></script>
+<script src="luna-data.js?v=46"></script>
 <style id="luna-nav-prehide">.luna-header,.header,.header-inner{display:none!important}</style>
 </head>
 <body>
@@ -180,6 +185,11 @@ font-size: 11px; color: #B5A58A;
 </div>
 </div>
 </header>
+<label class="guest-search-popover" id="guestSearchPopover">
+  <span>⌕</span>
+  <input id="searchInput" type="search" placeholder="搜索编号、名称、分类" oninput="applyFilters()">
+  <button type="button" onclick="closeGuestSearch()" aria-label="关闭">×</button>
+</label>
 <!-- SIDE MENU (standardized) -->
 <div class="side-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
 <div class="side-menu" id="sideMenu">
@@ -273,6 +283,31 @@ var allStyles = [];
 var currentFilter = 'all';
 var currentSearch = '';
 var initialSortMode = '';
+var hiddenHomeTypes = {'吊带': true, '外套': true, '套装': true, '裙装': true, '连衣裙': true};
+function isHiddenHomeType(name) {
+  return !!hiddenHomeTypes[String(name || '').trim()];
+}
+function openGuestSearch() {
+  var popover = document.getElementById('guestSearchPopover');
+  var input = document.getElementById('searchInput');
+  if (popover) popover.classList.add('open');
+  if (input) setTimeout(function(){ input.focus(); }, 30);
+}
+function closeGuestSearch() {
+  var popover = document.getElementById('guestSearchPopover');
+  if (popover) popover.classList.remove('open');
+}
+function wireGuestHeaderActions() {
+  var btn = document.getElementById('guestHeaderSearchBtn');
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', openGuestSearch);
+  }
+}
+function removeHomeAllPill() {
+  var allPill = document.querySelector('#catPills .cat-pill[onclick*="all"]');
+  if (allPill && allPill.parentNode) allPill.parentNode.removeChild(allPill);
+}
 function styleCreatedTime(s) {
   var raw = s.createdAt || s.created_at || s.created || '';
   var t = raw ? new Date(raw).getTime() : 0;
@@ -371,13 +406,15 @@ function renderNewArrivals() {
 }
 function applyInitialView() {
   var params = new URLSearchParams(window.location.search);
+  var category = params.get('category') || '';
+  if (category) currentFilter = category;
   var sort = params.get('sort') || params.get('view') || '';
   initialSortMode = sort === 'new' ? 'new' : '';
   if (sort === 'new') {
     renderGrid(sortedByNewest(allStyles));
     return;
   }
-  renderGrid(allStyles);
+  renderGrid(visibleStylesForCurrentFilters());
 }
 function filterByCategory(cat, el) {
 currentFilter = cat;
@@ -395,7 +432,7 @@ return false;
 }
 // 渲染侧边栏分类
 function renderCategories() {
-var cats = [...new Set(allStyles.map(function(s){return s.category}))].sort();
+var cats = [...new Set(allStyles.map(function(s){return s.category}))].filter(function(c){ return !isHiddenHomeType(c); }).sort();
 // 侧边菜单分类
 var container = document.getElementById('categoriesContainer');
 container.innerHTML = cats.map(function(c) {
@@ -427,7 +464,7 @@ for (var i = 0; i < cart.length; i++) {
     });
   }
 }
-document.getElementById('cartBadge').textContent = count;
+document.querySelectorAll('.cart-badge').forEach(function(el){ el.textContent = count; });
 }
 // 初始化
 function initPage() {
@@ -440,8 +477,10 @@ allStyles = JSON.parse(raw).filter(styleVisibleToCurrentUser);
 } catch(e) {}
 applyInitialView();
 renderCategories();
+removeHomeAllPill();
   renderNewArrivals();
 updateCartBadge();
+wireGuestHeaderActions();
   // 非管理员隐藏部分菜单
   var _u = LUNA.getUser();
   if (!_u || _u.role !== 'admin') {
@@ -471,6 +510,6 @@ if (e.key === 'luna_styles_data') initPage();
 if (e.key === 'luna_cart_data') updateCartBadge();
 });
 </script>
-<script>LUNA.renderNav();</script>
+<script>LUNA.renderNav(); wireGuestHeaderActions(); updateCartBadge();</script>
 </body>
 </html>

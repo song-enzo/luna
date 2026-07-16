@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    LUNA ATELIER — 公共数据层 (luna-data.js)
    通过 Flask API 读写数据，缓存到 JS 内存
    ============================================================ */
@@ -1453,6 +1453,9 @@ var LUNA = (function() {
         if (Array.isArray(visibleStyles)) {
           navCategories = visibleStyles.map(function(style) { return (style.category || '').trim(); }).filter(Boolean);
         }
+        if (!navCategories.length && _cache.styles && Array.isArray(_cache.styles)) {
+          navCategories = _cache.styles.map(function(style) { return (style.category || '').trim(); }).filter(Boolean);
+        }
         navCategories.filter(function(name, index, list) { return list.indexOf(name) === index; }).forEach(function(name) {
           styleCategoryLinks += '<a href="guest-styles.html?category=' + encodeURIComponent(name) + '" class="diana-nav-item">' + htmlEsc(name) + '</a>';
         });
@@ -1527,6 +1530,10 @@ var LUNA = (function() {
           '.diana-hamburger:hover{color:#C8A56D}' +
           '.diana-logo{font-family:\'Playfair Display\',serif;font-size:15px;letter-spacing:3px;color:#C8A56D;text-decoration:none}' +
           '.diana-logo:hover{opacity:.8}' +
+          '.diana-header-actions{margin-left:auto;display:flex;align-items:center;gap:12px}' +
+          '.diana-header-icon{width:30px;height:30px;border:none;background:transparent;color:#6f6a62;font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center;position:relative;cursor:pointer;text-decoration:none;border-radius:50%}' +
+          '.diana-header-icon:hover{background:#F8F6F0;color:#1C1C1C}' +
+          '.diana-header .cart-badge{position:absolute;top:1px;right:0;background:#C8A56D;color:#fff;font-size:8px;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;font-weight:600}' +
           '.diana-nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99999}' +
           '.diana-nav-overlay.open{display:block}' +
           '.diana-nav-drawer{position:fixed;top:0;left:0;bottom:0;width:280px;max-width:80vw;background:#fff;z-index:100000;transform:translateX(-100%);transition:transform .3s cubic-bezier(.25,.46,.45,.94);overflow-y:auto}' +
@@ -1553,6 +1560,7 @@ var LUNA = (function() {
         '<header class="diana-header">' +
           '<button class="diana-hamburger" id="dianaHamburger" aria-label="菜单">☰</button>' +
           '<a href="' + logoHref + '" class="diana-logo"' + logoClick + '>' + htmlEsc(brandName) + '</a>' +
+          '<div class="diana-header-actions"><button type="button" class="diana-header-icon" id="guestHeaderSearchBtn" aria-label="搜索">⌕</button><a href="cart.html" class="diana-header-icon" aria-label="购物车">🛒<span class="cart-badge" id="cartBadgeNav">0</span></a></div>' +
         '</header>' +
         '<div class="diana-nav-overlay" id="dianaNavOverlay">' +
           '<div class="diana-nav-drawer">' +
