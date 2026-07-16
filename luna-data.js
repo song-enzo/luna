@@ -56,7 +56,10 @@ var LUNA = (function() {
     // "401: UNAUTHORIZED" status text.
     try {
       var errorData = JSON.parse(xhr.responseText);
-      if (errorData && errorData.error) return {error: errorData.error, status: xhr.status};
+      if (errorData && errorData.error) {
+        errorData.status = xhr.status;
+        return errorData;
+      }
     } catch(e) {}
     return {error: xhr.status + ': ' + xhr.statusText, status: xhr.status};
   }

@@ -90,8 +90,10 @@ LOGIN_CHALLENGE_AFTER = 3
 LOGIN_LOCK_AFTER = 6
 LOGIN_LOCK_SECONDS = 10 * 60
 
-def login_guard_key(ip, username):
-    return '%s|%s' % (ip or 'unknown', (username or '').strip().lower())
+def login_guard_key(ip, username=None):
+    # Count failures per visitor/IP, not per account. Otherwise an attacker can
+    # rotate usernames after three failures and bypass the verification gate.
+    return ip or 'unknown'
 
 def new_login_challenge():
     left = secrets.randbelow(8) + 2
@@ -122,6 +124,17 @@ def record_login_failure(ip, username):
             item['challenge'] = new_login_challenge()
         elif item['failures'] >= LOGIN_CHALLENGE_AFTER and not item.get('challenge'):
             item['challenge'] = new_login_challenge()
+        LOGIN_GUARDS[key] = item
+        return item
+
+def refresh_login_challenge(ip, username):
+    key = login_guard_key(ip, username)
+    now = time.time()
+    with LOGIN_GUARDS_LOCK:
+        item = LOGIN_GUARDS.get(key, {'failures': LOGIN_CHALLENGE_AFTER})
+        item['failures'] = max(item.get('failures', 0), LOGIN_CHALLENGE_AFTER)
+        item['updated_at'] = now
+        item['challenge'] = new_login_challenge()
         LOGIN_GUARDS[key] = item
         return item
 
@@ -1946,13 +1959,11 @@ def api_login():
     challenge = guard and guard.get('challenge')
     if challenge:
         if str(data.get('captcha_answer', '')).strip() != challenge['answer']:
-            return jsonify(login_guard_response(guard, '请完成验证')), 401
-        # A correctly solved challenge permits one password attempt.  If that
-        # attempt fails, record_login_failure immediately creates a new one.
-        with LOGIN_GUARDS_LOCK:
-            current = LOGIN_GUARDS.get(login_guard_key(ip, username))
-            if current:
-                current.pop('challenge', None)
+            item = refresh_login_challenge(ip, username)
+            return jsonify(login_guard_response(item, '验证答案错误，请重新回答')), 401
+        # A correct challenge answer unlocks the login gate. If the password is
+        # still wrong, that attempt starts the failure counter from 1 again.
+        clear_login_failures(ip, username)
     # Check if user exists at all
     existing = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
     if not existing:
