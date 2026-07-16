@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 """LUNA ATELIER — Flask + SQLite 后端"""
-import json, os, sqlite3, uuid, re, base64, mimetypes, threading, time, secrets, shutil, zipfile
+import json, os, sqlite3, uuid, re, base64, mimetypes, threading, time, secrets, shutil, zipfile, ipaddress
 from PIL import Image, ImageOps, ImageDraw
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -569,6 +569,16 @@ def init_db():
     except:
         db.execute("ALTER TABLE users ADD COLUMN password_display TEXT DEFAULT ''")
         db.commit()
+    try:
+        db.execute("SELECT session_version FROM users LIMIT 1")
+    except:
+        db.execute("ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1")
+        db.commit()
+    try:
+        db.execute("SELECT allowed_ips FROM users LIMIT 1")
+    except:
+        db.execute("ALTER TABLE users ADD COLUMN allowed_ips TEXT DEFAULT ''")
+        db.commit()
     # Migration: create login_logs table
     try:
         db.execute("SELECT 1 FROM login_logs LIMIT 1")
@@ -581,6 +591,22 @@ def init_db():
             location TEXT DEFAULT '',
             user_agent TEXT DEFAULT '',
             success INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        db.commit()
+    try:
+        db.execute("SELECT 1 FROM operation_logs LIMIT 1")
+    except:
+        db.execute("""CREATE TABLE IF NOT EXISTS operation_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT DEFAULT '',
+            username TEXT DEFAULT '',
+            role TEXT DEFAULT '',
+            action TEXT DEFAULT '',
+            target TEXT DEFAULT '',
+            detail TEXT DEFAULT '',
+            ip TEXT DEFAULT '',
+            user_agent TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now','localtime'))
         )""")
         db.commit()
@@ -1045,6 +1071,69 @@ def log_login(user_id, username, success, ip='', location=''):
         (user_id, username, ip, location or '', ua, 1 if success else 0)
     )
     db.commit()
+
+def ip_allowed_for_user(user_row, ip):
+    rules = ''
+    try:
+        rules = user_row['allowed_ips'] or ''
+    except Exception:
+        rules = ''
+    rules = [r.strip() for r in re.split(r'[\s,;，；]+', rules) if r.strip()]
+    if not rules:
+        return True
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+    except ValueError:
+        ip_obj = None
+    for rule in rules:
+        try:
+            if ip_obj and '/' in rule and ip_obj in ipaddress.ip_network(rule, strict=False):
+                return True
+            if '*' in rule:
+                pattern = '^' + re.escape(rule).replace('\\*', '.*') + '$'
+                if re.match(pattern, ip):
+                    return True
+            elif ip_obj and ip_obj == ipaddress.ip_address(rule):
+                return True
+            elif ip == rule:
+                return True
+        except ValueError:
+            if ip == rule:
+                return True
+    return False
+
+def clear_session_and_reject(message='登录已失效，请重新登录', status=401):
+    session.clear()
+    if request.path.startswith('/api/'):
+        return jsonify({'error': message, 'reauth': True}), status
+    return redirect(url_for('index'))
+
+def validate_active_session():
+    username = session.get('user_id')
+    if not username:
+        return None
+    db = get_db()
+    row = db.execute("SELECT username, enabled, session_version, allowed_ips FROM users WHERE username=?", (username,)).fetchone()
+    if not row or not row['enabled']:
+        return clear_session_and_reject('账号已禁用或不存在', 401)
+    if int(session.get('session_version') or 0) != int(row['session_version'] or 1):
+        return clear_session_and_reject('密码已修改，请重新登录', 401)
+    if not ip_allowed_for_user(row, get_client_ip()):
+        return clear_session_and_reject('当前 IP 不允许访问此账号', 403)
+    return None
+
+def log_audit_operation(action, target='', detail=''):
+    try:
+        db = get_db()
+        ua = (request.headers.get('User-Agent', '') or '')[:200]
+        db.execute(
+            "INSERT INTO operation_logs (user_id, username, role, action, target, detail, ip, user_agent) VALUES (?,?,?,?,?,?,?,?)",
+            (session.get('user_id', ''), session.get('user_id', ''), session.get('role', ''),
+             (action or '')[:80], (target or request.path)[:160], (detail or '')[:500], get_client_ip(), ua)
+        )
+        db.commit()
+    except Exception:
+        pass
 
 # ── Generic helpers for settings CRUD ──
 
@@ -1989,6 +2078,9 @@ def api_login():
         log_login(ud.get('id', ''), username, False, ip)
         item = record_login_failure(ip, username)
         return jsonify(login_guard_response(item)), 429 if item.get('locked_until', 0) > time.time() else 401
+    if not ip_allowed_for_user(ud, ip):
+        log_login(ud.get('id', ''), username, False, ip)
+        return jsonify({'error': '当前 IP 不允许登录此账号'}), 403
     # Successful login — fetch location
     location = get_ip_location(ip)
     log_login(ud.get('id', ''), username, True, ip, location)
@@ -1998,6 +2090,7 @@ def api_login():
     session['name'] = ud['name']
     session['employee_role'] = normalize_employee_role(ud.get('employee_role', ''))
     session['factory'] = ud.get('factory', '')
+    session['session_version'] = int(ud.get('session_version') or 1)
     permissions = None
     if ud['role'] == 'employee' and ud.get('employee_permissions') not in (None, ''):
         try:
@@ -2054,12 +2147,14 @@ def api_change_password():
         if exists:
             return jsonify({'error': '账号已存在，请换一个'}), 400
     new_hashed = generate_password_hash(new_password)
+    new_session_version = int(ud.get('session_version') or 1) + 1
     if new_username and new_username != username:
-        db.execute("UPDATE users SET username=?, password=?, password_display=? WHERE username=?", (new_username, new_hashed, new_password, username))
+        db.execute("UPDATE users SET username=?, password=?, password_display=?, session_version=? WHERE username=?", (new_username, new_hashed, new_password, new_session_version, username))
         session['user_id'] = new_username
     else:
-        db.execute("UPDATE users SET password=?, password_display=? WHERE username=?", (new_hashed, new_password, username))
+        db.execute("UPDATE users SET password=?, password_display=?, session_version=? WHERE username=?", (new_hashed, new_password, new_session_version, username))
     db.commit()
+    log_audit_operation('修改密码', 'users/' + session['user_id'], '账号密码已修改')
     return jsonify({'ok': True, 'message': '修改成功', 'username': session['user_id']})
 
 # ── Generic data endpoints ──
@@ -3460,6 +3555,37 @@ def api_login_logs():
         ).fetchall()
     return jsonify([dict(r) for r in rows])
 
+@app.route('/api/operation-logs', methods=['GET'])
+@require_admin
+def api_operation_logs():
+    username = request.args.get('username', '').strip()
+    limit = min(int(request.args.get('limit', 300)), 1000)
+    db = get_db()
+    if username:
+        rows = db.execute(
+            "SELECT * FROM operation_logs WHERE username=? ORDER BY id DESC LIMIT ?",
+            (username, limit)
+        ).fetchall()
+    else:
+        rows = db.execute("SELECT * FROM operation_logs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/users/<username>/ip-rules', methods=['GET', 'POST'])
+@require_admin
+def api_user_ip_rules(username):
+    db = get_db()
+    row = db.execute("SELECT username, allowed_ips FROM users WHERE username=?", (username,)).fetchone()
+    if not row:
+        return jsonify({'error': '用户不存在'}), 404
+    if request.method == 'GET':
+        return jsonify({'username': username, 'allowed_ips': row['allowed_ips'] or ''})
+    data = request.get_json(silent=True) or {}
+    allowed_ips = (data.get('allowed_ips') or '').strip()
+    db.execute("UPDATE users SET allowed_ips=? WHERE username=?", (allowed_ips, username))
+    db.commit()
+    log_audit_operation('设置IP限制', 'users/' + username, allowed_ips or '清空限制')
+    return jsonify({'ok': True, 'username': username, 'allowed_ips': allowed_ips})
+
 @app.route('/api/users/<username>/toggle-enabled', methods=['POST'])
 @require_admin
 def api_toggle_enabled(username):
@@ -3473,6 +3599,7 @@ def api_toggle_enabled(username):
     db.execute("UPDATE users SET enabled=? WHERE username=?", (new_val, username))
     db.commit()
     status_text = '已启用' if new_val else '已禁用'
+    log_audit_operation('切换账号状态', 'users/' + username, status_text)
     log_operation('system', 'user_toggle', f'用户 {username} {status_text}')
     return jsonify({'ok': True, 'enabled': new_val, 'status_text': status_text})
 
@@ -3906,6 +4033,14 @@ def handle_options_and_access():
         return jsonify({'ok': True})
     path = request.path
     user = get_user()
+    if path == '/api/login':
+        if user:
+            session.clear()
+        user = None
+    if user:
+        invalid = validate_active_session()
+        if invalid:
+            return invalid
 
     # All business data requires a signed-in account.  The login page itself,
     # configuration, and static assets remain public.
@@ -3951,6 +4086,16 @@ def handle_options_and_access():
 
 @app.after_request
 def no_cache(response):
+    if (
+        response.status_code < 400
+        and request.method in ('POST', 'PUT', 'DELETE')
+        and request.path.startswith('/api/')
+        and session.get('user_id')
+        and request.path not in {'/api/login', '/api/logout'}
+        and not request.path.startswith('/api/login-logs')
+        and not request.path.startswith('/api/operation-logs')
+    ):
+        log_audit_operation(request.method, request.path, '')
     if request.path.endswith('.html') or request.path.endswith('.js'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'

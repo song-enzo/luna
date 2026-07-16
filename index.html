@@ -182,7 +182,20 @@ document.addEventListener('keydown', function(e) {
 
 var _exUser = LUNA.getUser();
 if (_exUser && _exUser.role) {
-  window.location.href = loginLandingPage(_exUser);
+  var _serverUser = null;
+  try {
+    var _xhr = new XMLHttpRequest();
+    _xhr.open('GET', '/api/me', false);
+    _xhr.withCredentials = true;
+    _xhr.send(null);
+    if (_xhr.status >= 200 && _xhr.status < 300) _serverUser = JSON.parse(_xhr.responseText);
+  } catch(e) {}
+  if (_serverUser && _serverUser.role) {
+    LUNA.setUser(_serverUser);
+    window.location.href = loginLandingPage(_serverUser);
+  } else {
+    LUNA.clearUser();
+  }
 }
 </script>
 </body>
